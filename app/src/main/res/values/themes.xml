@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.DeskControl" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#1F6FEB</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#0A3069</item>
+    </style>
+</resources>

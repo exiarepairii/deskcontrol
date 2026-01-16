@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">DeskControl</string>
+    <string name="accessibility_service_description">Enable to show a cursor on the external display and inject touch/keyboard input.</string>
+</resources>
