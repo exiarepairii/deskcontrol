@@ -68,6 +68,7 @@ class SettingsActivity : AppCompatActivity() {
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
         val cursorHideDelaySlider = findViewById<Slider>(R.id.sliderCursorHideDelay)
+        val settingsLogsRow = findViewById<android.view.View>(R.id.settingsLogsRow)
 
         when (SettingsStore.nightMode) {
             androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES ->
@@ -223,6 +224,10 @@ class SettingsActivity : AppCompatActivity() {
             if (fromUser) {
                 SettingsStore.setCursorHideDelay(this, (value * 1000).toLong())
             }
+        }
+
+        settingsLogsRow.setOnClickListener {
+            startActivity(android.content.Intent(this, DiagnosticsActivity::class.java))
         }
     }
 

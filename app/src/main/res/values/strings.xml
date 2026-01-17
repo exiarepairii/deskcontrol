@@ -46,6 +46,8 @@
     <string name="diagnostics_logs_label">Logs:</string>
     <string name="diagnostics_logs_empty">No logs yet</string>
     <string name="diagnostics_none">None</string>
+    <string name="diagnostics_copy_logs">Copy</string>
+    <string name="diagnostics_copy_logs_done">Logs copied</string>
 
     <string name="host_title">External Display Host</string>
     <string name="host_no_external_display">No external display detected</string>
@@ -94,6 +96,9 @@
     <string name="settings_keep_screen_on">Keep screen on while using touchpad</string>
     <string name="settings_keep_screen_on_summary">Prevent auto-lock while the touchpad is active.</string>
     <string name="settings_language">Language</string>
+    <string name="settings_developer_section">Developer</string>
+    <string name="settings_logs_title">Logs</string>
+    <string name="settings_logs_summary">View and copy diagnostics logs for support.</string>
     <string name="settings_touchpad_auto_dim">Auto-dim while using touchpad</string>
     <string name="settings_touchpad_auto_dim_summary">Lower brightness automatically after 10 seconds of touchpad use.</string>
     <string name="settings_touchpad_dim_level">Minimum brightness</string>

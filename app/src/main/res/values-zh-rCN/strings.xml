@@ -44,6 +44,8 @@
     <string name="diagnostics_logs_label">日志：</string>
     <string name="diagnostics_logs_empty">暂无日志</string>
     <string name="diagnostics_none">无</string>
+    <string name="diagnostics_copy_logs">复制</string>
+    <string name="diagnostics_copy_logs_done">日志已复制</string>
 
     <string name="host_title">外接显示器托管</string>
     <string name="host_no_external_display">未检测到外接显示器</string>
@@ -92,6 +94,9 @@
     <string name="settings_keep_screen_on">使用触控板时保持屏幕常亮</string>
     <string name="settings_keep_screen_on_summary">触控板使用期间防止自动锁屏。</string>
     <string name="settings_language">语言</string>
+    <string name="settings_developer_section">开发者</string>
+    <string name="settings_logs_title">查询日志</string>
+    <string name="settings_logs_summary">查看并复制诊断日志，便于反馈。</string>
     <string name="settings_touchpad_auto_dim">使用触控板时自动调低亮度</string>
     <string name="settings_touchpad_auto_dim_summary">使用触控板 10 秒后自动调低亮度。</string>
     <string name="settings_touchpad_dim_level">最低亮度</string>

@@ -13,6 +13,7 @@ class HostActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHostBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        DiagnosticsLog.add("Host: create displayId=${display?.displayId ?: -1}")
 
         val info = DisplaySessionManager.getExternalDisplayInfo()
         binding.hostInfo.text = if (info == null) {
