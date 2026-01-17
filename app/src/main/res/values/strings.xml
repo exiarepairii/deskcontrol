@@ -67,6 +67,7 @@
     <string name="touchpad_accessibility_hint">Enable accessibility to control the cursor and send taps.</string>
     <string name="touchpad_open_accessibility_settings">Open accessibility settings</string>
     <string name="touchpad_accessibility_required_toast">Enable accessibility service first</string>
+    <string name="touchpad_no_external_display">No external display session</string>
     <string name="touchpad_base_gain_value">Base gain: %1$.2f</string>
     <string name="touchpad_acceleration_value">Acceleration: %1$.2fx</string>
     <string name="touchpad_speed_for_max_accel_value">Speed for max accel: %1$.2f px/ms</string>

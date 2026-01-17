@@ -7,8 +7,12 @@ object SessionStore {
     @Volatile
     var lastInjectionResult: String? = null
 
+    @Volatile
+    var lastBackWarmupUptime: Long = 0L
+
     fun clear() {
         lastLaunchFailure = null
         lastInjectionResult = null
+        lastBackWarmupUptime = 0L
     }
 }

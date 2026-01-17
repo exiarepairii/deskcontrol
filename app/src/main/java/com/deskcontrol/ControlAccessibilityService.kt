@@ -22,6 +22,7 @@ import kotlin.math.min
 class ControlAccessibilityService : AccessibilityService() {
 
     companion object {
+        private const val WARMUP_MIN_INTERVAL_MS = 15_000L
         @Volatile
         private var instance: ControlAccessibilityService? = null
         @Volatile
@@ -208,6 +209,25 @@ class ControlAccessibilityService : AccessibilityService() {
     fun performBack(): Boolean {
         return performGlobalAction(GLOBAL_ACTION_BACK)
     }
+
+    fun warmUpBackPipeline() {
+        val info = displayInfo ?: return
+        val now = SystemClock.uptimeMillis()
+        if (now - SessionStore.lastBackWarmupUptime < WARMUP_MIN_INTERVAL_MS) return
+        SessionStore.lastBackWarmupUptime = now
+        handler.post {
+            if (displayInfo == null) return@post
+            // Warm-up input/overlay pipeline to mitigate first-back delay without clicks.
+            val originalX = cursorX
+            val originalY = cursorY
+            moveCursorBy(1f, 0f)
+            cursorX = originalX
+            cursorY = originalY
+            updateOverlayPosition()
+        }
+    }
+
+    fun hasExternalDisplaySession(): Boolean = displayInfo != null
 
     fun setTextOnFocused(text: String): Boolean {
         val info = displayInfo ?: return recordInjection(
