@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:background="@color/backgroundGraphite">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,53 +16,111 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="DeskControl"
-            android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:textColor="@color/textPrimary" />
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/statusLabel"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/statusCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Status"
-            android:textAppearance="?attr/textAppearanceTitleSmall" />
+            app:cardBackgroundColor="@color/surfaceGlass"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="External display: unknown"
-            android:textAppearance="?attr/textAppearanceTitleMedium" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/displayInfoText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="No display info"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="16dp"
-            android:background="?attr/colorOutlineVariant" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/mainActionLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Main action"
-            android:textAppearance="?attr/textAppearanceTitleSmall" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="External display"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="@color/textSecondary" />
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/statusDisplayValue"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Not connected"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="@color/textPrimary" />
+                    </LinearLayout>
+
+                    <Space
+                        android:layout_width="16dp"
+                        android:layout_height="1dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Accessibility"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="@color/textSecondary" />
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/statusAccessibilityValue"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Required"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="@color/textPrimary" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/displaySelector"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/display_selector_track"
+                    android:padding="6dp"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/displaySelectorHighlight"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/display_selector_highlight" />
+
+                    <LinearLayout
+                        android:id="@+id/displaySelectorRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal" />
+                </FrameLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPickApp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Choose app for external display" />
+            android:layout_marginTop="24dp"
+            android:text="Choose app for external display"
+            android:backgroundTint="?attr/colorPrimary"
+            android:textColor="?attr/colorOnPrimary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTouchpad"
@@ -70,54 +128,19 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             style="?attr/materialButtonOutlinedStyle"
+            app:strokeColor="@color/surfaceStroke"
+            android:textColor="@color/textPrimary"
             android:text="Open touchpad" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="16dp"
-            android:background="?attr/colorOutlineVariant" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/secondaryLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Secondary"
-            android:textAppearance="?attr/textAppearanceTitleSmall" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDiagnostics"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:text="Open diagnostics" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSettings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:text="Settings" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/accessibilityHint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Accessibility service is required for cursor and input injection."
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnOpenAccessibility"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             style="?attr/materialButtonOutlinedStyle"
-            android:text="Open accessibility settings" />
+            app:strokeColor="@color/surfaceStroke"
+            android:textColor="@color/textPrimary"
+            android:text="Settings" />
 
     </LinearLayout>
 </ScrollView>

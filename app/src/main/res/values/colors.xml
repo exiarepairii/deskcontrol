@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="backgroundGraphite">#ECEDED</color>
+    <color name="surfaceGraphite">#F1F2F2</color>
+    <color name="surfaceGlass">#CCFFFFFF</color>
+    <color name="surfaceStroke">#1F000000</color>
+    <color name="textPrimary">#1F2326</color>
+    <color name="textSecondary">#556067</color>
+    <color name="segTrack">#24000000</color>
+    <color name="segHighlight">#4DFFFFFF</color>
+    <color name="touchpadBackground">@color/backgroundGraphite</color>
+    <color name="touchpadHintActive">@color/textSecondary</color>
+    <color name="touchpadHintInactive">@color/textPrimary</color>
+    <color name="touchpadToolbarText">@color/textSecondary</color>
+</resources>

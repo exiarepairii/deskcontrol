@@ -1,8 +1,20 @@
 <resources>
     <style name="Theme.DeskControl" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#2CB7F4</item>
-        <item name="colorOnPrimary">#00131A</item>
-        <item name="colorSecondary">#2CB7F4</item>
-        <item name="colorOnSecondary">#00131A</item>
+        <item name="colorPrimary">#7FB7AE</item>
+        <item name="colorOnPrimary">#101817</item>
+        <item name="colorSecondary">#7FB7AE</item>
+        <item name="colorOnSecondary">#101817</item>
+        <item name="colorSurface">@color/surfaceGraphite</item>
+        <item name="colorSurfaceContainer">@color/surfaceGraphite</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceGraphite</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceGraphite</item>
+        <item name="colorOnSurface">@color/textPrimary</item>
+        <item name="colorOnSurfaceVariant">@color/textSecondary</item>
+        <item name="colorOutline">@color/surfaceStroke</item>
+        <item name="colorOutlineVariant">@color/surfaceStroke</item>
+        <item name="android:statusBarColor">@color/backgroundGraphite</item>
+        <item name="android:navigationBarColor">@color/backgroundGraphite</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
