@@ -7,6 +7,7 @@
 - Main screen avoids diagnostics/detail info; that belongs in Diagnostics only (currently removed from home).
 - Cursor size/opacity/speed are now inline sliders; keep values snapped to slider step size to avoid crashes.
 - All user-visible text must live in string resources (English default + zh-rCN).
+- Touchpad auto-dim is per-window only and must restore brightness only on focus loss (onPause/onStop).
 
 ## Current UX conventions
 - Main screen hierarchy: status row + contextual display selector, primary action, secondary actions.
@@ -14,6 +15,7 @@
 - Touchpad hints: when touchpad is active, hint text should dim; inactive should be brighter to draw attention.
 - Accessibility gating for touchpad happens inside Touchpad screen, not on the home screen.
 - Keep-screen-on toggle defaults to ON; it only applies while Touchpad/Host are visible.
+- Touchpad auto-dim uses a 10s delay and never increases brightness while the touchpad remains focused.
 
 ## Visual system and theming
 - Colors are defined in `app/src/main/res/values/colors.xml` and `app/src/main/res/values-night/colors.xml`.
@@ -28,6 +30,7 @@
 - Sliders must snap to step size to prevent Material Slider validation crashes.
 - Show dependent settings only when their parent switch is enabled (e.g., hide delay only when auto-hide is ON).
 - Theme and language use segmented toggle groups (system/dark/light, system/en/zh-CN).
+- Keep-screen-on and touchpad auto-dim live together in the Display section with their summaries.
 
 ## Key files to understand
 - Touchpad input and focus: `app/src/main/java/com/deskcontrol/TouchpadActivity.kt`
@@ -43,6 +46,7 @@
 - Display selection must stay 1-based in UI; never expose system displayId directly.
 - Do not reintroduce diagnostics/details onto the main screen without confirmation.
 - Touchpad background colors are overridden by day/night drawables; use `drawable-night/touchpad_area_bg.xml` for OLED mode.
+- Touchpad auto-dim should never restore brightness on input events; restore only on focus loss.
 
 ## Release checklist (lightweight)
 - Update `app/build.gradle` versionCode/versionName.
@@ -57,6 +61,9 @@
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
 ## Recent changes (touchpad-blind-ops)
+## Recent changes (touchpad-auto-dim)
+- Touchpad: auto-dim after 10s with smooth animation and per-window brightness restore on focus loss only.
+- Settings: added auto-dim toggle and minimum brightness slider next to keep-screen-on with updated copy.
 ## Recent changes (0.4.0)
 - Internationalization: all UI text moved to strings with English + zh-rCN resources.
 - Settings: theme and language controls added; keep-screen-on toggle defaults to ON.

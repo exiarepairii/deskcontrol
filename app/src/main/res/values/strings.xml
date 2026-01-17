@@ -81,9 +81,14 @@
     <string name="theme_system">System</string>
     <string name="theme_dark">Dark mode</string>
     <string name="theme_light">Light mode</string>
-    <string name="settings_keep_screen_on">Keep screen on</string>
-    <string name="settings_keep_screen_on_summary">Prevent auto-lock during active control.</string>
+    <string name="settings_keep_screen_on">Keep screen on while using touchpad</string>
+    <string name="settings_keep_screen_on_summary">Prevent auto-lock while the touchpad is active.</string>
     <string name="settings_language">Language</string>
+    <string name="settings_touchpad_auto_dim">Auto-dim while using touchpad</string>
+    <string name="settings_touchpad_auto_dim_summary">Lower brightness automatically after 10 seconds of touchpad use.</string>
+    <string name="settings_touchpad_dim_level">Minimum brightness</string>
+    <string name="settings_touchpad_dim_level_value">%1$d%%</string>
+    <string name="settings_touchpad_dim_level_default">18%</string>
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>

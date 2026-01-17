@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.animation.ValueAnimator
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -28,6 +29,13 @@ class TouchpadActivity : AppCompatActivity() {
     private val processor = TouchpadProcessor(TouchpadTuning)
     private val scrollProcessor = TouchpadScrollProcessor(TouchpadTuning)
     private val handler = Handler(Looper.getMainLooper())
+    private var dimRunnable: Runnable? = null
+    private var dimAnimator: ValueAnimator? = null
+    private var originalWindowBrightness: Float = 0f
+    private var hasOriginalWindowBrightness = false
+    private var dimmedThisSession = false
+    private var focusSessionId = 0
+    private var isFocused = false
     private var isDragging = false
     private var isScrolling = false
     private var lastTouchX = 0f
@@ -113,11 +121,23 @@ class TouchpadActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateKeepScreenOn(true)
+        startAutoDimSession()
     }
 
     override fun onPause() {
+        stopAutoDimSession()
         updateKeepScreenOn(false)
         super.onPause()
+    }
+
+    override fun onStop() {
+        stopAutoDimSession()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        stopAutoDimSession()
+        super.onDestroy()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -387,5 +407,105 @@ class TouchpadActivity : AppCompatActivity() {
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    private fun startAutoDimSession() {
+        isFocused = true
+        focusSessionId += 1
+        dimmedThisSession = false
+        cancelDimTimer()
+        cancelDimAnimator()
+        captureOriginalBrightness()
+
+        if (!SettingsStore.touchpadAutoDimEnabled) return
+        val sessionId = focusSessionId
+        dimRunnable = Runnable {
+            if (!isFocused || sessionId != focusSessionId || dimmedThisSession) return@Runnable
+            dimWindowBrightness()
+        }
+        handler.postDelayed(dimRunnable!!, AUTO_DIM_DELAY_MS)
+    }
+
+    private fun stopAutoDimSession() {
+        isFocused = false
+        cancelDimTimer()
+        cancelDimAnimator()
+        restoreOriginalBrightness()
+    }
+
+    private fun captureOriginalBrightness() {
+        val current = window.attributes.screenBrightness
+        originalWindowBrightness = current
+        hasOriginalWindowBrightness = true
+    }
+
+    private fun restoreOriginalBrightness() {
+        if (!hasOriginalWindowBrightness) return
+        window.attributes = window.attributes.apply {
+            screenBrightness = originalWindowBrightness
+        }
+        hasOriginalWindowBrightness = false
+        dimmedThisSession = false
+    }
+
+    private fun dimWindowBrightness() {
+        val target = computeDimTarget()
+        val start = getEstimatedCurrentBrightness().coerceAtLeast(target)
+        if (start <= target) {
+            applyWindowBrightness(target)
+            dimmedThisSession = true
+            return
+        }
+        dimAnimator = ValueAnimator.ofFloat(start, target).apply {
+            duration = DIM_ANIMATION_DURATION_MS
+            addUpdateListener { animator ->
+                applyWindowBrightness(animator.animatedValue as Float)
+            }
+            start()
+        }
+        dimmedThisSession = true
+    }
+
+    private fun applyWindowBrightness(value: Float) {
+        window.attributes = window.attributes.apply {
+            screenBrightness = value.coerceIn(0f, 1f)
+        }
+    }
+
+    private fun getEstimatedCurrentBrightness(): Float {
+        val windowValue = window.attributes.screenBrightness
+        if (windowValue >= 0f) {
+            return windowValue.coerceIn(0f, 1f)
+        }
+        return try {
+            val systemValue = Settings.System.getInt(
+                contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS
+            )
+            (systemValue / 255f).coerceIn(0f, 1f)
+        } catch (e: Exception) {
+            SettingsStore.touchpadDimLevel.coerceIn(0f, 1f)
+        }
+    }
+
+    private fun computeDimTarget(): Float {
+        val preferred = SettingsStore.touchpadDimLevel.coerceIn(0f, 1f)
+        val current = getEstimatedCurrentBrightness()
+        return minOf(preferred, current)
+    }
+
+    private fun cancelDimTimer() {
+        dimRunnable?.let { handler.removeCallbacks(it) }
+        dimRunnable = null
+    }
+
+    private fun cancelDimAnimator() {
+        dimAnimator?.cancel()
+        dimAnimator = null
+    }
+
+    companion object {
+        private const val AUTO_DIM_DELAY_MS = 10_000L
+        private const val DIM_ANIMATION_DURATION_MS = 400L
     }
 }

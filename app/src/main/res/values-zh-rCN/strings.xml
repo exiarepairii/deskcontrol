@@ -79,9 +79,14 @@
     <string name="theme_system">跟随系统</string>
     <string name="theme_dark">深色模式</string>
     <string name="theme_light">浅色模式</string>
-    <string name="settings_keep_screen_on">保持屏幕常亮</string>
-    <string name="settings_keep_screen_on_summary">在使用控制时防止自动锁屏。</string>
+    <string name="settings_keep_screen_on">使用触控板时保持屏幕常亮</string>
+    <string name="settings_keep_screen_on_summary">触控板使用期间防止自动锁屏。</string>
     <string name="settings_language">语言</string>
+    <string name="settings_touchpad_auto_dim">使用触控板时自动调低亮度</string>
+    <string name="settings_touchpad_auto_dim_summary">使用触控板 10 秒后自动调低亮度。</string>
+    <string name="settings_touchpad_dim_level">最低亮度</string>
+    <string name="settings_touchpad_dim_level_value">%1$d%%</string>
+    <string name="settings_touchpad_dim_level_default">18%</string>
     <string name="language_system">跟随系统</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>

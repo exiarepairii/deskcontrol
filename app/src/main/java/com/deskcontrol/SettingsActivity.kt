@@ -62,6 +62,9 @@ class SettingsActivity : AppCompatActivity() {
         val cursorSpeedValue = findViewById<android.widget.TextView>(R.id.cursorSpeedValue)
         val cursorHideSwitch = findViewById<SwitchMaterial>(R.id.switchCursorHide)
         val keepScreenOnSwitch = findViewById<SwitchMaterial>(R.id.switchKeepScreenOn)
+        val touchpadAutoDimSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadAutoDim)
+        val touchpadDimLevelValue = findViewById<android.widget.TextView>(R.id.touchpadDimLevelValue)
+        val touchpadDimLevelSlider = findViewById<Slider>(R.id.sliderTouchpadDimLevel)
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
         val cursorHideDelaySlider = findViewById<Slider>(R.id.sliderCursorHideDelay)
@@ -90,6 +93,32 @@ class SettingsActivity : AppCompatActivity() {
         keepScreenOnSwitch.isChecked = SettingsStore.keepScreenOn
         keepScreenOnSwitch.setOnCheckedChangeListener { _, isChecked ->
             SettingsStore.setKeepScreenOn(this, isChecked)
+        }
+
+        touchpadAutoDimSwitch.isChecked = SettingsStore.touchpadAutoDimEnabled
+        touchpadAutoDimSwitch.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setTouchpadAutoDimEnabled(this, isChecked)
+        }
+
+        touchpadDimLevelSlider.valueFrom = 0.05f
+        touchpadDimLevelSlider.valueTo = 0.30f
+        touchpadDimLevelSlider.stepSize = 0.01f
+        touchpadDimLevelSlider.value = SettingsStore.touchpadDimLevel.coerceIn(
+            touchpadDimLevelSlider.valueFrom,
+            touchpadDimLevelSlider.valueTo
+        )
+        touchpadDimLevelValue.text = getString(
+            R.string.settings_touchpad_dim_level_value,
+            (touchpadDimLevelSlider.value * 100).toInt()
+        )
+        touchpadDimLevelSlider.addOnChangeListener { _, value, fromUser ->
+            touchpadDimLevelValue.text = getString(
+                R.string.settings_touchpad_dim_level_value,
+                (value * 100).toInt()
+            )
+            if (fromUser) {
+                SettingsStore.setTouchpadDimLevel(this, value)
+            }
         }
 
         when {

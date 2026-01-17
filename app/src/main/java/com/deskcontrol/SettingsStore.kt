@@ -23,6 +23,10 @@ object SettingsStore {
         private set
     var keepScreenOn = true
         private set
+    var touchpadAutoDimEnabled = true
+        private set
+    var touchpadDimLevel = 0.18f
+        private set
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -33,6 +37,8 @@ object SettingsStore {
         cursorColor = prefs.getInt("cursor_color", cursorColor)
         appLanguageTag = prefs.getString(PREF_APP_LANGUAGE, appLanguageTag) ?: LANGUAGE_SYSTEM
         keepScreenOn = prefs.getBoolean("keep_screen_on", keepScreenOn)
+        touchpadAutoDimEnabled = prefs.getBoolean("touchpad_auto_dim", touchpadAutoDimEnabled)
+        touchpadDimLevel = prefs.getFloat("touchpad_dim_level", touchpadDimLevel)
 
         TouchpadTuning.baseGain = prefs.getFloat("tp_base_gain", TouchpadTuning.baseGain)
         TouchpadTuning.maxAccelGain = prefs.getFloat("tp_max_accel", TouchpadTuning.maxAccelGain)
@@ -75,6 +81,17 @@ object SettingsStore {
     fun setKeepScreenOn(context: Context, enabled: Boolean) {
         keepScreenOn = enabled
         persist(context) { putBoolean("keep_screen_on", enabled) }
+    }
+
+    fun setTouchpadAutoDimEnabled(context: Context, enabled: Boolean) {
+        touchpadAutoDimEnabled = enabled
+        persist(context) { putBoolean("touchpad_auto_dim", enabled) }
+    }
+
+    fun setTouchpadDimLevel(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.05f, 0.30f)
+        touchpadDimLevel = clamped
+        persist(context) { putFloat("touchpad_dim_level", clamped) }
     }
 
     fun setAppLanguage(context: Context, languageTag: String) {
