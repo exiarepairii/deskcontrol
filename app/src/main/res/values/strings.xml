@@ -74,6 +74,15 @@
     <string name="touchpad_jitter_threshold_value">Jitter threshold: %1$.2f px</string>
     <string name="touchpad_smoothing_value">Smoothing (EMA): %1$.2f</string>
     <string name="touchpad_scroll_step_value">Scroll step: %1$.0f px</string>
+    <string name="touchpad_intro_title">Touchpad tips</string>
+    <string name="touchpad_intro_got_it">Got it</string>
+    <string name="touchpad_intro_gesture_move">Move: slide one finger</string>
+    <string name="touchpad_intro_gesture_tap">Click: tap once</string>
+    <string name="touchpad_intro_gesture_drag">Slide &amp; drag: double-tap, then slide (vibration confirms)</string>
+    <string name="touchpad_intro_dim_behavior">Auto-dim: after 10s inside the touchpad area, the screen dims. It restores when you tap outside the touchpad area or leave this screen.</string>
+    <string name="touchpad_intro_back_behavior">Back: when the touchpad area is active, Back is forwarded to the external app.</string>
+    <string name="touchpad_intro_exit_hint">Exit: tap the top-left back arrow, or tap outside the touchpad area and then press Back.</string>
+    <string name="touchpad_intro_message">%1$s\n%2$s\n%3$s\n\n%4$s\n%5$s\n%6$s</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_display_section">Display</string>

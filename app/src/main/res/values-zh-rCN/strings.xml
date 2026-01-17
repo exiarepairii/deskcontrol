@@ -72,6 +72,15 @@
     <string name="touchpad_jitter_threshold_value">抖动阈值：%1$.2f px</string>
     <string name="touchpad_smoothing_value">平滑（EMA）：%1$.2f</string>
     <string name="touchpad_scroll_step_value">滚动步长：%1$.0f px</string>
+    <string name="touchpad_intro_title">触控板提示</string>
+    <string name="touchpad_intro_got_it">知道了</string>
+    <string name="touchpad_intro_gesture_move">移动：单指滑动</string>
+    <string name="touchpad_intro_gesture_tap">点击：单击</string>
+    <string name="touchpad_intro_gesture_drag">滑动与拖拽：双击后滑动（震动提示）</string>
+    <string name="touchpad_intro_dim_behavior">自动调暗：在触控板区域内停留 10 秒后降低亮度，点触控板区域外或离开本页会恢复。</string>
+    <string name="touchpad_intro_back_behavior">返回键：触控板区域激活时会转发到外接应用。</string>
+    <string name="touchpad_intro_exit_hint">退出：点左上角返回箭头，或先点触控板区域外再按返回键。</string>
+    <string name="touchpad_intro_message">%1$s\n%2$s\n%3$s\n\n%4$s\n%5$s\n%6$s</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_display_section">显示</string>
