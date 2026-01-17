@@ -16,9 +16,14 @@ class HostActivity : AppCompatActivity() {
 
         val info = DisplaySessionManager.getExternalDisplayInfo()
         binding.hostInfo.text = if (info == null) {
-            "No external display detected"
+            getString(R.string.host_no_external_display)
         } else {
-            "Running on display ${info.displayId} (${info.width}x${info.height})"
+            getString(
+                R.string.host_running_display,
+                info.displayId,
+                info.width,
+                info.height
+            )
         }
 
         binding.btnHostPickApp.setOnClickListener {
@@ -27,6 +32,25 @@ class HostActivity : AppCompatActivity() {
         binding.btnHostFinish.setOnClickListener {
             DisplaySessionManager.stopSession()
             finish()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateKeepScreenOn(true)
+    }
+
+    override fun onPause() {
+        updateKeepScreenOn(false)
+        super.onPause()
+    }
+
+    private fun updateKeepScreenOn(visible: Boolean) {
+        val hasSession = DisplaySessionManager.getExternalDisplayInfo() != null
+        if (visible && hasSession && SettingsStore.keepScreenOn) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 }

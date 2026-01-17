@@ -171,7 +171,7 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun scrollVertical(steps: Int) {
         val info = displayInfo ?: run {
-            recordInjection(false, "No external display")
+            recordInjection(false, getString(R.string.injection_no_external_display))
             return
         }
         val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
@@ -195,7 +195,14 @@ class ControlAccessibilityService : AccessibilityService() {
             if (success) break
         }
         notifyCursorActivity()
-        recordInjection(success, if (success) "Scroll injected" else "Scroll failed")
+        recordInjection(
+            success,
+            if (success) {
+                getString(R.string.injection_scroll_injected)
+            } else {
+                getString(R.string.injection_scroll_failed)
+            }
+        )
     }
 
     fun performBack(): Boolean {
@@ -203,7 +210,10 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     fun setTextOnFocused(text: String): Boolean {
-        val info = displayInfo ?: return recordInjection(false, "No external display")
+        val info = displayInfo ?: return recordInjection(
+            false,
+            getString(R.string.injection_no_external_display)
+        )
         val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
         val roots = if (targetWindows.isNotEmpty()) {
             targetWindows.mapNotNull { it.root }
@@ -218,15 +228,25 @@ class ControlAccessibilityService : AccessibilityService() {
                     target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                 }
                 if (!target.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }) {
-                    return recordInjection(false, "Focused field does not support ACTION_SET_TEXT")
+                    return recordInjection(
+                        false,
+                        getString(R.string.injection_action_set_text_not_supported)
+                    )
                 }
                 val args = Bundle()
                 args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
                 val success = target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                return recordInjection(success, if (success) "ACTION_SET_TEXT success" else "ACTION_SET_TEXT failed")
+                return recordInjection(
+                    success,
+                    if (success) {
+                        getString(R.string.injection_action_set_text_success)
+                    } else {
+                        getString(R.string.injection_action_set_text_failed)
+                    }
+                )
             }
         }
-        return recordInjection(false, "No editable field on external display")
+        return recordInjection(false, getString(R.string.injection_no_editable_field))
     }
 
     private fun findEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -390,11 +410,11 @@ class ControlAccessibilityService : AccessibilityService() {
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
-                    recordInjection(true, "Tap injected")
+                    recordInjection(true, getString(R.string.injection_tap_injected))
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
-                    recordInjection(false, "Tap cancelled")
+                    recordInjection(false, getString(R.string.injection_tap_cancelled))
                 }
             },
             null
@@ -412,11 +432,11 @@ class ControlAccessibilityService : AccessibilityService() {
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
-                    recordInjection(true, "Drag injected")
+                    recordInjection(true, getString(R.string.injection_drag_injected))
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
-                    recordInjection(false, "Drag cancelled")
+                    recordInjection(false, getString(R.string.injection_drag_cancelled))
                 }
             },
             null
@@ -439,7 +459,11 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun recordInjection(success: Boolean, message: String): Boolean {
-        SessionStore.lastInjectionResult = if (success) message else "Failed: $message"
+        SessionStore.lastInjectionResult = if (success) {
+            message
+        } else {
+            getString(R.string.injection_failed_with_message, message)
+        }
         return success
     }
 

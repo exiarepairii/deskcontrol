@@ -1,0 +1,140 @@
+<resources>
+    <string name="accessibility_service_description">启用后将在外接显示器上显示光标并注入触控/键盘输入。</string>
+
+    <string name="external_display_label">外接显示器</string>
+    <string name="external_display_connected">已连接</string>
+    <string name="external_display_not_connected">未连接</string>
+    <string name="accessibility_label">无障碍</string>
+    <string name="accessibility_enabled">已启用</string>
+    <string name="accessibility_required">需要启用</string>
+    <string name="choose_app_for_display">为外接显示器选择应用</string>
+    <string name="open_touchpad">打开触控板</string>
+    <string name="settings">设置</string>
+
+    <string name="display_selector_title">显示器 %1$d</string>
+    <string name="display_selector_resolution">%1$dx%2$d</string>
+
+    <string name="app_picker_title">选择应用</string>
+    <string name="app_search_hint">搜索应用</string>
+    <string name="app_icon_content_description">应用图标</string>
+    <string name="app_placeholder_name">应用名称</string>
+    <string name="app_launched_toast">已启动 %1$s</string>
+    <string name="app_launch_failed_generic">启动失败</string>
+    <string name="app_launch_failed_with_detail">%1$s: %2$s</string>
+    <string name="app_launch_failed_reason_only">%1$s</string>
+    <string name="app_launch_reason_no_external_display">无外接显示器</string>
+    <string name="app_launch_reason_feature_unsupported">功能不支持</string>
+    <string name="app_launch_reason_no_launch_intent">无可启动入口</string>
+    <string name="app_launch_reason_security_exception">安全异常</string>
+    <string name="app_launch_reason_start_failed">启动失败</string>
+    <string name="app_launch_detail_no_external_display">未检测到外接显示器</string>
+    <string name="app_launch_detail_feature_unsupported">设备不支持在副显示器上启动应用</string>
+    <string name="app_launch_detail_no_launch_intent">所选应用没有可启动的活动</string>
+    <string name="app_launch_detail_security_exception">安全异常</string>
+    <string name="app_launch_detail_unknown_failure">未知启动失败</string>
+
+    <string name="diagnostics_title">诊断</string>
+    <string name="diagnostics_details_label">详情</string>
+    <string name="diagnostics_external_display_not_connected">外接显示器：未连接</string>
+    <string name="diagnostics_external_display_info">外接显示器：id=%1$d，尺寸=%2$dx%3$d，dpi=%4$d，旋转=%5$d</string>
+    <string name="diagnostics_accessibility_enabled">无障碍：已启用</string>
+    <string name="diagnostics_accessibility_disabled">无障碍：未启用</string>
+    <string name="diagnostics_last_launch_failure">上次启动失败：%1$s</string>
+    <string name="diagnostics_last_injection_result">上次注入结果：%1$s</string>
+    <string name="diagnostics_logs_label">日志：</string>
+    <string name="diagnostics_logs_empty">暂无日志</string>
+    <string name="diagnostics_none">无</string>
+
+    <string name="host_title">外接显示器托管</string>
+    <string name="host_no_external_display">未检测到外接显示器</string>
+    <string name="host_running_display">运行于显示器 %1$d（%2$dx%3$d）</string>
+    <string name="host_change_app">更换应用</string>
+    <string name="host_end_session">结束会话</string>
+
+    <string name="touchpad_title">触控板</string>
+    <string name="touchpad_hint">在触控区域滑动移动光标，双指滚动，双击并长按拖拽。</string>
+    <string name="touchpad_tuning">触控板调节</string>
+    <string name="touchpad_base_gain">基础增益</string>
+    <string name="touchpad_acceleration">加速度</string>
+    <string name="touchpad_speed_for_max_accel">最大加速速度</string>
+    <string name="touchpad_jitter_threshold">抖动阈值</string>
+    <string name="touchpad_smoothing">平滑（EMA）</string>
+    <string name="touchpad_scroll_step">滚动步长</string>
+    <string name="touchpad_accessibility_content_description">无障碍</string>
+    <string name="touchpad_accessibility_required">需要启用无障碍</string>
+    <string name="touchpad_accessibility_hint">启用无障碍以控制光标并发送点击。</string>
+    <string name="touchpad_open_accessibility_settings">打开无障碍设置</string>
+    <string name="touchpad_accessibility_required_toast">请先启用无障碍服务</string>
+    <string name="touchpad_base_gain_value">基础增益：%1$.2f</string>
+    <string name="touchpad_acceleration_value">加速度：%1$.2fx</string>
+    <string name="touchpad_speed_for_max_accel_value">最大加速速度：%1$.2f px/ms</string>
+    <string name="touchpad_jitter_threshold_value">抖动阈值：%1$.2f px</string>
+    <string name="touchpad_smoothing_value">平滑（EMA）：%1$.2f</string>
+    <string name="touchpad_scroll_step_value">滚动步长：%1$.0f px</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_display_section">显示</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_dark_mode">主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_dark">深色模式</string>
+    <string name="theme_light">浅色模式</string>
+    <string name="settings_keep_screen_on">保持屏幕常亮</string>
+    <string name="settings_keep_screen_on_summary">在使用控制时防止自动锁屏。</string>
+    <string name="settings_language">语言</string>
+    <string name="language_system">跟随系统</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese">简体中文</string>
+    <string name="settings_cursor_section">光标</string>
+    <string name="settings_cursor_size">光标大小</string>
+    <string name="settings_cursor_scale_label">缩放</string>
+    <string name="settings_cursor_color">光标颜色</string>
+    <string name="settings_cursor_opacity">光标不透明度</string>
+    <string name="settings_cursor_speed">光标速度</string>
+    <string name="settings_cursor_auto_hide">光标自动隐藏</string>
+    <string name="settings_hide_delay">隐藏延迟</string>
+    <string name="settings_on">开</string>
+    <string name="settings_off">关</string>
+    <string name="settings_cursor_opacity_value">%1$d%%</string>
+    <string name="settings_cursor_scale_value">%1$.1fx</string>
+    <string name="settings_cursor_speed_value">%1$.1fx</string>
+    <string name="settings_cursor_hide_delay_value">%1$.1fs</string>
+    <string name="settings_advanced_section">高级</string>
+    <string name="settings_tuning_title">调节</string>
+    <string name="settings_tuning_summary">高级调节固定为推荐默认值</string>
+
+    <string name="injection_no_external_display">无外接显示器</string>
+    <string name="injection_scroll_injected">滚动已注入</string>
+    <string name="injection_scroll_failed">滚动注入失败</string>
+    <string name="injection_action_set_text_not_supported">当前输入框不支持 ACTION_SET_TEXT</string>
+    <string name="injection_action_set_text_success">ACTION_SET_TEXT 成功</string>
+    <string name="injection_action_set_text_failed">ACTION_SET_TEXT 失败</string>
+    <string name="injection_no_editable_field">外接显示器上没有可编辑字段</string>
+    <string name="injection_tap_injected">点击已注入</string>
+    <string name="injection_tap_cancelled">点击已取消</string>
+    <string name="injection_drag_injected">拖拽已注入</string>
+    <string name="injection_drag_cancelled">拖拽已取消</string>
+    <string name="injection_failed_with_message">失败：%1$s</string>
+
+    <string name="cursor_color_black">黑色</string>
+    <string name="cursor_color_white">白色</string>
+    <string name="cursor_size_small">小</string>
+    <string name="cursor_size_default">默认</string>
+    <string name="cursor_size_large">大</string>
+    <string name="cursor_opacity_100">100%</string>
+    <string name="cursor_opacity_80">80%</string>
+    <string name="cursor_opacity_60">60%</string>
+    <string name="cursor_speed_slow">慢</string>
+    <string name="cursor_speed_default">默认</string>
+    <string name="cursor_speed_fast">快</string>
+    <string name="cursor_hide_off">关闭</string>
+    <string name="cursor_hide_1s">1 秒</string>
+    <string name="cursor_hide_2_5s">2.5 秒</string>
+    <string name="cursor_hide_5s">5 秒</string>
+    <string name="pref_summary_value">%1$s</string>
+
+    <string name="settings_cursor_scale_default">1.0x</string>
+    <string name="settings_cursor_speed_default">0.9x</string>
+    <string name="settings_cursor_opacity_default">100%</string>
+    <string name="settings_cursor_hide_delay_default">2.5s</string>
+</resources>

@@ -1,7 +1,7 @@
 <resources>
     <string-array name="cursor_color_entries">
-        <item>Black</item>
-        <item>White</item>
+        <item>@string/cursor_color_black</item>
+        <item>@string/cursor_color_white</item>
     </string-array>
     <string-array name="cursor_color_values">
         <item>black</item>
@@ -9,9 +9,9 @@
     </string-array>
 
     <string-array name="cursor_size_entries">
-        <item>Small</item>
-        <item>Default</item>
-        <item>Large</item>
+        <item>@string/cursor_size_small</item>
+        <item>@string/cursor_size_default</item>
+        <item>@string/cursor_size_large</item>
     </string-array>
     <string-array name="cursor_size_values">
         <item>0.8</item>
@@ -20,9 +20,9 @@
     </string-array>
 
     <string-array name="cursor_opacity_entries">
-        <item>100%</item>
-        <item>80%</item>
-        <item>60%</item>
+        <item>@string/cursor_opacity_100</item>
+        <item>@string/cursor_opacity_80</item>
+        <item>@string/cursor_opacity_60</item>
     </string-array>
     <string-array name="cursor_opacity_values">
         <item>1.0</item>
@@ -31,9 +31,9 @@
     </string-array>
 
     <string-array name="cursor_speed_entries">
-        <item>Slow</item>
-        <item>Default</item>
-        <item>Fast</item>
+        <item>@string/cursor_speed_slow</item>
+        <item>@string/cursor_speed_default</item>
+        <item>@string/cursor_speed_fast</item>
     </string-array>
     <string-array name="cursor_speed_values">
         <item>0.7</item>
@@ -42,10 +42,10 @@
     </string-array>
 
     <string-array name="cursor_hide_entries">
-        <item>Off</item>
-        <item>1 s</item>
-        <item>2.5 s</item>
-        <item>5 s</item>
+        <item>@string/cursor_hide_off</item>
+        <item>@string/cursor_hide_1s</item>
+        <item>@string/cursor_hide_2_5s</item>
+        <item>@string/cursor_hide_5s</item>
     </string-array>
     <string-array name="cursor_hide_values">
         <item>0</item>

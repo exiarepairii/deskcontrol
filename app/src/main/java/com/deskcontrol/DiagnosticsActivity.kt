@@ -15,7 +15,7 @@ class DiagnosticsActivity : AppCompatActivity() {
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
-        binding.diagnosticsToolbar.title = "Diagnostics"
+        binding.diagnosticsToolbar.title = getString(R.string.diagnostics_title)
         binding.diagnosticsToolbar.setNavigationOnClickListener { finish() }
     }
 
@@ -23,26 +23,33 @@ class DiagnosticsActivity : AppCompatActivity() {
         super.onStart()
         val displayInfo = DisplaySessionManager.getExternalDisplayInfo()
         val displayText = if (displayInfo == null) {
-            "External display: not connected"
+            getString(R.string.diagnostics_external_display_not_connected)
         } else {
-            "External display: id=${displayInfo.displayId}, size=${displayInfo.width}x${displayInfo.height}, dpi=${displayInfo.densityDpi}, rotation=${displayInfo.rotation}"
+            getString(
+                R.string.diagnostics_external_display_info,
+                displayInfo.displayId,
+                displayInfo.width,
+                displayInfo.height,
+                displayInfo.densityDpi,
+                displayInfo.rotation
+            )
         }
         val accessibility = if (ControlAccessibilityService.isEnabled(this)) {
-            "Accessibility: enabled"
+            getString(R.string.diagnostics_accessibility_enabled)
         } else {
-            "Accessibility: disabled"
+            getString(R.string.diagnostics_accessibility_disabled)
         }
-        val launchFailure = SessionStore.lastLaunchFailure ?: "None"
-        val injectionResult = SessionStore.lastInjectionResult ?: "None"
+        val launchFailure = SessionStore.lastLaunchFailure ?: getString(R.string.diagnostics_none)
+        val injectionResult = SessionStore.lastInjectionResult ?: getString(R.string.diagnostics_none)
         val logs = DiagnosticsLog.snapshot()
 
         binding.diagnosticsText.text = listOf(
             displayText,
             accessibility,
-            "Last launch failure: $launchFailure",
-            "Last injection result: $injectionResult",
-            "Logs:",
-            if (logs.isEmpty()) "No logs yet" else logs.joinToString("\n")
+            getString(R.string.diagnostics_last_launch_failure, launchFailure),
+            getString(R.string.diagnostics_last_injection_result, injectionResult),
+            getString(R.string.diagnostics_logs_label),
+            if (logs.isEmpty()) getString(R.string.diagnostics_logs_empty) else logs.joinToString("\n")
         ).joinToString("\n")
     }
 }

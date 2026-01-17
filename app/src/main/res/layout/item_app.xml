@@ -11,7 +11,7 @@
         android:id="@+id/appIcon"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:contentDescription="App icon" />
+        android:contentDescription="@string/app_icon_content_description" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -24,7 +24,7 @@
             android:id="@+id/appName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="App name"
+            android:text="@string/app_placeholder_name"
             android:textAppearance="?attr/textAppearanceBodyLarge" />
 
         <com.google.android.material.textview.MaterialTextView
@@ -32,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="com.example"
+            android:text="@string/app_placeholder_package"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="?attr/colorOnSurfaceVariant" />
 

@@ -30,18 +30,21 @@ class AppPickerActivity : AppCompatActivity() {
         adapter = AppAdapter(allEntries) { entry ->
             val result = AppLauncher.launchOnExternalDisplay(this, entry.packageName)
             if (result.success) {
-                Toast.makeText(this, "Launched ${entry.label}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    getString(R.string.app_launched_toast, entry.label),
+                    Toast.LENGTH_SHORT
+                ).show()
                 startActivity(android.content.Intent(this, TouchpadActivity::class.java))
                 finish()
             } else {
-                val reason = result.reason?.name ?: "Launch failed"
-                val message = if (result.detail.isNullOrBlank()) reason else "$reason: ${result.detail}"
+                val message = buildLaunchFailureMessage(result)
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             }
         }
         binding.appList.adapter = adapter
 
-        binding.appPickerToolbar.title = "Choose an app"
+        binding.appPickerToolbar.title = getString(R.string.app_picker_title)
         binding.appPickerToolbar.setNavigationOnClickListener { finish() }
 
         binding.searchInput.addTextChangedListener(object : TextWatcher {
@@ -51,6 +54,24 @@ class AppPickerActivity : AppCompatActivity() {
                 filterApps(s?.toString().orEmpty())
             }
         })
+    }
+
+    private fun buildLaunchFailureMessage(result: AppLauncher.Result): String {
+        val reason = result.reason
+        if (reason == null) {
+            return getString(R.string.app_launch_failed_generic)
+        }
+        val reasonLabel = getString(AppLauncher.reasonLabelResId(reason))
+        val detailResId = result.detailResId
+        return if (detailResId == null) {
+            getString(R.string.app_launch_failed_reason_only, reasonLabel)
+        } else {
+            getString(
+                R.string.app_launch_failed_with_detail,
+                reasonLabel,
+                getString(detailResId)
+            )
+        }
     }
 
     private fun loadLaunchableApps(): List<AppEntry> {

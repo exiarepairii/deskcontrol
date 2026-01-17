@@ -51,7 +51,11 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
         externalDisplayConnected = info != null
-        binding.statusDisplayValue.text = if (externalDisplayConnected) "Connected" else "Not connected"
+        binding.statusDisplayValue.text = if (externalDisplayConnected) {
+            getString(R.string.external_display_connected)
+        } else {
+            getString(R.string.external_display_not_connected)
+        }
         updateSecondaryActions()
     }
 
@@ -66,7 +70,11 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     private fun updateAccessibilityState() {
         val accessibilityEnabled = ControlAccessibilityService.isEnabled(this)
-        binding.statusAccessibilityValue.text = if (accessibilityEnabled) "Enabled" else "Required"
+        binding.statusAccessibilityValue.text = if (accessibilityEnabled) {
+            getString(R.string.accessibility_enabled)
+        } else {
+            getString(R.string.accessibility_required)
+        }
     }
 
     private fun updateSecondaryActions() {
@@ -105,13 +113,13 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                 setOnClickListener { DisplaySessionManager.setSelectedDisplayId(display.displayId) }
             }
             val primary = MaterialTextView(this).apply {
-                text = "Display ${index + 1}"
+                text = getString(R.string.display_selector_title, index + 1)
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
                 textAlignment = android.view.View.TEXT_ALIGNMENT_CENTER
                 gravity = android.view.Gravity.CENTER
             }
             val secondary = MaterialTextView(this).apply {
-                text = "${display.width}x${display.height}"
+                text = getString(R.string.display_selector_resolution, display.width, display.height)
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelSmall)
                 setTextColor(secondaryColor)
                 textAlignment = android.view.View.TEXT_ALIGNMENT_CENTER

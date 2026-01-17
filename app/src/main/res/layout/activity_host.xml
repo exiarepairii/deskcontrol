@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="External Display Host"
+        android:text="@string/host_title"
         android:textStyle="bold"
         android:textSize="18sp" />
 
@@ -17,20 +17,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="" />
+        android:text="@string/empty_text" />
 
     <Button
         android:id="@+id/btnHostPickApp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Change app" />
+        android:text="@string/host_change_app" />
 
     <Button
         android:id="@+id/btnHostFinish"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="End session" />
+        android:text="@string/host_end_session" />
 
 </LinearLayout>

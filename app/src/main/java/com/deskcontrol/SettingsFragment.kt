@@ -14,7 +14,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val darkMode = findPreference<SwitchPreferenceCompat>("pref_dark_mode")
         darkMode?.isChecked =
             SettingsStore.nightMode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-        darkMode?.summary = if (darkMode?.isChecked == true) "On" else "Off"
+        darkMode?.summary = if (darkMode?.isChecked == true) {
+            getString(R.string.settings_on)
+        } else {
+            getString(R.string.settings_off)
+        }
         darkMode?.setOnPreferenceChangeListener { preference, newValue ->
             val enabled = newValue as Boolean
             val mode = if (enabled) {
@@ -23,7 +27,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
             }
             SettingsStore.setNightMode(requireContext(), mode)
-            preference.summary = if (enabled) "On" else "Off"
+            preference.summary = if (enabled) {
+                getString(R.string.settings_on)
+            } else {
+                getString(R.string.settings_off)
+            }
             true
         }
 
