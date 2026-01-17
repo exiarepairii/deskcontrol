@@ -4,6 +4,7 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.annotation.StringRes
 
 object AppLauncher {
     enum class FailureReason {
@@ -17,22 +18,34 @@ object AppLauncher {
     data class Result(
         val success: Boolean,
         val reason: FailureReason? = null,
-        val detail: String? = null
+        @StringRes val detailResId: Int? = null
     )
 
     fun launchOnExternalDisplay(context: Context, packageName: String): Result {
         val info = DisplaySessionManager.getExternalDisplayInfo()
-            ?: return fail(FailureReason.NO_EXTERNAL_DISPLAY, "No external display detected")
+            ?: return fail(
+                context,
+                FailureReason.NO_EXTERNAL_DISPLAY,
+                R.string.app_launch_detail_no_external_display
+            )
 
         val hasFeature = context.packageManager.hasSystemFeature(
             PackageManager.FEATURE_ACTIVITIES_ON_SECONDARY_DISPLAYS
         )
         if (!hasFeature) {
-            return fail(FailureReason.FEATURE_UNSUPPORTED, "Device does not support activities on secondary displays")
+            return fail(
+                context,
+                FailureReason.FEATURE_UNSUPPORTED,
+                R.string.app_launch_detail_feature_unsupported
+            )
         }
 
         val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
-            ?: return fail(FailureReason.NO_LAUNCH_INTENT, "Selected app has no launchable activity")
+            ?: return fail(
+                context,
+                FailureReason.NO_LAUNCH_INTENT,
+                R.string.app_launch_detail_no_launch_intent
+            )
 
         return try {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(info.displayId)
@@ -42,15 +55,39 @@ object AppLauncher {
             SessionStore.lastLaunchFailure = null
             Result(success = true)
         } catch (se: SecurityException) {
-            fail(FailureReason.SECURITY_EXCEPTION, se.message ?: "SecurityException")
+            fail(
+                context,
+                FailureReason.SECURITY_EXCEPTION,
+                R.string.app_launch_detail_security_exception
+            )
         } catch (ex: Exception) {
-            fail(FailureReason.START_FAILED, ex.message ?: "Unknown launch failure")
+            fail(context, FailureReason.START_FAILED, R.string.app_launch_detail_unknown_failure)
         }
     }
 
-    private fun fail(reason: FailureReason, detail: String): Result {
-        val message = "${reason.name}: $detail"
-        SessionStore.lastLaunchFailure = message
-        return Result(false, reason, detail)
+    private fun fail(
+        context: Context,
+        reason: FailureReason,
+        @StringRes detailResId: Int
+    ): Result {
+        val reasonLabel = context.getString(reasonLabelResId(reason))
+        val detail = context.getString(detailResId)
+        SessionStore.lastLaunchFailure = context.getString(
+            R.string.app_launch_failed_with_detail,
+            reasonLabel,
+            detail
+        )
+        return Result(false, reason, detailResId)
+    }
+
+    @StringRes
+    fun reasonLabelResId(reason: FailureReason): Int {
+        return when (reason) {
+            FailureReason.NO_EXTERNAL_DISPLAY -> R.string.app_launch_reason_no_external_display
+            FailureReason.FEATURE_UNSUPPORTED -> R.string.app_launch_reason_feature_unsupported
+            FailureReason.NO_LAUNCH_INTENT -> R.string.app_launch_reason_no_launch_intent
+            FailureReason.SECURITY_EXCEPTION -> R.string.app_launch_reason_security_exception
+            FailureReason.START_FAILED -> R.string.app_launch_reason_start_failed
+        }
     }
 }

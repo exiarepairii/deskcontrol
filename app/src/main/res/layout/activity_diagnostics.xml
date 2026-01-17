@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:minHeight="48dp"
         android:paddingHorizontal="16dp"
-        android:title="Diagnostics"
+        android:title="@string/diagnostics_title"
         app:titleTextColor="?attr/colorOnSurface"
         app:contentInsetStartWithNavigation="0dp"
         app:navigationIcon="@drawable/ic_back"
@@ -33,7 +33,7 @@
                 android:id="@+id/diagnosticsLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Details"
+                android:text="@string/diagnostics_details_label"
                 android:textAppearance="?attr/textAppearanceTitleSmall" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -41,7 +41,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text=""
+                android:text="@string/empty_text"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>

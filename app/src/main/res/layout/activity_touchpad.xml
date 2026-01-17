@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:minHeight="48dp"
         android:paddingHorizontal="16dp"
-        android:title="Touchpad"
+        android:title="@string/touchpad_title"
         app:titleTextColor="@color/touchpadToolbarText"
         app:contentInsetStartWithNavigation="0dp"
         app:navigationIcon="@drawable/ic_back"
@@ -34,7 +34,7 @@
                 android:id="@+id/touchpadHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="在触控区域滑动移动光标，双指滚动，双击并长按拖拽。"
+                android:text="@string/touchpad_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="@color/touchpadHintInactive" />
 
@@ -58,7 +58,7 @@
                     android:id="@+id/tuningHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Touchpad tuning"
+                    android:text="@string/touchpad_tuning"
                     android:textStyle="bold" />
 
                 <TextView
@@ -66,7 +66,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Base gain" />
+                    android:text="@string/touchpad_base_gain" />
 
                 <SeekBar
                     android:id="@+id/sliderBaseGain"
@@ -78,7 +78,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Acceleration" />
+                    android:text="@string/touchpad_acceleration" />
 
                 <SeekBar
                     android:id="@+id/sliderAccel"
@@ -90,7 +90,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Speed for max accel" />
+                    android:text="@string/touchpad_speed_for_max_accel" />
 
                 <SeekBar
                     android:id="@+id/sliderSpeed"
@@ -102,7 +102,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Jitter threshold" />
+                    android:text="@string/touchpad_jitter_threshold" />
 
                 <SeekBar
                     android:id="@+id/sliderJitter"
@@ -114,7 +114,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Smoothing (EMA)" />
+                    android:text="@string/touchpad_smoothing" />
 
                 <SeekBar
                     android:id="@+id/sliderSmoothing"
@@ -126,7 +126,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Scroll step" />
+                    android:text="@string/touchpad_scroll_step" />
 
                 <SeekBar
                     android:id="@+id/sliderScroll"
@@ -151,7 +151,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginBottom="16dp"
-                android:contentDescription="Accessibility"
+                android:contentDescription="@string/touchpad_accessibility_content_description"
                 android:src="@drawable/ic_accessibility"
                 android:tint="?attr/colorOnSurfaceVariant" />
 
@@ -159,7 +159,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="Accessibility required"
+                android:text="@string/touchpad_accessibility_required"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -167,7 +167,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:gravity="center"
-                android:text="Enable accessibility to control the cursor and send taps."
+                android:text="@string/touchpad_accessibility_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -176,7 +176,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Open accessibility settings" />
+                android:text="@string/touchpad_open_accessibility_settings" />
         </LinearLayout>
     </FrameLayout>
 

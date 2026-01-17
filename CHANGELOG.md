@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+- Add full i18n resources for English and Simplified Chinese, removing hardcoded UI text.
+- Add language and theme controls to Settings with system-follow options.
+- Improve cursor visuals (white default, black/white outline swap, subtle shadow).
+- Add keep-screen-on toggle (default on) that only applies during active control screens.
+- Hide status bar on Touchpad screen to maximize usable area.
+
 ## 0.3.0
 - Redesign home screen with modern hierarchy, status row, and streamlined actions.
 - Add multi-display selector and refined display labeling on the main screen.

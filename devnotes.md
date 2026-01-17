@@ -6,12 +6,14 @@
 - Touchpad page has special OLED treatment: full black background in dark mode, with a custom drawable for the touchpad area.
 - Main screen avoids diagnostics/detail info; that belongs in Diagnostics only (currently removed from home).
 - Cursor size/opacity/speed are now inline sliders; keep values snapped to slider step size to avoid crashes.
+- All user-visible text must live in string resources (English default + zh-rCN).
 
 ## Current UX conventions
 - Main screen hierarchy: status row + contextual display selector, primary action, secondary actions.
 - Display selector uses 1-based labels (Display 1/2/3) and shows resolution as the secondary line.
 - Touchpad hints: when touchpad is active, hint text should dim; inactive should be brighter to draw attention.
 - Accessibility gating for touchpad happens inside Touchpad screen, not on the home screen.
+- Keep-screen-on toggle defaults to ON; it only applies while Touchpad/Host are visible.
 
 ## Visual system and theming
 - Colors are defined in `app/src/main/res/values/colors.xml` and `app/src/main/res/values-night/colors.xml`.
@@ -19,11 +21,13 @@
 - Light mode uses soft gray backgrounds and translucent surfaces; avoid pure white.
 - Dark mode uses graphite backgrounds; only the Touchpad screen is pure black for OLED power saving.
 - Segmented control uses subtle track/highlight drawables (`display_selector_track.xml`, `display_selector_highlight.xml`).
+- Cursor defaults to white with a subtle shadow; outline swaps (white cursor -> black outline, black cursor -> white outline).
 
 ## Settings screen rules
 - Use inline controls (switches, sliders, simple previews). Avoid dialogs for simple values.
 - Sliders must snap to step size to prevent Material Slider validation crashes.
 - Show dependent settings only when their parent switch is enabled (e.g., hide delay only when auto-hide is ON).
+- Theme and language use segmented toggle groups (system/dark/light, system/en/zh-CN).
 
 ## Key files to understand
 - Touchpad input and focus: `app/src/main/java/com/deskcontrol/TouchpadActivity.kt`
@@ -53,14 +57,11 @@
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
 ## Recent changes (touchpad-blind-ops)
-- Touchpad gestures: single tap, double-tap hold to drag, two-finger scroll.
-- Touchpad processing: EMA smoothing + deadzone + acceleration curve.
-- Focus model: back button is intercepted when touchpad active and forwarded via AccessibilityService.
-- Cursor: external overlay, auto-hide on idle, wake on input, size scales with display.
-- Settings: cursor size/alpha/auto-hide + touchpad tuning and drag boost.
-- App picker: Android 15 package visibility fixed with `<queries>` and launcher intent filtering.
-- Phone UI updated to Material 3 layout with consistent toolbars and spacing.
-- Settings screen replaced by PreferenceFragment-based system settings style.
+## Recent changes (0.4.0)
+- Internationalization: all UI text moved to strings with English + zh-rCN resources.
+- Settings: theme and language controls added; keep-screen-on toggle defaults to ON.
+- Cursor visuals: white default, dynamic outline, subtle shadow.
+- Touchpad: status bar hidden for full-height control area.
 
 ## Key files to revisit
 - Touchpad input: `app/src/main/java/com/deskcontrol/TouchpadActivity.kt`

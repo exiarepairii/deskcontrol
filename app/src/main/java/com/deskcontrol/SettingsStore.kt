@@ -4,6 +4,10 @@ import android.content.Context
 
 object SettingsStore {
     private const val PREFS_NAME = "deskcontrol_settings"
+    private const val PREF_APP_LANGUAGE = "app_language"
+    private const val LANGUAGE_SYSTEM = "system"
+    private const val LANGUAGE_ENGLISH = "en"
+    private const val LANGUAGE_CHINESE = "zh-CN"
 
     var nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         private set
@@ -13,7 +17,11 @@ object SettingsStore {
         private set
     var cursorHideDelayMs = 2500L
         private set
-    var cursorColor = 0xFF000000.toInt()
+    var cursorColor = 0xFFFFFFFF.toInt()
+        private set
+    var appLanguageTag = LANGUAGE_SYSTEM
+        private set
+    var keepScreenOn = true
         private set
 
     fun init(context: Context) {
@@ -23,6 +31,8 @@ object SettingsStore {
         cursorAlpha = prefs.getFloat("cursor_alpha", cursorAlpha)
         cursorHideDelayMs = prefs.getLong("cursor_hide_delay_ms", cursorHideDelayMs)
         cursorColor = prefs.getInt("cursor_color", cursorColor)
+        appLanguageTag = prefs.getString(PREF_APP_LANGUAGE, appLanguageTag) ?: LANGUAGE_SYSTEM
+        keepScreenOn = prefs.getBoolean("keep_screen_on", keepScreenOn)
 
         TouchpadTuning.baseGain = prefs.getFloat("tp_base_gain", TouchpadTuning.baseGain)
         TouchpadTuning.maxAccelGain = prefs.getFloat("tp_max_accel", TouchpadTuning.maxAccelGain)
@@ -61,6 +71,30 @@ object SettingsStore {
         cursorHideDelayMs = valueMs
         persist(context) { putLong("cursor_hide_delay_ms", valueMs) }
     }
+
+    fun setKeepScreenOn(context: Context, enabled: Boolean) {
+        keepScreenOn = enabled
+        persist(context) { putBoolean("keep_screen_on", enabled) }
+    }
+
+    fun setAppLanguage(context: Context, languageTag: String) {
+        appLanguageTag = languageTag
+        persist(context) { putString(PREF_APP_LANGUAGE, languageTag) }
+        applyAppLanguage()
+    }
+
+    fun applyAppLanguage() {
+        val locales = if (appLanguageTag == LANGUAGE_SYSTEM) {
+            androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+        } else {
+            androidx.core.os.LocaleListCompat.forLanguageTags(appLanguageTag)
+        }
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(locales)
+    }
+
+    fun isLanguageSystem(): Boolean = appLanguageTag == LANGUAGE_SYSTEM
+    fun isLanguageEnglish(): Boolean = appLanguageTag == LANGUAGE_ENGLISH
+    fun isLanguageChinese(): Boolean = appLanguageTag == LANGUAGE_CHINESE
 
     fun setPointerSpeed(context: Context, value: Float) {
         TouchpadTuning.baseGain = value

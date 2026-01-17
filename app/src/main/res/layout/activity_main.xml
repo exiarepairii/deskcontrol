@@ -15,7 +15,7 @@
             android:id="@+id/titleText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="DeskControl"
+            android:text="@string/app_name"
             android:textAppearance="?attr/textAppearanceHeadlineSmall"
             android:textColor="@color/textPrimary" />
 
@@ -48,7 +48,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="External display"
+                            android:text="@string/external_display_label"
                             android:textAppearance="?attr/textAppearanceBodySmall"
                             android:textColor="@color/textSecondary" />
 
@@ -56,7 +56,7 @@
                             android:id="@+id/statusDisplayValue"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Not connected"
+                            android:text="@string/external_display_not_connected"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textColor="@color/textPrimary" />
                     </LinearLayout>
@@ -74,7 +74,7 @@
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Accessibility"
+                            android:text="@string/accessibility_label"
                             android:textAppearance="?attr/textAppearanceBodySmall"
                             android:textColor="@color/textSecondary" />
 
@@ -82,7 +82,7 @@
                             android:id="@+id/statusAccessibilityValue"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Required"
+                            android:text="@string/accessibility_required"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textColor="@color/textPrimary" />
                     </LinearLayout>
@@ -118,7 +118,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Choose app for external display"
+            android:text="@string/choose_app_for_display"
             android:backgroundTint="?attr/colorPrimary"
             android:textColor="?attr/colorOnPrimary" />
 
@@ -130,7 +130,7 @@
             style="?attr/materialButtonOutlinedStyle"
             app:strokeColor="@color/surfaceStroke"
             android:textColor="@color/textPrimary"
-            android:text="Open touchpad" />
+            android:text="@string/open_touchpad" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSettings"
@@ -140,7 +140,7 @@
             style="?attr/materialButtonOutlinedStyle"
             app:strokeColor="@color/surfaceStroke"
             android:textColor="@color/textPrimary"
-            android:text="Settings" />
+            android:text="@string/settings" />
 
     </LinearLayout>
 </ScrollView>

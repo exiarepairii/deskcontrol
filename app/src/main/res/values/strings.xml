@@ -1,4 +1,145 @@
 <resources>
-    <string name="app_name">DeskControl</string>
+    <string name="app_name" translatable="false">DeskControl</string>
     <string name="accessibility_service_description">Enable to show a cursor on the external display and inject touch/keyboard input.</string>
+
+    <string name="external_display_label">External display</string>
+    <string name="external_display_connected">Connected</string>
+    <string name="external_display_not_connected">Not connected</string>
+    <string name="accessibility_label">Accessibility</string>
+    <string name="accessibility_enabled">Enabled</string>
+    <string name="accessibility_required">Required</string>
+    <string name="choose_app_for_display">Choose app for external display</string>
+    <string name="open_touchpad">Open touchpad</string>
+    <string name="settings">Settings</string>
+
+    <string name="display_selector_title">Display %1$d</string>
+    <string name="display_selector_resolution">%1$dx%2$d</string>
+
+    <string name="app_picker_title">Choose an app</string>
+    <string name="app_search_hint">Search apps</string>
+    <string name="app_icon_content_description">App icon</string>
+    <string name="app_placeholder_name">App name</string>
+    <string name="app_placeholder_package" translatable="false">com.example</string>
+    <string name="app_launched_toast">Launched %1$s</string>
+    <string name="app_launch_failed_generic">Launch failed</string>
+    <string name="app_launch_failed_with_detail">%1$s: %2$s</string>
+    <string name="app_launch_failed_reason_only">%1$s</string>
+    <string name="app_launch_reason_no_external_display">No external display</string>
+    <string name="app_launch_reason_feature_unsupported">Feature unsupported</string>
+    <string name="app_launch_reason_no_launch_intent">No launch intent</string>
+    <string name="app_launch_reason_security_exception">Security exception</string>
+    <string name="app_launch_reason_start_failed">Launch failed</string>
+    <string name="app_launch_detail_no_external_display">No external display detected</string>
+    <string name="app_launch_detail_feature_unsupported">Device does not support activities on secondary displays</string>
+    <string name="app_launch_detail_no_launch_intent">Selected app has no launchable activity</string>
+    <string name="app_launch_detail_security_exception">SecurityException</string>
+    <string name="app_launch_detail_unknown_failure">Unknown launch failure</string>
+
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_details_label">Details</string>
+    <string name="diagnostics_external_display_not_connected">External display: not connected</string>
+    <string name="diagnostics_external_display_info">External display: id=%1$d, size=%2$dx%3$d, dpi=%4$d, rotation=%5$d</string>
+    <string name="diagnostics_accessibility_enabled">Accessibility: enabled</string>
+    <string name="diagnostics_accessibility_disabled">Accessibility: disabled</string>
+    <string name="diagnostics_last_launch_failure">Last launch failure: %1$s</string>
+    <string name="diagnostics_last_injection_result">Last injection result: %1$s</string>
+    <string name="diagnostics_logs_label">Logs:</string>
+    <string name="diagnostics_logs_empty">No logs yet</string>
+    <string name="diagnostics_none">None</string>
+
+    <string name="host_title">External Display Host</string>
+    <string name="host_no_external_display">No external display detected</string>
+    <string name="host_running_display">Running on display %1$d (%2$dx%3$d)</string>
+    <string name="host_change_app">Change app</string>
+    <string name="host_end_session">End session</string>
+
+    <string name="touchpad_title">Touchpad</string>
+    <string name="touchpad_hint">Slide on the touchpad area to move the cursor, two-finger to scroll, double-tap and hold to drag.</string>
+    <string name="touchpad_tuning">Touchpad tuning</string>
+    <string name="touchpad_base_gain">Base gain</string>
+    <string name="touchpad_acceleration">Acceleration</string>
+    <string name="touchpad_speed_for_max_accel">Speed for max accel</string>
+    <string name="touchpad_jitter_threshold">Jitter threshold</string>
+    <string name="touchpad_smoothing">Smoothing (EMA)</string>
+    <string name="touchpad_scroll_step">Scroll step</string>
+    <string name="touchpad_accessibility_content_description">Accessibility</string>
+    <string name="touchpad_accessibility_required">Accessibility required</string>
+    <string name="touchpad_accessibility_hint">Enable accessibility to control the cursor and send taps.</string>
+    <string name="touchpad_open_accessibility_settings">Open accessibility settings</string>
+    <string name="touchpad_accessibility_required_toast">Enable accessibility service first</string>
+    <string name="touchpad_base_gain_value">Base gain: %1$.2f</string>
+    <string name="touchpad_acceleration_value">Acceleration: %1$.2fx</string>
+    <string name="touchpad_speed_for_max_accel_value">Speed for max accel: %1$.2f px/ms</string>
+    <string name="touchpad_jitter_threshold_value">Jitter threshold: %1$.2f px</string>
+    <string name="touchpad_smoothing_value">Smoothing (EMA): %1$.2f</string>
+    <string name="touchpad_scroll_step_value">Scroll step: %1$.0f px</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_display_section">Display</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_dark_mode">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_dark">Dark mode</string>
+    <string name="theme_light">Light mode</string>
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_screen_on_summary">Prevent auto-lock during active control.</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese">简体中文</string>
+    <string name="settings_cursor_section">Cursor</string>
+    <string name="settings_cursor_size">Cursor size</string>
+    <string name="settings_cursor_scale_label">Scale</string>
+    <string name="settings_cursor_color">Cursor color</string>
+    <string name="settings_cursor_opacity">Cursor opacity</string>
+    <string name="settings_cursor_speed">Cursor speed</string>
+    <string name="settings_cursor_auto_hide">Cursor auto-hide</string>
+    <string name="settings_hide_delay">Hide delay</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_cursor_opacity_value">%1$d%%</string>
+    <string name="settings_cursor_scale_value">%1$.1fx</string>
+    <string name="settings_cursor_speed_value">%1$.1fx</string>
+    <string name="settings_cursor_hide_delay_value">%1$.1fs</string>
+    <string name="settings_advanced_section">Advanced</string>
+    <string name="settings_tuning_title">Tuning</string>
+    <string name="settings_tuning_summary">Advanced tuning is fixed to recommended defaults</string>
+
+    <string name="injection_no_external_display">No external display</string>
+    <string name="injection_scroll_injected">Scroll injected</string>
+    <string name="injection_scroll_failed">Scroll failed</string>
+    <string name="injection_action_set_text_not_supported">Focused field does not support ACTION_SET_TEXT</string>
+    <string name="injection_action_set_text_success">ACTION_SET_TEXT success</string>
+    <string name="injection_action_set_text_failed">ACTION_SET_TEXT failed</string>
+    <string name="injection_no_editable_field">No editable field on external display</string>
+    <string name="injection_tap_injected">Tap injected</string>
+    <string name="injection_tap_cancelled">Tap cancelled</string>
+    <string name="injection_drag_injected">Drag injected</string>
+    <string name="injection_drag_cancelled">Drag cancelled</string>
+    <string name="injection_failed_with_message">Failed: %1$s</string>
+
+    <string name="cursor_color_black">Black</string>
+    <string name="cursor_color_white">White</string>
+    <string name="cursor_size_small">Small</string>
+    <string name="cursor_size_default">Default</string>
+    <string name="cursor_size_large">Large</string>
+    <string name="cursor_opacity_100">100%</string>
+    <string name="cursor_opacity_80">80%</string>
+    <string name="cursor_opacity_60">60%</string>
+    <string name="cursor_speed_slow">Slow</string>
+    <string name="cursor_speed_default">Default</string>
+    <string name="cursor_speed_fast">Fast</string>
+    <string name="cursor_hide_off">Off</string>
+    <string name="cursor_hide_1s">1 s</string>
+    <string name="cursor_hide_2_5s">2.5 s</string>
+    <string name="cursor_hide_5s">5 s</string>
+    <string name="pref_summary_value">%1$s</string>
+
+    <string name="settings_cursor_scale_default">1.0x</string>
+    <string name="settings_cursor_speed_default">0.9x</string>
+    <string name="settings_cursor_opacity_default">100%</string>
+    <string name="settings_cursor_hide_delay_default">2.5s</string>
+    <string name="empty_text" translatable="false"></string>
+    <string name="diagnostics_log_time_format" translatable="false">HH:mm:ss</string>
+    <string name="diagnostics_log_line_format" translatable="false">[%1$s] %2$s</string>
 </resources>

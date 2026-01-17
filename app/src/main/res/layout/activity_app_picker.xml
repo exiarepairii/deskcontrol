@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:minHeight="48dp"
         android:paddingHorizontal="16dp"
-        android:title="Choose an app"
+        android:title="@string/app_picker_title"
         app:titleTextColor="?attr/colorOnSurface"
         app:contentInsetStartWithNavigation="0dp"
         app:navigationIcon="@drawable/ic_back"
@@ -29,7 +29,7 @@
             android:id="@+id/searchContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Search apps"
+            android:hint="@string/app_search_hint"
             app:boxBackgroundMode="filled"
             app:boxStrokeColor="?attr/colorPrimary">
 

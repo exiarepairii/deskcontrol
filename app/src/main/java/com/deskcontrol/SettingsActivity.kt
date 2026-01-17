@@ -1,5 +1,6 @@
 package com.deskcontrol
 
+import android.media.projection.MediaProjectionConfig
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -18,36 +19,95 @@ class SettingsActivity : AppCompatActivity() {
         applyEdgeToEdgePadding(root)
 
         val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.settingsToolbar)
-        toolbar.title = "Settings"
+        toolbar.title = getString(R.string.settings_title)
         toolbar.setNavigationOnClickListener { finish() }
 
         bindSettings()
     }
 
     private fun bindSettings() {
-        val darkModeSwitch = findViewById<SwitchMaterial>(R.id.switchDarkMode)
+        val themeToggleGroup =
+            findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(
+                R.id.themeToggleGroup
+            )
+        val themeSystem = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnThemeSystem
+        )
+        val themeDark = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnThemeDark
+        )
+        val themeLight = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnThemeLight
+        )
         val cursorColorBlack = findViewById<com.google.android.material.card.MaterialCardView>(R.id.cursorColorBlack)
         val cursorColorWhite = findViewById<com.google.android.material.card.MaterialCardView>(R.id.cursorColorWhite)
         val cursorSizeSlider = findViewById<Slider>(R.id.sliderCursorSize)
         val cursorSizeValue = findViewById<android.widget.TextView>(R.id.cursorSizeValue)
+        val languageToggleGroup =
+            findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(
+                R.id.languageToggleGroup
+            )
+        val languageSystem = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnLanguageSystem
+        )
+        val languageEnglish = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnLanguageEnglish
+        )
+        val languageChinese = findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnLanguageChinese
+        )
         val cursorOpacitySlider = findViewById<Slider>(R.id.sliderCursorOpacity)
         val cursorOpacityValue = findViewById<android.widget.TextView>(R.id.cursorOpacityValue)
         val cursorSpeedSlider = findViewById<Slider>(R.id.sliderCursorSpeed)
         val cursorSpeedValue = findViewById<android.widget.TextView>(R.id.cursorSpeedValue)
         val cursorHideSwitch = findViewById<SwitchMaterial>(R.id.switchCursorHide)
+        val keepScreenOnSwitch = findViewById<SwitchMaterial>(R.id.switchKeepScreenOn)
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
         val cursorHideDelaySlider = findViewById<Slider>(R.id.sliderCursorHideDelay)
 
-        darkModeSwitch.isChecked =
-            SettingsStore.nightMode == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-        darkModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val mode = if (isChecked) {
-                androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-            } else {
-                androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+        when (SettingsStore.nightMode) {
+            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES ->
+                themeToggleGroup.check(themeDark.id)
+            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO ->
+                themeToggleGroup.check(themeLight.id)
+            else ->
+                themeToggleGroup.check(themeSystem.id)
+        }
+        themeToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val mode = when (checkedId) {
+                themeDark.id -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+                themeLight.id -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+                else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             }
-            SettingsStore.setNightMode(this, mode)
+            if (mode != SettingsStore.nightMode) {
+                SettingsStore.setNightMode(this, mode)
+                recreate()
+            }
+        }
+
+        keepScreenOnSwitch.isChecked = SettingsStore.keepScreenOn
+        keepScreenOnSwitch.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setKeepScreenOn(this, isChecked)
+        }
+
+        when {
+            SettingsStore.isLanguageEnglish() -> languageToggleGroup.check(languageEnglish.id)
+            SettingsStore.isLanguageChinese() -> languageToggleGroup.check(languageChinese.id)
+            else -> languageToggleGroup.check(languageSystem.id)
+        }
+        languageToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val previous = SettingsStore.appLanguageTag
+            when (checkedId) {
+                languageEnglish.id -> SettingsStore.setAppLanguage(this, "en")
+                languageChinese.id -> SettingsStore.setAppLanguage(this, "zh-CN")
+                else -> SettingsStore.setAppLanguage(this, "system")
+            }
+            if (previous != SettingsStore.appLanguageTag) {
+                recreate()
+            }
         }
 
         cursorSizeSlider.valueFrom = 0.5f
@@ -58,10 +118,10 @@ class SettingsActivity : AppCompatActivity() {
             cursorSizeSlider.valueFrom,
             cursorSizeSlider.stepSize
         )
-        cursorSizeValue.text = String.format("%.1fx", cursorSizeSlider.value)
+        cursorSizeValue.text = getString(R.string.settings_cursor_scale_value, cursorSizeSlider.value)
         cursorSizeSlider.addOnChangeListener { _, value, fromUser ->
             val snapped = snapToStep(value, cursorSizeSlider.valueFrom, cursorSizeSlider.stepSize)
-            cursorSizeValue.text = String.format("%.1fx", snapped)
+            cursorSizeValue.text = getString(R.string.settings_cursor_scale_value, snapped)
             if (fromUser) {
                 if (snapped != value) {
                     cursorSizeSlider.value = snapped
@@ -84,9 +144,15 @@ class SettingsActivity : AppCompatActivity() {
         cursorOpacitySlider.valueTo = 1.0f
         cursorOpacitySlider.stepSize = 0.1f
         cursorOpacitySlider.value = SettingsStore.cursorAlpha.coerceIn(0.6f, 1.0f)
-        cursorOpacityValue.text = "${(cursorOpacitySlider.value * 100).toInt()}%"
+        cursorOpacityValue.text = getString(
+            R.string.settings_cursor_opacity_value,
+            (cursorOpacitySlider.value * 100).toInt()
+        )
         cursorOpacitySlider.addOnChangeListener { _, value, fromUser ->
-            cursorOpacityValue.text = "${(value * 100).toInt()}%"
+            cursorOpacityValue.text = getString(
+                R.string.settings_cursor_opacity_value,
+                (value * 100).toInt()
+            )
             if (fromUser) {
                 SettingsStore.setCursorAlpha(this, value)
             }
@@ -96,9 +162,9 @@ class SettingsActivity : AppCompatActivity() {
         cursorSpeedSlider.valueTo = 1.2f
         cursorSpeedSlider.stepSize = 0.1f
         cursorSpeedSlider.value = TouchpadTuning.baseGain.coerceIn(0.7f, 1.2f)
-        cursorSpeedValue.text = String.format("%.1fx", cursorSpeedSlider.value)
+        cursorSpeedValue.text = getString(R.string.settings_cursor_speed_value, cursorSpeedSlider.value)
         cursorSpeedSlider.addOnChangeListener { _, value, fromUser ->
-            cursorSpeedValue.text = String.format("%.1fx", value)
+            cursorSpeedValue.text = getString(R.string.settings_cursor_speed_value, value)
             if (fromUser) {
                 SettingsStore.setPointerSpeed(this, value)
             }
@@ -124,7 +190,7 @@ class SettingsActivity : AppCompatActivity() {
             .coerceIn(1.0f, 5.0f)
         updateHideDelay(cursorHideDelayValue, cursorHideDelaySlider)
         cursorHideDelaySlider.addOnChangeListener { _, value, fromUser ->
-            cursorHideDelayValue.text = String.format("%.1fs", value)
+            cursorHideDelayValue.text = getString(R.string.settings_cursor_hide_delay_value, value)
             if (fromUser) {
                 SettingsStore.setCursorHideDelay(this, (value * 1000).toLong())
             }
@@ -156,7 +222,7 @@ class SettingsActivity : AppCompatActivity() {
         label: android.widget.TextView,
         slider: Slider
     ) {
-        label.text = String.format("%.1fs", slider.value)
+        label.text = getString(R.string.settings_cursor_hide_delay_value, slider.value)
     }
 
     private fun dpToPx(value: Int): Int {
@@ -167,4 +233,6 @@ class SettingsActivity : AppCompatActivity() {
         val steps = kotlin.math.round((value - start) / step).toInt()
         return start + steps * step
     }
+
+
 }

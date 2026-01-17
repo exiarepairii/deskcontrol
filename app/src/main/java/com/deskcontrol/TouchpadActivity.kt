@@ -16,6 +16,8 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
 import com.deskcontrol.databinding.ActivityTouchpadBinding
 import kotlin.math.abs
@@ -49,6 +51,10 @@ class TouchpadActivity : AppCompatActivity() {
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
+        val insetsController = WindowInsetsControllerCompat(window, binding.root)
+        insetsController.hide(WindowInsetsCompat.Type.statusBars())
+        insetsController.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         if (isNightMode()) {
             window.statusBarColor = Color.BLACK
             window.navigationBarColor = Color.BLACK
@@ -59,7 +65,7 @@ class TouchpadActivity : AppCompatActivity() {
         tapTimeout = ViewConfiguration.getTapTimeout()
         doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout()
 
-        binding.touchpadToolbar.title = "Touchpad"
+        binding.touchpadToolbar.title = getString(R.string.touchpad_title)
         binding.touchpadToolbar.setNavigationOnClickListener { finish() }
         binding.touchpadToolbar.setOnLongClickListener {
             toggleTuningPanel()
@@ -87,7 +93,7 @@ class TouchpadActivity : AppCompatActivity() {
                         if (service?.performBack() != true) {
                             Toast.makeText(
                                 this@TouchpadActivity,
-                                "Enable accessibility service first",
+                                getString(R.string.touchpad_accessibility_required_toast),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -102,6 +108,16 @@ class TouchpadActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         updateAccessibilityGate()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateKeepScreenOn(true)
+    }
+
+    override fun onPause() {
+        updateKeepScreenOn(false)
+        super.onPause()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -270,7 +286,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 0.4f,
             max = 2.4f,
             current = TouchpadTuning.baseGain,
-            format = { "Base gain: ${"%.2f".format(it)}" }
+            format = { getString(R.string.touchpad_base_gain_value, it) }
         ) { TouchpadTuning.baseGain = it }
 
         configureSlider(
@@ -279,7 +295,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 0.6f,
             max = 3.5f,
             current = TouchpadTuning.maxAccelGain,
-            format = { "Acceleration: ${"%.2f".format(it)}x" }
+            format = { getString(R.string.touchpad_acceleration_value, it) }
         ) { TouchpadTuning.maxAccelGain = it }
 
         configureSlider(
@@ -288,7 +304,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 0.6f,
             max = 2.8f,
             current = TouchpadTuning.speedForMaxAccel,
-            format = { "Speed for max accel: ${"%.2f".format(it)} px/ms" }
+            format = { getString(R.string.touchpad_speed_for_max_accel_value, it) }
         ) { TouchpadTuning.speedForMaxAccel = it }
 
         configureSlider(
@@ -297,7 +313,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 0.1f,
             max = 2.0f,
             current = TouchpadTuning.jitterThresholdPx,
-            format = { "Jitter threshold: ${"%.2f".format(it)} px" }
+            format = { getString(R.string.touchpad_jitter_threshold_value, it) }
         ) { TouchpadTuning.jitterThresholdPx = it }
 
         configureSlider(
@@ -306,7 +322,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 0.05f,
             max = 0.85f,
             current = TouchpadTuning.emaAlpha,
-            format = { "Smoothing (EMA): ${"%.2f".format(it)}" }
+            format = { getString(R.string.touchpad_smoothing_value, it) }
         ) { TouchpadTuning.emaAlpha = it }
 
         configureSlider(
@@ -315,7 +331,7 @@ class TouchpadActivity : AppCompatActivity() {
             min = 8f,
             max = 64f,
             current = TouchpadTuning.scrollStepPx,
-            format = { "Scroll step: ${"%.0f".format(it)} px" }
+            format = { getString(R.string.touchpad_scroll_step_value, it) }
         ) { TouchpadTuning.scrollStepPx = it }
     }
 
@@ -347,7 +363,11 @@ class TouchpadActivity : AppCompatActivity() {
     private fun serviceOrToast(): ControlAccessibilityService? {
         val service = ControlAccessibilityService.current()
         if (service == null) {
-            Toast.makeText(this, "Enable accessibility service first", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                getString(R.string.touchpad_accessibility_required_toast),
+                Toast.LENGTH_SHORT
+            ).show()
         }
         return service
     }
@@ -359,5 +379,13 @@ class TouchpadActivity : AppCompatActivity() {
         binding.touchpadArea.isEnabled = enabled
         binding.tuningPanel.isEnabled = enabled
         setTouchpadActive(false)
+    }
+
+    private fun updateKeepScreenOn(visible: Boolean) {
+        if (visible && SettingsStore.keepScreenOn) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 }

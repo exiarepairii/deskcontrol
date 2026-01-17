@@ -30,7 +30,11 @@ class CursorOverlayView @JvmOverloads constructor(
     }
 
     private val arrowDrawable = AppCompatResources.getDrawable(context, R.drawable.cursor_arrow)?.mutate()
-    private val outlineDrawable = AppCompatResources.getDrawable(context, R.drawable.cursor_arrow_outline)
+    private val outlineBlackDrawable =
+        AppCompatResources.getDrawable(context, R.drawable.cursor_arrow_outline)
+    private val outlineWhiteDrawable =
+        AppCompatResources.getDrawable(context, R.drawable.cursor_arrow_outline_white)
+    private val shadowDrawable = AppCompatResources.getDrawable(context, R.drawable.cursor_arrow_shadow)
     private var baseSizePx = 24
     private var currentScale = 1f
     private var targetScale = 1f
@@ -40,7 +44,7 @@ class CursorOverlayView @JvmOverloads constructor(
     private var lastMovementTime = 0L
     private val handler = Handler(Looper.getMainLooper())
     private var decayRunnable: Runnable? = null
-    private var useOutline = false
+    private var outlineDrawable: android.graphics.drawable.Drawable? = null
 
     fun setBaseSizePx(value: Int) {
         baseSizePx = value.coerceAtLeast(8)
@@ -49,7 +53,11 @@ class CursorOverlayView @JvmOverloads constructor(
 
     fun setArrowColor(color: Int) {
         arrowDrawable?.setTint(color)
-        useOutline = color == 0xFFFFFFFF.toInt()
+        outlineDrawable = when (color) {
+            0xFFFFFFFF.toInt() -> outlineBlackDrawable
+            0xFF000000.toInt() -> outlineWhiteDrawable
+            else -> outlineBlackDrawable
+        }
         invalidate()
     }
 
@@ -77,9 +85,17 @@ class CursorOverlayView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         val drawable = arrowDrawable ?: return
         val drawSize = (baseSizePx * currentScale).roundToInt().coerceAtLeast(1)
-        if (useOutline && outlineDrawable != null) {
-            outlineDrawable.setBounds(0, 0, drawSize, drawSize)
-            outlineDrawable.draw(canvas)
+        shadowDrawable?.let { shadow ->
+            val offset = max(1, (drawSize * 0.08f).roundToInt())
+            canvas.save()
+            canvas.translate(offset.toFloat(), offset.toFloat())
+            shadow.setBounds(0, 0, drawSize, drawSize)
+            shadow.draw(canvas)
+            canvas.restore()
+        }
+        outlineDrawable?.let { outline ->
+            outline.setBounds(0, 0, drawSize, drawSize)
+            outline.draw(canvas)
         }
         drawable.setBounds(0, 0, drawSize, drawSize)
         drawable.draw(canvas)

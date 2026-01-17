@@ -33,6 +33,16 @@ Install the APK via Android Studio or:
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Internationalization
+
+- All user-visible text (UI, toasts, errors, notifications, content descriptions) must come from string resources.
+- Default strings live in `app/src/main/res/values/strings.xml`; Simplified Chinese goes in `app/src/main/res/values-zh-rCN/strings.xml`.
+- Use lower_snake_case for all string keys.
+- Dynamic text must use placeholders like `%1$s`/`%1$d`; do not concatenate sentences.
+- Quantity-dependent text must use `<plurals>`.
+- Mark non-translatable strings with `translatable="false"`.
+- Use start/end attributes in layouts for RTL friendliness.
+
 ## Usage
 
 1. Connect a wired external display (Type-C).
