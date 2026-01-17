@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
         android:title="@string/settings_display_section"
@@ -9,6 +10,19 @@
             android:key="pref_dark_mode"
             android:title="@string/settings_dark_mode"
             android:summary="@string/settings_on" />
+
+        <SwitchPreferenceCompat
+            android:key="pref_touchpad_auto_dim"
+            android:title="@string/settings_touchpad_auto_dim"
+            android:summary="@string/settings_on" />
+
+        <SeekBarPreference
+            android:key="pref_touchpad_dim_level"
+            android:title="@string/settings_touchpad_dim_level"
+            android:defaultValue="18"
+            android:max="30"
+            app:min="5"
+            app:showSeekBarValue="true" />
     </PreferenceCategory>
 
     <PreferenceCategory

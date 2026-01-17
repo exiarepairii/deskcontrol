@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 
 class SettingsFragment : PreferenceFragmentCompat() {
@@ -32,6 +33,32 @@ class SettingsFragment : PreferenceFragmentCompat() {
             } else {
                 getString(R.string.settings_off)
             }
+            true
+        }
+
+        val autoDim = findPreference<SwitchPreferenceCompat>("pref_touchpad_auto_dim")
+        autoDim?.isChecked = SettingsStore.touchpadAutoDimEnabled
+        autoDim?.summary = if (autoDim?.isChecked == true) {
+            getString(R.string.settings_on)
+        } else {
+            getString(R.string.settings_off)
+        }
+        autoDim?.setOnPreferenceChangeListener { preference, newValue ->
+            val enabled = newValue as Boolean
+            SettingsStore.setTouchpadAutoDimEnabled(requireContext(), enabled)
+            preference.summary = if (enabled) {
+                getString(R.string.settings_on)
+            } else {
+                getString(R.string.settings_off)
+            }
+            true
+        }
+
+        val dimLevel = findPreference<SeekBarPreference>("pref_touchpad_dim_level")
+        dimLevel?.value = (SettingsStore.touchpadDimLevel * 100).toInt()
+        dimLevel?.setOnPreferenceChangeListener { _, newValue ->
+            val percent = (newValue as Int).coerceIn(5, 30)
+            SettingsStore.setTouchpadDimLevel(requireContext(), percent / 100f)
             true
         }
 
