@@ -81,11 +81,13 @@ class ControlAccessibilityService : AccessibilityService() {
         instance = this
         cursorSizePx = (resources.displayMetrics.density * 14f).toInt().coerceAtLeast(10)
         attachToDisplay(pendingDisplayInfo)
+        DiagnosticsLog.add("Accessibility: connected")
     }
 
     override fun onDestroy() {
         detachOverlay()
         instance = null
+        DiagnosticsLog.add("Accessibility: destroyed")
         super.onDestroy()
     }
 
@@ -294,6 +296,7 @@ class ControlAccessibilityService : AccessibilityService() {
         }
         detachOverlay()
         displayInfo = info
+        DiagnosticsLog.add("Accessibility: attach displayId=${info.displayId}")
         cursorBaseSizePx = cursorBaseSizeForDisplay(info)
         cursorSizePx = cursorMaxSizeForDisplay(cursorBaseSizePx)
         cursorX = (info.width / 2f)
@@ -343,6 +346,7 @@ class ControlAccessibilityService : AccessibilityService() {
         displayInfo = null
         cancelDrag()
         cancelCursorHide()
+        DiagnosticsLog.add("Accessibility: overlay detached")
     }
 
     private fun cursorBaseSizeForDisplay(info: DisplaySessionManager.ExternalDisplayInfo): Int {

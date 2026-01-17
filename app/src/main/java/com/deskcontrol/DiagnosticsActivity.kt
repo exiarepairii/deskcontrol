@@ -17,6 +17,26 @@ class DiagnosticsActivity : AppCompatActivity() {
         applyEdgeToEdgePadding(binding.root)
         binding.diagnosticsToolbar.title = getString(R.string.diagnostics_title)
         binding.diagnosticsToolbar.setNavigationOnClickListener { finish() }
+        binding.diagnosticsToolbar.inflateMenu(R.menu.diagnostics_menu)
+        binding.diagnosticsToolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_copy_logs) {
+                val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                val text = binding.diagnosticsText.text?.toString().orEmpty()
+                val clip = android.content.ClipData.newPlainText(
+                    getString(R.string.diagnostics_logs_label),
+                    text
+                )
+                clipboard?.setPrimaryClip(clip)
+                android.widget.Toast.makeText(
+                    this,
+                    getString(R.string.diagnostics_copy_logs_done),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                true
+            } else {
+                false
+            }
+        }
     }
 
     override fun onStart() {
