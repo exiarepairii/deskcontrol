@@ -65,6 +65,7 @@
     <string name="touchpad_accessibility_hint">启用无障碍以控制光标并发送点击。</string>
     <string name="touchpad_open_accessibility_settings">打开无障碍设置</string>
     <string name="touchpad_accessibility_required_toast">请先启用无障碍服务</string>
+    <string name="touchpad_no_external_display">未检测到外接显示器会话</string>
     <string name="touchpad_base_gain_value">基础增益：%1$.2f</string>
     <string name="touchpad_acceleration_value">加速度：%1$.2fx</string>
     <string name="touchpad_speed_for_max_accel_value">最大加速速度：%1$.2f px/ms</string>

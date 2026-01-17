@@ -97,6 +97,18 @@ class TouchpadActivity : AppCompatActivity() {
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (touchpadActive) {
+                        val displayInfo = DisplaySessionManager.getExternalDisplayInfo()
+                        val sessionActive = displayInfo != null
+                        val currentDisplayId = window.decorView.display?.displayId
+                        val selectedDisplayId = DisplaySessionManager.getSelectedDisplayId()
+                        if (!sessionActive) {
+                            Toast.makeText(
+                                this@TouchpadActivity,
+                                getString(R.string.touchpad_no_external_display),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return
+                        }
                         val service = ControlAccessibilityService.current()
                         if (service?.performBack() != true) {
                             Toast.makeText(
@@ -122,6 +134,7 @@ class TouchpadActivity : AppCompatActivity() {
         super.onResume()
         updateKeepScreenOn(true)
         startAutoDimSession()
+        ControlAccessibilityService.current()?.warmUpBackPipeline()
     }
 
     override fun onPause() {

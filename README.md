@@ -1,25 +1,28 @@
 # DeskControl
 
-DeskControl is an Android 15 MVP that lets you launch a single app on a wired
-external display and control it from your phone as a touchpad + keyboard.
-Input injection and the external cursor overlay are powered by an
-AccessibilityService. This project targets a single device setup (no broad
-device compatibility goals).
+DeskControl turns your phone into a touchpad and keyboard for a single app
+running on a wired external display. It is built for a focused Android 15
+setup and uses an AccessibilityService to render the cursor and inject input.
 
-## MVP Scope
+## Highlights
 
-- Android 15 only, wired Type-C external display only.
-- External display detection with DisplayManager and display info in UI.
-- Launch any installed app onto the external display.
-- Phone acts as touchpad (relative move, click, drag, scroll) and text input.
-- Cursor overlay rendered on the external display with auto-hide.
-- Clean teardown when external display disconnects.
+- Launch any installed app onto a wired external display.
+- Control the external app with a phone touchpad (move, click, drag, scroll).
+- Per-display cursor overlay with auto-hide and tuning controls.
+- Fast, reliable teardown when the external display disconnects.
 
 ## Requirements
 
 - Android 15 (minSdk 35).
 - Wired Type-C external display.
-- Accessibility service enabled (required for cursor overlay and input).
+- Accessibility service enabled (required for cursor and input injection).
+
+## Quick Start
+
+1. Connect the wired external display.
+2. Launch DeskControl and enable the accessibility service if prompted.
+3. Pick an app to launch on the external display.
+4. Open Touchpad and control the external app.
 
 ## Build
 
@@ -27,70 +30,46 @@ device compatibility goals).
 ./gradlew assembleDebug
 ```
 
-Install the APK via Android Studio or:
+Install the APK:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Internationalization
-
-- All user-visible text (UI, toasts, errors, notifications, content descriptions) must come from string resources.
-- Default strings live in `app/src/main/res/values/strings.xml`; Simplified Chinese goes in `app/src/main/res/values-zh-rCN/strings.xml`.
-- Use lower_snake_case for all string keys.
-- Dynamic text must use placeholders like `%1$s`/`%1$d`; do not concatenate sentences.
-- Quantity-dependent text must use `<plurals>`.
-- Mark non-translatable strings with `translatable="false"`.
-- Use start/end attributes in layouts for RTL friendliness.
-
-## Usage
-
-1. Connect a wired external display (Type-C).
-2. Launch DeskControl.
-3. If prompted, enable the accessibility service (used for cursor + input).
-4. Use **Pick App** to launch a selected app on the external display.
-5. Open **Touchpad** to move the cursor, click, drag, scroll, and send text input.
-6. Open **Diagnostics** to review display info and recent failures.
-7. Open **Settings** to tune cursor and touchpad parameters.
-8. Use **Stop Session** to clear session state and remove overlay.
-
-## Project Structure
-
-- `DisplaySessionManager`: tracks external display connect/disconnect.
-- `AppPickerActivity`: lists launchable apps and triggers launch.
-- `AppLauncher`: wraps `setLaunchDisplayId` and failure reasons.
-- `TouchpadActivity`: touchpad UI (move, click, drag, scroll).
-- `ControlAccessibilityService`: cursor overlay + gesture/text injection.
-- `CursorOverlayView`: cursor rendering.
-- `CoordinateMapper`: maps touchpad deltas with display rotation.
-- `DiagnosticsActivity`: status + last failures + injection results.
-- `HostActivity`: optional host UI on external display.
-- `SettingsActivity`: cursor and touchpad tuning UI.
-
-## Permissions and Notes
-
-- Uses `AccessibilityService` for gesture injection and `ACTION_SET_TEXT`.
-- Cursor overlay uses `TYPE_ACCESSIBILITY_OVERLAY` and is non-touchable.
-- The overlay is added to the external display via `createWindowContext`.
-
 ## Touchpad Gestures
 
-- Single-finger move: relative cursor movement with acceleration + smoothing.
+- Single-finger move: relative cursor movement with acceleration and smoothing.
 - Single-finger tap: left click.
 - Double-tap and hold: drag (release to drop).
 - Two-finger vertical swipe: scroll.
 
 ## Settings
 
-- Cursor size scale, alpha, and auto-hide delay.
-- Touchpad base gain, acceleration, speed threshold, jitter, smoothing.
-- Drag boost and scroll step.
+- Cursor size, opacity, color, and auto-hide delay.
+- Touchpad sensitivity, acceleration, jitter, smoothing, and scroll step.
+- Keep screen on while using touchpad.
+- Auto-dim touchpad after 10 seconds (per-window brightness only).
 
-## Known Limitations
+## Project Layout
+
+- `DisplaySessionManager`: external display tracking and selection.
+- `AppLauncher`: launch routing and failure diagnostics.
+- `TouchpadActivity`: touchpad UI and input logic.
+- `ControlAccessibilityService`: cursor overlay and gesture/text injection.
+- `CursorOverlayView`: cursor rendering and animation.
+- `DiagnosticsActivity`: status and recent failure history.
+
+## Permissions and Notes
+
+- Uses `AccessibilityService` for gesture injection and `ACTION_SET_TEXT`.
+- Cursor overlay uses `TYPE_ACCESSIBILITY_OVERLAY` and is non-touchable.
+- The overlay is attached to the external display via `createWindowContext`.
+
+## Limitations
 
 - Android 15 only.
-- Requires external display support for activities on secondary displays.
-- Some target apps may block or fail to launch on a secondary display.
+- Requires device support for secondary-display activities.
+- Some apps do not allow launch on a secondary display.
 
 ## License
 

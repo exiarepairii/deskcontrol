@@ -61,9 +61,10 @@
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
 ## Recent changes (touchpad-blind-ops)
-## Recent changes (touchpad-auto-dim)
+## Recent changes (0.5.0)
 - Touchpad: auto-dim after 10s with smooth animation and per-window brightness restore on focus loss only.
-- Settings: added auto-dim toggle and minimum brightness slider next to keep-screen-on with updated copy.
+- Settings: auto-dim toggle and minimum brightness slider grouped with keep-screen-on copy updates.
+- Back latency: warm-up on Touchpad entry to reduce first-back latency.
 ## Recent changes (0.4.0)
 - Internationalization: all UI text moved to strings with English + zh-rCN resources.
 - Settings: theme and language controls added; keep-screen-on toggle defaults to ON.
