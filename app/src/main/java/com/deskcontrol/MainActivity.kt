@@ -6,6 +6,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import com.deskcontrol.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
@@ -16,6 +17,8 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        applyEdgeToEdgePadding(binding.root)
 
         val tag = "DeskControl"
 
@@ -29,6 +32,9 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             Log.i(tag, "Open diagnostics tapped")
             DiagnosticsLog.add("Open diagnostics tapped")
             startActivity(Intent(this, DiagnosticsActivity::class.java))
+        }
+        binding.btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
         binding.btnOpenAccessibility.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))

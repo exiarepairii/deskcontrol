@@ -38,6 +38,7 @@ object AppLauncher {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(info.displayId)
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(launchIntent, options.toBundle())
+            AppLaunchHistory.increment(context.applicationContext, packageName)
             SessionStore.lastLaunchFailure = null
             Result(success = true)
         } catch (se: SecurityException) {

@@ -1,8 +1,10 @@
 <resources>
     <style name="Theme.DeskControl" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#2CB7F4</item>
+        <item name="colorPrimary">#7AD8FF</item>
         <item name="colorOnPrimary">#00131A</item>
-        <item name="colorSecondary">#2CB7F4</item>
+        <item name="colorSecondary">#7AD8FF</item>
         <item name="colorOnSecondary">#00131A</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
     </style>
 </resources>

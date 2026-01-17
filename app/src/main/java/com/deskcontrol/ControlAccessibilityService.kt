@@ -9,10 +9,15 @@ import android.graphics.PixelFormat
 import android.graphics.PointF
 import android.hardware.display.DisplayManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
+import kotlin.math.abs
+import kotlin.math.min
 
 class ControlAccessibilityService : AccessibilityService() {
 
@@ -47,6 +52,10 @@ class ControlAccessibilityService : AccessibilityService() {
         fun requestDetachOverlay() {
             instance?.detachOverlay()
         }
+
+        fun requestCursorAppearanceRefresh() {
+            instance?.refreshCursorAppearance()
+        }
     }
 
     private var overlayView: CursorOverlayView? = null
@@ -55,11 +64,21 @@ class ControlAccessibilityService : AccessibilityService() {
     private var cursorX = 0f
     private var cursorY = 0f
     private var cursorSizePx = 24
+    private var cursorBaseSizePx = 16
+    private var dragStroke: GestureDescription.StrokeDescription? = null
+    private var dragPointX = 0f
+    private var dragPointY = 0f
+    private val dragStartDurationMs = 8L
+    private val dragSegmentDurationMs = 16L
+    private val handler = Handler(Looper.getMainLooper())
+    private var hideRunnable: Runnable? = null
+    private var cursorVisible = true
+    private var lastMoveTime = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        cursorSizePx = (resources.displayMetrics.density * 18f).toInt().coerceAtLeast(12)
+        cursorSizePx = (resources.displayMetrics.density * 14f).toInt().coerceAtLeast(10)
         attachToDisplay(pendingDisplayInfo)
     }
 
@@ -85,20 +104,102 @@ class ControlAccessibilityService : AccessibilityService() {
         val maxY = info.height.toFloat()
         cursorX = (cursorX + dx).coerceIn(0f, maxX)
         cursorY = (cursorY + dy).coerceIn(0f, maxY)
+        notifyCursorActivity()
+        notifyCursorSpeed(dx, dy)
         updateOverlayPosition()
+    }
+
+    fun wakeCursor() {
+        notifyCursorActivity()
     }
 
     fun tapAtCursor() {
         val info = displayInfo ?: return
         val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        notifyCursorActivity()
         dispatchTap(mapped.x, mapped.y, info.displayId)
     }
 
-    fun dragCursor(fromX: Float, fromY: Float, toX: Float, toY: Float) {
+    fun startDragAtCursor() {
         val info = displayInfo ?: return
-        val start = CoordinateMapper.mapForRotation(fromX, fromY, info)
-        val end = CoordinateMapper.mapForRotation(toX, toY, info)
-        dispatchDrag(start.x, start.y, end.x, end.y, info.displayId)
+        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        dragPointX = mapped.x
+        dragPointY = mapped.y
+        val path = Path().apply { moveTo(dragPointX, dragPointY) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, dragStartDurationMs, true)
+        dragStroke = stroke
+        notifyCursorActivity()
+        dispatchDragStroke(stroke, info.displayId)
+    }
+
+    fun updateDragToCursor() {
+        val info = displayInfo ?: return
+        val activeStroke = dragStroke ?: return
+        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        if (abs(mapped.x - dragPointX) < 0.5f && abs(mapped.y - dragPointY) < 0.5f) return
+        val path = Path().apply {
+            moveTo(dragPointX, dragPointY)
+            lineTo(mapped.x, mapped.y)
+        }
+        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, true)
+        dragStroke = stroke
+        dragPointX = mapped.x
+        dragPointY = mapped.y
+        notifyCursorActivity()
+        dispatchDragStroke(stroke, info.displayId)
+    }
+
+    fun endDragAtCursor() {
+        val info = displayInfo ?: return
+        val activeStroke = dragStroke ?: return
+        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val path = Path().apply {
+            moveTo(dragPointX, dragPointY)
+            lineTo(mapped.x, mapped.y)
+        }
+        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, false)
+        dragStroke = null
+        dragPointX = mapped.x
+        dragPointY = mapped.y
+        notifyCursorActivity()
+        dispatchDragStroke(stroke, info.displayId)
+    }
+
+    fun cancelDrag() {
+        dragStroke = null
+    }
+
+    fun scrollVertical(steps: Int) {
+        val info = displayInfo ?: run {
+            recordInjection(false, "No external display")
+            return
+        }
+        val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
+        val roots = if (targetWindows.isNotEmpty()) {
+            targetWindows.mapNotNull { it.root }
+        } else {
+            listOfNotNull(rootInActiveWindow)
+        }
+        val direction = if (steps >= 0) {
+            AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        } else {
+            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        }
+        val count = abs(steps)
+        var success = false
+        for (root in roots) {
+            val node = findScrollableNode(root) ?: continue
+            repeat(count) {
+                success = node.performAction(direction) || success
+            }
+            if (success) break
+        }
+        notifyCursorActivity()
+        recordInjection(success, if (success) "Scroll injected" else "Scroll failed")
+    }
+
+    fun performBack(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     fun setTextOnFocused(text: String): Boolean {
@@ -153,6 +254,8 @@ class ControlAccessibilityService : AccessibilityService() {
         }
         detachOverlay()
         displayInfo = info
+        cursorBaseSizePx = cursorBaseSizeForDisplay(info)
+        cursorSizePx = cursorMaxSizeForDisplay(cursorBaseSizePx)
         cursorX = (info.width / 2f)
         cursorY = (info.height / 2f)
 
@@ -168,6 +271,10 @@ class ControlAccessibilityService : AccessibilityService() {
 
         val view = CursorOverlayView(windowContext)
         overlayView = view
+        cursorVisible = true
+        view.alpha = SettingsStore.cursorAlpha
+        view.setBaseSizePx(cursorBaseSizePx)
+        view.setArrowColor(SettingsStore.cursorColor)
 
         val params = WindowManager.LayoutParams(
             cursorSizePx,
@@ -179,11 +286,12 @@ class ControlAccessibilityService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = (cursorX - cursorSizePx / 2f).toInt()
-        params.y = (cursorY - cursorSizePx / 2f).toInt()
+        params.x = cursorX.toInt()
+        params.y = cursorY.toInt()
         runCatching { wm.addView(view, params) }.onFailure {
             detachOverlay()
         }
+        scheduleCursorHide()
     }
 
     private fun detachOverlay() {
@@ -193,15 +301,84 @@ class ControlAccessibilityService : AccessibilityService() {
         overlayView = null
         windowManager = null
         displayInfo = null
+        cancelDrag()
+        cancelCursorHide()
+    }
+
+    private fun cursorBaseSizeForDisplay(info: DisplaySessionManager.ExternalDisplayInfo): Int {
+        val minDim = min(info.width, info.height).toFloat()
+        val size = (minDim * 0.012f * SettingsStore.cursorScale).toInt()
+        return size.coerceIn(10, 26)
+    }
+
+    private fun cursorMaxSizeForDisplay(baseSize: Int): Int {
+        return (baseSize * CursorOverlayView.MAX_SCALE).toInt().coerceAtLeast(baseSize)
     }
 
     private fun updateOverlayPosition() {
         val view = overlayView ?: return
         val wm = windowManager ?: return
         val params = view.layoutParams as WindowManager.LayoutParams
-        params.x = (cursorX - cursorSizePx / 2f).toInt()
-        params.y = (cursorY - cursorSizePx / 2f).toInt()
+        params.x = cursorX.toInt()
+        params.y = cursorY.toInt()
         wm.updateViewLayout(view, params)
+    }
+
+    private fun notifyCursorSpeed(dx: Float, dy: Float) {
+        val now = SystemClock.uptimeMillis()
+        val dt = if (lastMoveTime == 0L) 0L else now - lastMoveTime
+        lastMoveTime = now
+        overlayView?.onCursorMoved(dx, dy, dt)
+    }
+
+    private fun notifyCursorActivity() {
+        showCursor()
+        scheduleCursorHide()
+    }
+
+    private fun scheduleCursorHide() {
+        val delay = SettingsStore.cursorHideDelayMs
+        cancelCursorHide()
+        if (delay <= 0L) return
+        hideRunnable = Runnable { hideCursor() }
+        handler.postDelayed(hideRunnable!!, delay)
+    }
+
+    private fun cancelCursorHide() {
+        hideRunnable?.let { handler.removeCallbacks(it) }
+        hideRunnable = null
+    }
+
+    private fun showCursor() {
+        val view = overlayView ?: return
+        if (!cursorVisible) {
+            cursorVisible = true
+            view.alpha = SettingsStore.cursorAlpha
+        }
+    }
+
+    private fun hideCursor() {
+        val view = overlayView ?: return
+        cursorVisible = false
+        view.alpha = 0f
+    }
+
+    private fun refreshCursorAppearance() {
+        val info = displayInfo ?: return
+        cursorBaseSizePx = cursorBaseSizeForDisplay(info)
+        cursorSizePx = cursorMaxSizeForDisplay(cursorBaseSizePx)
+        overlayView?.alpha = if (cursorVisible) SettingsStore.cursorAlpha else 0f
+        overlayView?.let { view ->
+            view.setBaseSizePx(cursorBaseSizePx)
+            view.setArrowColor(SettingsStore.cursorColor)
+            val wm = windowManager ?: return
+            val params = view.layoutParams as WindowManager.LayoutParams
+            params.width = cursorSizePx
+            params.height = cursorSizePx
+            params.x = cursorX.toInt()
+            params.y = cursorY.toInt()
+            wm.updateViewLayout(view, params)
+        }
     }
 
     private fun dispatchTap(x: Float, y: Float, displayId: Int) {
@@ -224,20 +401,13 @@ class ControlAccessibilityService : AccessibilityService() {
         )
     }
 
-    private fun dispatchDrag(
-        startX: Float,
-        startY: Float,
-        endX: Float,
-        endY: Float,
+    private fun dispatchDragStroke(
+        stroke: GestureDescription.StrokeDescription,
         displayId: Int
     ) {
-        val path = Path().apply {
-            moveTo(startX, startY)
-            lineTo(endX, endY)
-        }
         val builder = GestureDescription.Builder()
         trySetDisplayId(builder, displayId)
-        builder.addStroke(GestureDescription.StrokeDescription(path, 0, 120))
+        builder.addStroke(stroke)
         dispatchGesture(
             builder.build(),
             object : GestureResultCallback() {
@@ -251,6 +421,21 @@ class ControlAccessibilityService : AccessibilityService() {
             },
             null
         )
+    }
+
+    private fun findScrollableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isScrollable && node.isVisibleToUser) {
+                return node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return null
     }
 
     private fun recordInjection(success: Boolean, message: String): Boolean {

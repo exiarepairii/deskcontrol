@@ -2,6 +2,7 @@ package com.deskcontrol
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import com.deskcontrol.databinding.ActivityDiagnosticsBinding
 
 class DiagnosticsActivity : AppCompatActivity() {
@@ -12,6 +13,10 @@ class DiagnosticsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityDiagnosticsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        applyEdgeToEdgePadding(binding.root)
+        binding.diagnosticsToolbar.title = "Diagnostics"
+        binding.diagnosticsToolbar.setNavigationOnClickListener { finish() }
     }
 
     override fun onStart() {
