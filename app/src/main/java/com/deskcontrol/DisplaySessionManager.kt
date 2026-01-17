@@ -16,11 +16,14 @@ object DisplaySessionManager {
 
     interface Listener {
         fun onDisplayChanged(info: ExternalDisplayInfo?)
+        fun onDisplaysUpdated(displays: List<ExternalDisplayInfo>, selectedDisplayId: Int?) {}
     }
 
     private val listeners = mutableSetOf<Listener>()
     private var displayManager: DisplayManager? = null
     private var displayInfo: ExternalDisplayInfo? = null
+    private var externalDisplays: List<ExternalDisplayInfo> = emptyList()
+    private var selectedDisplayId: Int? = null
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {
@@ -45,6 +48,7 @@ object DisplaySessionManager {
 
     fun addListener(listener: Listener) {
         listeners.add(listener)
+        listener.onDisplaysUpdated(externalDisplays, selectedDisplayId)
         listener.onDisplayChanged(displayInfo)
     }
 
@@ -53,6 +57,14 @@ object DisplaySessionManager {
     }
 
     fun getExternalDisplayInfo(): ExternalDisplayInfo? = displayInfo
+    fun getExternalDisplays(): List<ExternalDisplayInfo> = externalDisplays
+    fun getSelectedDisplayId(): Int? = selectedDisplayId
+
+    fun setSelectedDisplayId(displayId: Int) {
+        if (selectedDisplayId == displayId) return
+        selectedDisplayId = displayId
+        refreshDisplays()
+    }
 
     fun stopSession() {
         SessionStore.clear()
@@ -60,13 +72,25 @@ object DisplaySessionManager {
     }
 
     private fun refreshDisplays() {
-        val externalDisplay = displayManager
+        val displays = displayManager
             ?.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
-            ?.firstOrNull()
-        val newInfo = externalDisplay?.let { buildInfo(it) }
+            ?.map { buildInfo(it) }
+            .orEmpty()
+        externalDisplays = displays
 
         val previousDisplayId = displayInfo?.displayId
-        displayInfo = newInfo
+        if (externalDisplays.isEmpty()) {
+            displayInfo = null
+            selectedDisplayId = null
+        } else {
+            if (selectedDisplayId == null ||
+                externalDisplays.none { it.displayId == selectedDisplayId }
+            ) {
+                selectedDisplayId = externalDisplays.first().displayId
+            }
+            displayInfo = externalDisplays.first { it.displayId == selectedDisplayId }
+        }
+        val newInfo = displayInfo
         if (previousDisplayId != null && newInfo == null) {
             stopSession()
         }
@@ -74,9 +98,13 @@ object DisplaySessionManager {
             ControlAccessibilityService.requestAttachToDisplay(newInfo)
         }
 
-        listeners.forEach { it.onDisplayChanged(displayInfo) }
+        listeners.forEach {
+            it.onDisplaysUpdated(externalDisplays, selectedDisplayId)
+            it.onDisplayChanged(displayInfo)
+        }
     }
 
+    @Suppress("DEPRECATION")
     private fun buildInfo(display: Display): ExternalDisplayInfo {
         val metrics = DisplayMetrics()
         display.getRealMetrics(metrics)

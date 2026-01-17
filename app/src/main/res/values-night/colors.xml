@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="backgroundGraphite">#111416</color>
+    <color name="surfaceGraphite">#161A1D</color>
+    <color name="surfaceGlass">#1FFFFFFF</color>
+    <color name="surfaceStroke">#22FFFFFF</color>
+    <color name="textPrimary">#D4D8DB</color>
+    <color name="textSecondary">#9AA2A8</color>
+    <color name="segTrack">#1AFFFFFF</color>
+    <color name="segHighlight">#2BFFFFFF</color>
+    <color name="touchpadBackground">#000000</color>
+    <color name="touchpadHintActive">#7A7F84</color>
+    <color name="touchpadHintInactive">#A1A6AB</color>
+    <color name="touchpadToolbarText">#7A7F84</color>
+</resources>

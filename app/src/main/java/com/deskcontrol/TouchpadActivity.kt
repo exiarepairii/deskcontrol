@@ -3,6 +3,7 @@ package com.deskcontrol
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -11,6 +12,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
+import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Color
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import com.deskcontrol.databinding.ActivityTouchpadBinding
 import kotlin.math.abs
 
@@ -43,6 +49,10 @@ class TouchpadActivity : AppCompatActivity() {
         setContentView(binding.root)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
+        if (isNightMode()) {
+            window.statusBarColor = Color.BLACK
+            window.navigationBarColor = Color.BLACK
+        }
 
         val viewConfig = ViewConfiguration.get(this)
         touchSlop = viewConfig.scaledTouchSlop
@@ -54,6 +64,10 @@ class TouchpadActivity : AppCompatActivity() {
         binding.touchpadToolbar.setOnLongClickListener {
             toggleTuningPanel()
             true
+        }
+
+        binding.btnOpenAccessibility.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
         binding.touchpadArea.setOnTouchListener { _, event ->
@@ -83,6 +97,11 @@ class TouchpadActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    override fun onStart() {
+        super.onStart()
+        updateAccessibilityGate()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -231,6 +250,17 @@ class TouchpadActivity : AppCompatActivity() {
     private fun setTouchpadActive(active: Boolean) {
         touchpadActive = active
         binding.touchpadArea.isActivated = active
+        val hintColorRes = if (active) {
+            R.color.touchpadHintActive
+        } else {
+            R.color.touchpadHintInactive
+        }
+        binding.touchpadHint.setTextColor(ContextCompat.getColor(this, hintColorRes))
+    }
+
+    private fun isNightMode(): Boolean {
+        return (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
     }
 
     private fun setupTuningControls() {
@@ -320,5 +350,14 @@ class TouchpadActivity : AppCompatActivity() {
             Toast.makeText(this, "Enable accessibility service first", Toast.LENGTH_SHORT).show()
         }
         return service
+    }
+
+    private fun updateAccessibilityGate() {
+        val enabled = ControlAccessibilityService.isEnabled(this)
+        binding.accessibilityGate.isVisible = !enabled
+        binding.touchpadContent.alpha = if (enabled) 1f else 0.35f
+        binding.touchpadArea.isEnabled = enabled
+        binding.tuningPanel.isEnabled = enabled
+        setTouchpadActive(false)
     }
 }
