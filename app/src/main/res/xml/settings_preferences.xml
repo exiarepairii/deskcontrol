@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:title="Display"
+        android:key="category_display">
+
+        <SwitchPreferenceCompat
+            android:key="pref_dark_mode"
+            android:title="Dark mode"
+            android:summary="On" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Cursor"
+        android:key="category_cursor">
+
+        <ListPreference
+            android:key="pref_cursor_color"
+            android:title="Cursor color"
+            android:summary="%s"
+            android:entries="@array/cursor_color_entries"
+            android:entryValues="@array/cursor_color_values" />
+
+        <ListPreference
+            android:key="pref_cursor_size"
+            android:title="Cursor size"
+            android:summary="%s"
+            android:entries="@array/cursor_size_entries"
+            android:entryValues="@array/cursor_size_values" />
+
+        <ListPreference
+            android:key="pref_cursor_opacity"
+            android:title="Cursor opacity"
+            android:summary="%s"
+            android:entries="@array/cursor_opacity_entries"
+            android:entryValues="@array/cursor_opacity_values" />
+
+        <ListPreference
+            android:key="pref_cursor_speed"
+            android:title="Cursor speed"
+            android:summary="%s"
+            android:entries="@array/cursor_speed_entries"
+            android:entryValues="@array/cursor_speed_values" />
+
+        <ListPreference
+            android:key="pref_cursor_hide"
+            android:title="Cursor auto-hide"
+            android:summary="%s"
+            android:entries="@array/cursor_hide_entries"
+            android:entryValues="@array/cursor_hide_values" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Advanced"
+        android:key="category_advanced">
+
+        <Preference
+            android:key="pref_advanced_hint"
+            android:title="Tuning"
+            android:summary="Advanced tuning is fixed to recommended defaults"
+            android:selectable="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

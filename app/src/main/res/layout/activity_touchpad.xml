@@ -1,46 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="#000000">
 
-    <TextView
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/touchpadToolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Touchpad"
-        android:textStyle="bold"
-        android:textSize="18sp" />
-
-    <FrameLayout
-        android:id="@+id/touchpadArea"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1"
-        android:background="#E5E7EB" />
+        android:layout_height="48dp"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:title="Touchpad"
+        app:titleTextColor="#8A8A8A"
+        app:contentInsetStartWithNavigation="0dp"
+        app:navigationIcon="@drawable/ic_back"
+        app:navigationIconTint="#8A8A8A" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="horizontal">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="24dp">
 
-        <Button
-            android:id="@+id/btnClick"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+        <FrameLayout
+            android:id="@+id/touchpadArea"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
             android:layout_weight="1"
-            android:text="Click" />
+            android:background="@drawable/touchpad_area_bg" />
 
-        <Button
-            android:id="@+id/btnToggleDrag"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:id="@+id/tuningPanel"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="Drag: Off" />
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
 
+            <TextView
+                android:id="@+id/tuningHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Touchpad tuning"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/labelBaseGain"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Base gain" />
+
+            <SeekBar
+                android:id="@+id/sliderBaseGain"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/labelAccel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Acceleration" />
+
+            <SeekBar
+                android:id="@+id/sliderAccel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/labelSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Speed for max accel" />
+
+            <SeekBar
+                android:id="@+id/sliderSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/labelJitter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Jitter threshold" />
+
+            <SeekBar
+                android:id="@+id/sliderJitter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/labelSmoothing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Smoothing (EMA)" />
+
+            <SeekBar
+                android:id="@+id/sliderSmoothing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/labelScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Scroll step" />
+
+            <SeekBar
+                android:id="@+id/sliderScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>
