@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0
+## 1.0.0
 - Touchpad: auto-dim per-window after 10s with smooth animation and focus-loss restore.
 - Settings: touchpad auto-dim toggle and minimum brightness slider grouped with keep-screen-on.
 - Back: warm up the input pipeline on Touchpad entry to reduce first-back latency.
