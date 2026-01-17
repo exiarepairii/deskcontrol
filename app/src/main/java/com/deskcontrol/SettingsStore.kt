@@ -27,6 +27,8 @@ object SettingsStore {
         private set
     var touchpadDimLevel = 0.18f
         private set
+    var touchpadIntroShown = false
+        private set
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -39,6 +41,7 @@ object SettingsStore {
         keepScreenOn = prefs.getBoolean("keep_screen_on", keepScreenOn)
         touchpadAutoDimEnabled = prefs.getBoolean("touchpad_auto_dim", touchpadAutoDimEnabled)
         touchpadDimLevel = prefs.getFloat("touchpad_dim_level", touchpadDimLevel)
+        touchpadIntroShown = prefs.getBoolean("touchpad_intro_shown", touchpadIntroShown)
 
         TouchpadTuning.baseGain = prefs.getFloat("tp_base_gain", TouchpadTuning.baseGain)
         TouchpadTuning.maxAccelGain = prefs.getFloat("tp_max_accel", TouchpadTuning.maxAccelGain)
@@ -92,6 +95,11 @@ object SettingsStore {
         val clamped = value.coerceIn(0.05f, 0.30f)
         touchpadDimLevel = clamped
         persist(context) { putFloat("touchpad_dim_level", clamped) }
+    }
+
+    fun setTouchpadIntroShown(context: Context) {
+        touchpadIntroShown = true
+        persist(context) { putBoolean("touchpad_intro_shown", true) }
     }
 
     fun setAppLanguage(context: Context, languageTag: String) {

@@ -91,6 +91,7 @@ class TouchpadActivity : AppCompatActivity() {
 
         setupTuningControls()
         setTouchpadActive(false)
+        showTouchpadIntroIfNeeded()
 
         onBackPressedDispatcher.addCallback(
             this,
@@ -99,8 +100,6 @@ class TouchpadActivity : AppCompatActivity() {
                     if (touchpadActive) {
                         val displayInfo = DisplaySessionManager.getExternalDisplayInfo()
                         val sessionActive = displayInfo != null
-                        val currentDisplayId = window.decorView.display?.displayId
-                        val selectedDisplayId = DisplaySessionManager.getSelectedDisplayId()
                         if (!sessionActive) {
                             Toast.makeText(
                                 this@TouchpadActivity,
@@ -133,7 +132,11 @@ class TouchpadActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateKeepScreenOn(true)
-        startAutoDimSession()
+        if (touchpadActive) {
+            startAutoDimSession()
+        } else {
+            stopAutoDimSession()
+        }
         ControlAccessibilityService.current()?.warmUpBackPipeline()
     }
 
@@ -297,6 +300,7 @@ class TouchpadActivity : AppCompatActivity() {
     }
 
     private fun setTouchpadActive(active: Boolean) {
+        val wasActive = touchpadActive
         touchpadActive = active
         binding.touchpadArea.isActivated = active
         val hintColorRes = if (active) {
@@ -305,6 +309,13 @@ class TouchpadActivity : AppCompatActivity() {
             R.color.touchpadHintInactive
         }
         binding.touchpadHint.setTextColor(ContextCompat.getColor(this, hintColorRes))
+        if (wasActive != active) {
+            if (active) {
+                startAutoDimSession()
+            } else {
+                stopAutoDimSession()
+            }
+        }
     }
 
     private fun isNightMode(): Boolean {
@@ -420,6 +431,25 @@ class TouchpadActivity : AppCompatActivity() {
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    private fun showTouchpadIntroIfNeeded() {
+        if (SettingsStore.touchpadIntroShown) return
+        val message = getString(
+            R.string.touchpad_intro_message,
+            getString(R.string.touchpad_intro_gesture_move),
+            getString(R.string.touchpad_intro_gesture_tap),
+            getString(R.string.touchpad_intro_gesture_drag),
+            getString(R.string.touchpad_intro_dim_behavior),
+            getString(R.string.touchpad_intro_back_behavior),
+            getString(R.string.touchpad_intro_exit_hint)
+        )
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.touchpad_intro_title)
+            .setMessage(message)
+            .setPositiveButton(R.string.touchpad_intro_got_it) { dialog, _ -> dialog.dismiss() }
+            .show()
+        SettingsStore.setTouchpadIntroShown(this)
     }
 
     private fun startAutoDimSession() {

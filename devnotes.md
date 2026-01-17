@@ -61,6 +61,8 @@
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
 ## Recent changes (touchpad-blind-ops)
+## Recent changes (1.0.1)
+- Compatibility: lowered minSdk to Android 11 (API 30).
 ## Recent changes (0.5.0)
 - Touchpad: auto-dim after 10s with smooth animation and per-window brightness restore on focus loss only.
 - Settings: auto-dim toggle and minimum brightness slider grouped with keep-screen-on copy updates.
