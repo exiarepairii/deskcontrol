@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+- External display: add App Switch Bar overlay with favorites/recents and All Apps drawer.
+- Touchpad: two-finger drag triggers the same behavior as double-tap drag (slower tuning).
+- Scroll: inject scroll gestures directly for better compatibility.
+
 ## 1.0.2
 - Display logging: expanded external display diagnostics and selection reasoning.
 - Diagnostics: copy icon in the toolbar; logs entry moved under Developer section.

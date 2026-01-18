@@ -8,4 +8,5 @@ object TouchpadTuning {
     var emaAlpha = 0.35f
     var scrollStepPx = 28f
     var dragBoost = 1.2f
+    var twoFingerDragBoost = 0.7f
 }

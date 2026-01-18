@@ -27,7 +27,7 @@ class TouchpadActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityTouchpadBinding
     private val processor = TouchpadProcessor(TouchpadTuning)
-    private val scrollProcessor = TouchpadScrollProcessor(TouchpadTuning)
+    private val twoFingerProcessor = TouchpadProcessor(TouchpadTuning)
     private val handler = Handler(Looper.getMainLooper())
     private var dimRunnable: Runnable? = null
     private var dimAnimator: ValueAnimator? = null
@@ -37,10 +37,11 @@ class TouchpadActivity : AppCompatActivity() {
     private var focusSessionId = 0
     private var isFocused = false
     private var isDragging = false
-    private var isScrolling = false
+    private var isTwoFingerDrag = false
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var lastScrollY = 0f
+    private var lastTwoFingerX = 0f
+    private var lastTwoFingerY = 0f
     private var downX = 0f
     private var downY = 0f
     private var downTime = 0L
@@ -179,8 +180,8 @@ class TouchpadActivity : AppCompatActivity() {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 processor.reset()
-                scrollProcessor.reset()
-                isScrolling = false
+                twoFingerProcessor.reset()
+                isTwoFingerDrag = false
                 isDragging = false
                 downX = event.x
                 downY = event.y
@@ -198,19 +199,28 @@ class TouchpadActivity : AppCompatActivity() {
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.pointerCount >= 2) {
                     cancelPendingSingleTap()
-                    isScrolling = true
-                    isDragging = false
-                    lastScrollY = averageY(event)
+                    isTwoFingerDrag = true
+                    isDragging = true
+                    lastTwoFingerX = averageX(event)
+                    lastTwoFingerY = averageY(event)
+                    twoFingerProcessor.reset()
+                    service.startDragAtCursor()
                     service.wakeCursor()
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isScrolling && event.pointerCount >= 2) {
+                if (isTwoFingerDrag && event.pointerCount >= 2) {
+                    val currentX = averageX(event)
                     val currentY = averageY(event)
-                    val deltaY = currentY - lastScrollY
-                    lastScrollY = currentY
-                    scrollProcessor.consume(deltaY) { steps ->
-                        service.scrollVertical(steps)
+                    val deltaX = currentX - lastTwoFingerX
+                    val deltaY = currentY - lastTwoFingerY
+                    lastTwoFingerX = currentX
+                    lastTwoFingerY = currentY
+                    val output = twoFingerProcessor.process(deltaX, deltaY, event.eventTime)
+                    if (output.dx != 0f || output.dy != 0f) {
+                        val boost = TouchpadTuning.twoFingerDragBoost
+                        service.moveCursorBy(output.dx * boost, output.dy * boost)
+                        service.updateDragToCursor()
                     }
                     return
                 }
@@ -236,12 +246,25 @@ class TouchpadActivity : AppCompatActivity() {
             }
             MotionEvent.ACTION_POINTER_UP -> {
                 if (event.pointerCount <= 2) {
-                    isScrolling = false
-                    lastScrollY = 0f
-                    scrollProcessor.reset()
+                    if (isTwoFingerDrag) {
+                        service.endDragAtCursor()
+                    }
+                    isTwoFingerDrag = false
+                    isDragging = false
+                    resetTouchBaseline(event)
+                    lastTwoFingerX = 0f
+                    lastTwoFingerY = 0f
+                    twoFingerProcessor.reset()
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (isTwoFingerDrag) {
+                    service.endDragAtCursor()
+                    isTwoFingerDrag = false
+                    isDragging = false
+                    resetTouchBaseline(event)
+                    return
+                }
                 if (isDragging) {
                     service.endDragAtCursor()
                     isDragging = false
@@ -260,7 +283,7 @@ class TouchpadActivity : AppCompatActivity() {
                     service.cancelDrag()
                 }
                 isDragging = false
-                isScrolling = false
+                isTwoFingerDrag = false
             }
         }
     }
@@ -297,6 +320,19 @@ class TouchpadActivity : AppCompatActivity() {
     private fun averageY(event: MotionEvent): Float {
         if (event.pointerCount == 1) return event.y
         return (event.getY(0) + event.getY(1)) / 2f
+    }
+
+    private fun averageX(event: MotionEvent): Float {
+        if (event.pointerCount == 1) return event.x
+        return (event.getX(0) + event.getX(1)) / 2f
+    }
+
+    private fun resetTouchBaseline(event: MotionEvent) {
+        lastTouchX = averageX(event)
+        lastTouchY = averageY(event)
+        downX = lastTouchX
+        downY = lastTouchY
+        downTime = event.eventTime
     }
 
     private fun toggleTuningPanel() {

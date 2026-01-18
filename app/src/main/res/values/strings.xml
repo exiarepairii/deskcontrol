@@ -56,7 +56,7 @@
     <string name="host_end_session">End session</string>
 
     <string name="touchpad_title">Touchpad</string>
-    <string name="touchpad_hint">Slide on the touchpad area to move the cursor, two-finger to scroll, double-tap and hold to drag.</string>
+    <string name="touchpad_hint">Slide on the touchpad area to move the cursor. Double-tap then slide to drag.</string>
     <string name="touchpad_tuning">Touchpad tuning</string>
     <string name="touchpad_base_gain">Base gain</string>
     <string name="touchpad_acceleration">Acceleration</string>
@@ -80,7 +80,7 @@
     <string name="touchpad_intro_got_it">Got it</string>
     <string name="touchpad_intro_gesture_move">Move: slide one finger</string>
     <string name="touchpad_intro_gesture_tap">Click: tap once</string>
-    <string name="touchpad_intro_gesture_drag">Slide &amp; drag: double-tap, then slide (vibration confirms)</string>
+    <string name="touchpad_intro_gesture_drag">Slide &amp; drag: double-tap then slide (vibration confirms), or slide with two fingers</string>
     <string name="touchpad_intro_dim_behavior">Auto-dim: after 10s inside the touchpad area, the screen dims. It restores when you tap outside the touchpad area or leave this screen.</string>
     <string name="touchpad_intro_back_behavior">Back: when the touchpad area is active, Back is forwarded to the external app.</string>
     <string name="touchpad_intro_exit_hint">Exit: tap the top-left back arrow, or tap outside the touchpad area and then press Back.</string>
