@@ -1,11 +1,9 @@
 name: Release APK
 
 on:
-  release:
-    types: [published]
   push:
-    branches: [main]
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -26,21 +24,16 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Locate APK
+      - name: Locate and rename APK
         id: apk
         run: |
           APK_PATH=$(ls app/build/outputs/apk/debug/*.apk | head -n 1)
-          echo "path=$APK_PATH" >> $GITHUB_OUTPUT
-
-      - name: Upload artifact (push)
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: deskcontrol-debug-apk
-          path: ${{ steps.apk.outputs.path }}
+          TAG_NAME="${GITHUB_REF_NAME}"
+          RENAMED_PATH="app/build/outputs/apk/debug/deskcontrol-${TAG_NAME}.apk"
+          mv "$APK_PATH" "$RENAMED_PATH"
+          echo "path=$RENAMED_PATH" >> $GITHUB_OUTPUT
 
       - name: Upload APK to release assets
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.apk.outputs.path }}
