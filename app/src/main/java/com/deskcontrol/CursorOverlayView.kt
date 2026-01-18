@@ -45,6 +45,7 @@ class CursorOverlayView @JvmOverloads constructor(
     private val handler = Handler(Looper.getMainLooper())
     private var decayRunnable: Runnable? = null
     private var outlineDrawable: android.graphics.drawable.Drawable? = null
+    private var isAttached = false
 
     fun setBaseSizePx(value: Int) {
         baseSizePx = value.coerceAtLeast(8)
@@ -104,6 +105,9 @@ class CursorOverlayView @JvmOverloads constructor(
     private fun scheduleDecay() {
         decayRunnable?.let { handler.removeCallbacks(it) }
         decayRunnable = Runnable {
+            if (!isAttached) {
+                return@Runnable
+            }
             val now = SystemClock.uptimeMillis()
             if (now - lastMovementTime >= HOLD_MS && speedEma < SPEED_THRESHOLD_PX_S) {
                 animateScaleTo(1f)
@@ -128,5 +132,19 @@ class CursorOverlayView @JvmOverloads constructor(
             }
             start()
         }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        isAttached = true
+    }
+
+    override fun onDetachedFromWindow() {
+        isAttached = false
+        decayRunnable?.let { handler.removeCallbacks(it) }
+        decayRunnable = null
+        scaleAnimator?.cancel()
+        scaleAnimator = null
+        super.onDetachedFromWindow()
     }
 }

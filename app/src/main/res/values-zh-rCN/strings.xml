@@ -16,6 +16,8 @@
 
     <string name="app_picker_title">选择应用</string>
     <string name="app_search_hint">搜索应用</string>
+    <string name="app_drawer_title">全部应用</string>
+    <string name="switch_bar_all_apps">全部应用</string>
     <string name="app_icon_content_description">应用图标</string>
     <string name="app_placeholder_name">应用名称</string>
     <string name="app_launched_toast">已启动 %1$s</string>
@@ -74,6 +76,17 @@
     <string name="touchpad_jitter_threshold_value">抖动阈值：%1$.2f px</string>
     <string name="touchpad_smoothing_value">平滑（EMA）：%1$.2f</string>
     <string name="touchpad_scroll_step_value">滚动步长：%1$.0f px</string>
+
+    <string name="settings_switch_bar_section">Dock</string>
+    <string name="settings_switch_bar_enabled">显示 Dock</string>
+    <string name="settings_switch_bar_hint">指针移动到底部唤出 Dock。</string>
+    <string name="settings_switch_bar_scale">Dock 大小</string>
+    <string name="settings_switch_bar_scale_default">100%</string>
+    <string name="settings_switch_bar_scale_value">%1$d%%</string>
+    <string name="settings_switch_bar_apps">常驻应用</string>
+    <string name="settings_switch_bar_app_add">添加常驻应用</string>
+    <string name="settings_switch_bar_app_add_slot">添加常驻应用 %1$d</string>
+    <string name="settings_switch_bar_pick_title">选择常驻应用 %1$d</string>
     <string name="touchpad_intro_title">触控板提示</string>
     <string name="touchpad_intro_got_it">知道了</string>
     <string name="touchpad_intro_gesture_move">移动：单指滑动</string>

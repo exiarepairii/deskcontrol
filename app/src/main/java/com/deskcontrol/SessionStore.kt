@@ -10,9 +10,13 @@ object SessionStore {
     @Volatile
     var lastBackWarmupUptime: Long = 0L
 
+    @Volatile
+    var lastLaunchedPackage: String? = null
+
     fun clear() {
         lastLaunchFailure = null
         lastInjectionResult = null
         lastBackWarmupUptime = 0L
+        lastLaunchedPackage = null
     }
 }

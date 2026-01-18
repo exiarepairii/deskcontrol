@@ -17,6 +17,8 @@
 
     <string name="app_picker_title">Choose an app</string>
     <string name="app_search_hint">Search apps</string>
+    <string name="app_drawer_title">All apps</string>
+    <string name="switch_bar_all_apps">All apps</string>
     <string name="app_icon_content_description">App icon</string>
     <string name="app_placeholder_name">App name</string>
     <string name="app_placeholder_package" translatable="false">com.example</string>
@@ -76,6 +78,17 @@
     <string name="touchpad_jitter_threshold_value">Jitter threshold: %1$.2f px</string>
     <string name="touchpad_smoothing_value">Smoothing (EMA): %1$.2f</string>
     <string name="touchpad_scroll_step_value">Scroll step: %1$.0f px</string>
+
+    <string name="settings_switch_bar_section">Dock</string>
+    <string name="settings_switch_bar_enabled">Show Dock</string>
+    <string name="settings_switch_bar_hint">Move the cursor to the bottom edge to show the Dock.</string>
+    <string name="settings_switch_bar_scale">Dock size</string>
+    <string name="settings_switch_bar_scale_default">100%</string>
+    <string name="settings_switch_bar_scale_value">%1$d%%</string>
+    <string name="settings_switch_bar_apps">Pinned apps</string>
+    <string name="settings_switch_bar_app_add_slot">Add pinned app %1$d</string>
+    <string name="settings_switch_bar_app_add">Add pinned app</string>
+    <string name="settings_switch_bar_pick_title">Pick app for slot %1$d</string>
     <string name="touchpad_intro_title">Touchpad tips</string>
     <string name="touchpad_intro_got_it">Got it</string>
     <string name="touchpad_intro_gesture_move">Move: slide one finger</string>

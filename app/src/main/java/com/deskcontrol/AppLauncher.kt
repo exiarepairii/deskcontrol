@@ -53,7 +53,8 @@ object AppLauncher {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(info.displayId)
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(launchIntent, options.toBundle())
-            AppLaunchHistory.increment(context.applicationContext, packageName)
+            AppLaunchHistory.recordLaunch(context.applicationContext, packageName)
+            SessionStore.lastLaunchedPackage = packageName
             SessionStore.lastLaunchFailure = null
             DiagnosticsLog.add("Launch: success package=$packageName displayId=${info.displayId}")
             Result(success = true)
@@ -92,6 +93,24 @@ object AppLauncher {
             FailureReason.NO_LAUNCH_INTENT -> R.string.app_launch_reason_no_launch_intent
             FailureReason.SECURITY_EXCEPTION -> R.string.app_launch_reason_security_exception
             FailureReason.START_FAILED -> R.string.app_launch_reason_start_failed
+        }
+    }
+
+    fun buildFailureMessage(context: Context, result: Result): String {
+        val reason = result.reason
+        if (reason == null) {
+            return context.getString(R.string.app_launch_failed_generic)
+        }
+        val reasonLabel = context.getString(reasonLabelResId(reason))
+        val detailResId = result.detailResId
+        return if (detailResId == null) {
+            context.getString(R.string.app_launch_failed_reason_only, reasonLabel)
+        } else {
+            context.getString(
+                R.string.app_launch_failed_with_detail,
+                reasonLabel,
+                context.getString(detailResId)
+            )
         }
     }
 }

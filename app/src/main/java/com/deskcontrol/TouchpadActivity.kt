@@ -151,6 +151,7 @@ class TouchpadActivity : AppCompatActivity() {
 
     override fun onPause() {
         stopAutoDimSession()
+        cancelPendingSingleTap()
         updateKeepScreenOn(false)
         DiagnosticsLog.add("Touchpad: pause")
         super.onPause()
@@ -158,11 +159,13 @@ class TouchpadActivity : AppCompatActivity() {
 
     override fun onStop() {
         stopAutoDimSession()
+        cancelPendingSingleTap()
         super.onStop()
     }
 
     override fun onDestroy() {
         stopAutoDimSession()
+        cancelPendingSingleTap()
         super.onDestroy()
     }
 

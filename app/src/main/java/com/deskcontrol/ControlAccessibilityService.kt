@@ -57,10 +57,24 @@ class ControlAccessibilityService : AccessibilityService() {
         fun requestCursorAppearanceRefresh() {
             instance?.refreshCursorAppearance()
         }
+
+        fun requestCursorForceVisible(enabled: Boolean) {
+            instance?.setCursorForceVisible(enabled)
+        }
+
+        fun requestSwitchBarRefresh() {
+            instance?.refreshSwitchBarSettings()
+        }
+
+        fun requestSwitchBarForceVisible(enabled: Boolean) {
+            instance?.setSwitchBarForceVisible(enabled)
+        }
     }
 
     private var overlayView: CursorOverlayView? = null
+    private var switchBarController: SwitchBarController? = null
     private var windowManager: WindowManager? = null
+    private var overlayWindowContext: Context? = null
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
     private var cursorX = 0f
     private var cursorY = 0f
@@ -77,6 +91,7 @@ class ControlAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
     private var cursorVisible = true
+    private var forceCursorVisible = false
     private var lastMoveTime = 0L
 
     override fun onServiceConnected() {
@@ -113,6 +128,7 @@ class ControlAccessibilityService : AccessibilityService() {
         notifyCursorActivity()
         notifyCursorSpeed(dx, dy)
         updateOverlayPosition()
+        switchBarController?.onCursorMoved(cursorX, cursorY)
     }
 
     fun wakeCursor() {
@@ -372,8 +388,13 @@ class ControlAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             null
         )
+        overlayWindowContext = windowContext
         val wm = windowContext.getSystemService(WindowManager::class.java)
         windowManager = wm
+
+        if (SettingsStore.switchBarEnabled) {
+            switchBarController = SwitchBarController(this, windowContext, wm, info)
+        }
 
         val view = CursorOverlayView(windowContext)
         overlayView = view
@@ -401,15 +422,39 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun detachOverlay() {
+        switchBarController?.teardown()
+        switchBarController = null
         overlayView?.let { view ->
             runCatching { windowManager?.removeView(view) }
         }
         overlayView = null
         windowManager = null
+        overlayWindowContext = null
         displayInfo = null
         cancelDrag()
         cancelCursorHide()
         DiagnosticsLog.add("Accessibility: overlay detached")
+    }
+
+    private fun refreshSwitchBarSettings() {
+        val info = displayInfo ?: return
+        val wm = windowManager ?: return
+        val context = overlayWindowContext ?: return
+        if (!SettingsStore.switchBarEnabled) {
+            switchBarController?.teardown()
+            switchBarController = null
+            return
+        }
+        if (switchBarController == null) {
+            switchBarController = SwitchBarController(this, context, wm, info)
+        } else {
+            switchBarController?.refreshScale()
+            switchBarController?.refreshItems()
+        }
+    }
+
+    private fun setSwitchBarForceVisible(enabled: Boolean) {
+        switchBarController?.setForceVisible(enabled)
     }
 
     private fun cursorBaseSizeForDisplay(info: DisplaySessionManager.ExternalDisplayInfo): Int {
@@ -446,6 +491,7 @@ class ControlAccessibilityService : AccessibilityService() {
     private fun scheduleCursorHide() {
         val delay = SettingsStore.cursorHideDelayMs
         cancelCursorHide()
+        if (forceCursorVisible) return
         if (delay <= 0L) return
         hideRunnable = Runnable { hideCursor() }
         handler.postDelayed(hideRunnable!!, delay)
@@ -468,6 +514,16 @@ class ControlAccessibilityService : AccessibilityService() {
         val view = overlayView ?: return
         cursorVisible = false
         view.alpha = 0f
+    }
+
+    private fun setCursorForceVisible(enabled: Boolean) {
+        forceCursorVisible = enabled
+        if (enabled) {
+            cancelCursorHide()
+            showCursor()
+        } else {
+            scheduleCursorHide()
+        }
     }
 
     private fun refreshCursorAppearance() {
