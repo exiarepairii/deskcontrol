@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+- Dock: add settings to enable, scale, and pin three apps with default browser seeding.
+- Dock: reorder pins/all apps/recents with a divider and improved scaling behavior.
+- Settings: show Dock and cursor previews while adjusting controls.
+
 ## 1.0.3
 - External display: add App Switch Bar overlay with favorites/recents and All Apps drawer.
 - Touchpad: two-finger drag triggers the same behavior as double-tap drag (slower tuning).
