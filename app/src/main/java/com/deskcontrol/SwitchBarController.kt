@@ -16,6 +16,13 @@ class SwitchBarController(
     private val windowManager: WindowManager,
     private val displayInfo: DisplaySessionManager.ExternalDisplayInfo
 ) {
+    private enum class State {
+        HIDDEN,
+        SHOWING,
+        SHOWN,
+        HIDING
+    }
+
     private val handler = Handler(Looper.getMainLooper())
     private val view = SwitchBarOverlayView(windowContext)
     private val interpolator = FastOutSlowInInterpolator()
@@ -26,11 +33,12 @@ class SwitchBarController(
     private val hideDelayMs = 260L
     private val showDurationMs = 170L
     private val hideDurationMs = 130L
-    private var barHeightPx = 0
-    private var isShown = false
+    private var baseBarHeightPx = 0
+    private var currentBarHeightPx = 0
+    private var state = State.HIDDEN
     private var showRunnable: Runnable? = null
     private var hideRunnable: Runnable? = null
-
+    private var forceVisible = false
     init {
         view.alpha = 0f
         view.translationY = 0f
@@ -51,22 +59,48 @@ class SwitchBarController(
             DiagnosticsLog.add("SwitchBar: attach failed ${it.message}")
         }
         view.doOnLayout {
-            barHeightPx = it.height
+            if (baseBarHeightPx == 0) {
+                baseBarHeightPx = it.height
+            }
+            currentBarHeightPx = it.height
+            DiagnosticsLog.add(
+                "SwitchBar: layout baseHeight=$baseBarHeightPx h=${it.height} w=${it.width}"
+            )
+            updateScale()
             applyHiddenState(immediate = true)
         }
     }
 
     fun onCursorMoved(x: Float, y: Float) {
+        if (forceVisible) {
+            scheduleShow("force")
+            cancelHide()
+            return
+        }
         val height = displayInfo.height.toFloat()
         val inShowZone = y >= height - showThresholdPx
-        val inBarRegion = y >= height - maxOf(hideThresholdPx, barHeightPx + view.bottomInsetPx)
+        val barHeight = if (currentBarHeightPx > 0) currentBarHeightPx else baseBarHeightPx
+        val inHideZone = y >= height - maxOf(hideThresholdPx, barHeight + view.bottomInsetPx)
+        val bounds = view.getContainerBoundsInView()
+        val slopPx = (6f * density).toInt()
+        val insideBar = if (bounds == null) {
+            inHideZone
+        } else {
+            inHideZone &&
+                x >= bounds.left - slopPx &&
+                x <= bounds.right + slopPx
+        }
+
+        onBarHoverChanged(insideBar)
 
         if (inShowZone) {
             scheduleShow("edge")
-        } else if (isShown && !inBarRegion) {
-            scheduleHide("leave")
-        } else if (!inShowZone) {
+            cancelHide()
+        } else {
             cancelShow()
+            if (state == State.SHOWN && !insideBar) {
+                scheduleHide("leave")
+            }
         }
     }
 
@@ -76,8 +110,30 @@ class SwitchBarController(
         runCatching { windowManager.removeView(view) }
     }
 
+    fun refreshScale() {
+        updateScale()
+    }
+
+    fun refreshItems() {
+        rebuildItems()
+    }
+
+    fun setForceVisible(enabled: Boolean) {
+        forceVisible = enabled
+        if (enabled) {
+            cancelHide()
+            show("force")
+        }
+    }
+
+    fun onBarHoverChanged(insideBar: Boolean) {
+        if (state == State.SHOWN && insideBar) {
+            cancelHide()
+        }
+    }
+
     private fun scheduleShow(reason: String) {
-        if (isShown) return
+        if (state != State.HIDDEN) return
         cancelHide()
         if (showRunnable != null) return
         showRunnable = Runnable {
@@ -89,7 +145,8 @@ class SwitchBarController(
     }
 
     private fun scheduleHide(reason: String) {
-        if (!isShown) return
+        if (state != State.SHOWN) return
+        if (forceVisible) return
         if (hideRunnable != null) return
         hideRunnable = Runnable {
             hideRunnable = null
@@ -109,8 +166,8 @@ class SwitchBarController(
     }
 
     private fun show(reason: String) {
-        if (isShown) return
-        isShown = true
+        if (state == State.SHOWN || state == State.SHOWING) return
+        state = State.SHOWING
         setTouchable(true)
         val targetTranslation = 0f
         view.animate().cancel()
@@ -119,32 +176,54 @@ class SwitchBarController(
             .alpha(1f)
             .setDuration(showDurationMs)
             .setInterpolator(interpolator)
+            .withEndAction {
+                if (state == State.SHOWING) {
+                    state = State.SHOWN
+                }
+            }
             .start()
-        DiagnosticsLog.add("SwitchBar: show reason=$reason")
+        DiagnosticsLog.add(
+            "SwitchBar: show reason=$reason scale=${SettingsStore.switchBarScale} " +
+                "baseH=$baseBarHeightPx curH=$currentBarHeightPx inset=${view.bottomInsetPx}"
+        )
     }
 
     private fun hide(reason: String) {
-        if (!isShown) return
-        isShown = false
+        if (state == State.HIDDEN || state == State.HIDING) return
+        state = State.HIDING
         setTouchable(false)
         applyHiddenState(immediate = false)
-        DiagnosticsLog.add("SwitchBar: hide reason=$reason")
+        DiagnosticsLog.add(
+            "SwitchBar: hide reason=$reason scale=${SettingsStore.switchBarScale} " +
+                "baseH=$baseBarHeightPx curH=$currentBarHeightPx inset=${view.bottomInsetPx}"
+        )
     }
 
     private fun applyHiddenState(immediate: Boolean) {
-        val offset = barHeightPx.toFloat() + view.bottomInsetPx
+        val barHeight = if (currentBarHeightPx > 0) currentBarHeightPx else baseBarHeightPx
+        val offset = barHeight.toFloat() + view.bottomInsetPx
         view.animate().cancel()
         if (immediate) {
             view.translationY = offset
             view.alpha = 0f
+            state = State.HIDDEN
         } else {
             view.animate()
                 .translationY(offset)
                 .alpha(0f)
                 .setDuration(hideDurationMs)
                 .setInterpolator(interpolator)
+                .withEndAction {
+                    if (state == State.HIDING) {
+                        state = State.HIDDEN
+                    }
+                }
                 .start()
         }
+        DiagnosticsLog.add(
+            "SwitchBar: hidden offset=$offset scale=${SettingsStore.switchBarScale} " +
+                "baseH=$baseBarHeightPx curH=$currentBarHeightPx inset=${view.bottomInsetPx}"
+        )
     }
 
     private fun setTouchable(touchable: Boolean) {
@@ -159,14 +238,16 @@ class SwitchBarController(
         val apps = LaunchableAppCatalog.load(windowContext)
         val appMap = apps.associateBy { it.packageName }
         val launchablePackages = apps.map { it.packageName }
-        val favorites = SwitchBarStore.ensureFavorites(windowContext, launchablePackages)
+        val favorites = SwitchBarStore.getFavoriteSlots(windowContext)
+        val pinned = favorites.mapNotNull { pkg ->
+            pkg?.takeIf { it in launchablePackages }
+        }
         val recents = AppLaunchHistory.getRecent(windowContext, 2)
-        val current = SessionStore.lastLaunchedPackage
+            .filter { it !in pinned }
 
         val items = mutableListOf<SwitchBarOverlayView.Item>()
-        val added = LinkedHashSet<String>()
-        if (current != null && appMap.containsKey(current)) {
-            val app = appMap.getValue(current)
+        pinned.forEach { pkg ->
+            val app = appMap[pkg] ?: return@forEach
             items.add(
                 SwitchBarOverlayView.Item(
                     label = app.label,
@@ -174,31 +255,6 @@ class SwitchBarController(
                     icon = app.icon
                 )
             )
-            added.add(current)
-        }
-        favorites.forEach { pkg ->
-            if (added.add(pkg)) {
-                val app = appMap[pkg] ?: return@forEach
-                items.add(
-                    SwitchBarOverlayView.Item(
-                        label = app.label,
-                        packageName = app.packageName,
-                        icon = app.icon
-                    )
-                )
-            }
-        }
-        recents.forEach { pkg ->
-            if (added.add(pkg)) {
-                val app = appMap[pkg] ?: return@forEach
-                items.add(
-                    SwitchBarOverlayView.Item(
-                        label = app.label,
-                        packageName = app.packageName,
-                        icon = app.icon
-                    )
-                )
-            }
         }
         val allAppsIcon = androidx.appcompat.content.res.AppCompatResources.getDrawable(
             windowContext,
@@ -213,6 +269,26 @@ class SwitchBarController(
                     isAllApps = true
                 )
             )
+        }
+        if (recents.isNotEmpty()) {
+            items.add(
+                SwitchBarOverlayView.Item(
+                    label = "",
+                    packageName = null,
+                    icon = null,
+                    isDivider = true
+                )
+            )
+            recents.forEach { pkg ->
+                val app = appMap[pkg] ?: return@forEach
+                items.add(
+                    SwitchBarOverlayView.Item(
+                        label = app.label,
+                        packageName = app.packageName,
+                        icon = app.icon
+                    )
+                )
+            }
         }
         view.setItems(items)
     }
@@ -236,4 +312,23 @@ class SwitchBarController(
             DiagnosticsLog.add("SwitchBar: launch failure package=$packageName reason=${result.reason}")
         }
     }
+
+    private fun updateScale() {
+        val scale = SettingsStore.switchBarScale.coerceIn(0.7f, 1.3f)
+        view.setContentScale(scale)
+        DiagnosticsLog.add(
+            "SwitchBar: scale=$scale baseH=$baseBarHeightPx curH=$currentBarHeightPx " +
+                "viewH=${view.height} inset=${view.bottomInsetPx}"
+        )
+        view.doOnLayout {
+            currentBarHeightPx = it.height
+            if (state == State.SHOWN || state == State.SHOWING) {
+                view.translationY = 0f
+                view.alpha = 1f
+            } else {
+                applyHiddenState(immediate = true)
+            }
+        }
+    }
+
 }

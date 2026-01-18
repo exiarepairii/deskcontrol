@@ -29,6 +29,10 @@ object SettingsStore {
         private set
     var touchpadIntroShown = false
         private set
+    var switchBarEnabled = true
+        private set
+    var switchBarScale = 1.0f
+        private set
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -42,6 +46,9 @@ object SettingsStore {
         touchpadAutoDimEnabled = prefs.getBoolean("touchpad_auto_dim", touchpadAutoDimEnabled)
         touchpadDimLevel = prefs.getFloat("touchpad_dim_level", touchpadDimLevel)
         touchpadIntroShown = prefs.getBoolean("touchpad_intro_shown", touchpadIntroShown)
+        switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
+        switchBarScale = prefs.getFloat("switch_bar_scale", switchBarScale)
+            .coerceIn(0.7f, 1.3f)
 
         TouchpadTuning.baseGain = prefs.getFloat("tp_base_gain", TouchpadTuning.baseGain)
         TouchpadTuning.maxAccelGain = prefs.getFloat("tp_max_accel", TouchpadTuning.maxAccelGain)
@@ -100,6 +107,19 @@ object SettingsStore {
     fun setTouchpadIntroShown(context: Context) {
         touchpadIntroShown = true
         persist(context) { putBoolean("touchpad_intro_shown", true) }
+    }
+
+    fun setSwitchBarEnabled(context: Context, enabled: Boolean) {
+        switchBarEnabled = enabled
+        persist(context) { putBoolean("switch_bar_enabled", enabled) }
+        ControlAccessibilityService.requestSwitchBarRefresh()
+    }
+
+    fun setSwitchBarScale(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.7f, 1.3f)
+        switchBarScale = clamped
+        persist(context) { putFloat("switch_bar_scale", clamped) }
+        ControlAccessibilityService.requestSwitchBarRefresh()
     }
 
     fun setAppLanguage(context: Context, languageTag: String) {

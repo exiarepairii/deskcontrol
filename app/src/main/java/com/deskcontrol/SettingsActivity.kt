@@ -1,7 +1,9 @@
 package com.deskcontrol
 
-import android.media.projection.MediaProjectionConfig
+import android.content.Intent
 import android.os.Bundle
+import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.isVisible
@@ -10,6 +12,21 @@ import com.google.android.material.slider.Slider
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class SettingsActivity : AppCompatActivity() {
+
+    private var switchBarLabelMap: Map<String, String> = emptyMap()
+    private var switchBarIconMap: Map<String, android.graphics.drawable.Drawable> = emptyMap()
+    private var switchBarSlotIcons: List<android.widget.ImageView> = emptyList()
+    private val pickSwitchBarApp =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val packageName = data.getStringExtra(AppPickerActivity.EXTRA_PICK_PACKAGE) ?: return@registerForActivityResult
+            val slotIndex = data.getIntExtra(AppPickerActivity.EXTRA_PICK_SLOT, -1)
+            if (slotIndex !in 0..2) return@registerForActivityResult
+            SwitchBarStore.setFavoriteSlot(this, slotIndex, packageName)
+            refreshSwitchBarSlotLabels()
+            ControlAccessibilityService.requestSwitchBarRefresh()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +85,15 @@ class SettingsActivity : AppCompatActivity() {
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
         val cursorHideDelaySlider = findViewById<Slider>(R.id.sliderCursorHideDelay)
+        val switchBarEnabledSwitch = findViewById<SwitchMaterial>(R.id.switchSwitchBarEnabled)
+        val switchBarScaleSlider = findViewById<Slider>(R.id.sliderSwitchBarScale)
+        val switchBarScaleValue = findViewById<TextView>(R.id.switchBarScaleValue)
+        val switchBarSlot1 = findViewById<android.view.View>(R.id.switchBarSlot1)
+        val switchBarSlot2 = findViewById<android.view.View>(R.id.switchBarSlot2)
+        val switchBarSlot3 = findViewById<android.view.View>(R.id.switchBarSlot3)
+        val switchBarSlotIcon1 = findViewById<android.widget.ImageView>(R.id.switchBarSlotIcon1)
+        val switchBarSlotIcon2 = findViewById<android.widget.ImageView>(R.id.switchBarSlotIcon2)
+        val switchBarSlotIcon3 = findViewById<android.widget.ImageView>(R.id.switchBarSlotIcon3)
         val settingsLogsRow = findViewById<android.view.View>(R.id.settingsLogsRow)
 
         when (SettingsStore.nightMode) {
@@ -140,6 +166,82 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        val apps = LaunchableAppCatalog.load(this)
+        switchBarLabelMap = apps.associate { it.packageName to it.label }
+        switchBarIconMap = apps.associate { it.packageName to it.icon }
+        switchBarSlotIcons = listOf(switchBarSlotIcon1, switchBarSlotIcon2, switchBarSlotIcon3)
+        refreshSwitchBarSlotLabels()
+
+        switchBarEnabledSwitch.isChecked = SettingsStore.switchBarEnabled
+        updateSwitchBarControlsEnabled(
+            SettingsStore.switchBarEnabled,
+            switchBarScaleSlider,
+            switchBarScaleValue,
+            listOf(switchBarSlot1, switchBarSlot2, switchBarSlot3)
+        )
+        switchBarEnabledSwitch.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setSwitchBarEnabled(this, isChecked)
+            updateSwitchBarControlsEnabled(
+                isChecked,
+                switchBarScaleSlider,
+                switchBarScaleValue,
+                listOf(switchBarSlot1, switchBarSlot2, switchBarSlot3)
+            )
+            requestSwitchBarPreview()
+        }
+
+        switchBarScaleSlider.valueFrom = 0.7f
+        switchBarScaleSlider.valueTo = 1.3f
+        switchBarScaleSlider.stepSize = 0.05f
+        switchBarScaleSlider.value = snapToStep(
+            SettingsStore.switchBarScale.coerceIn(
+                switchBarScaleSlider.valueFrom,
+                switchBarScaleSlider.valueTo
+            ),
+            switchBarScaleSlider.valueFrom,
+            switchBarScaleSlider.stepSize
+        )
+        switchBarScaleValue.text = getString(
+            R.string.settings_switch_bar_scale_value,
+            (switchBarScaleSlider.value * 100).toInt()
+        )
+        switchBarScaleSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(value, switchBarScaleSlider.valueFrom, switchBarScaleSlider.stepSize)
+            switchBarScaleValue.text = getString(
+                R.string.settings_switch_bar_scale_value,
+                (snapped * 100).toInt()
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    switchBarScaleSlider.value = snapped
+                }
+                SettingsStore.setSwitchBarScale(this, snapped)
+                requestSwitchBarPreview()
+            }
+        }
+        switchBarScaleSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                requestSwitchBarPreview()
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) = Unit
+        })
+
+        listOf(switchBarSlot1, switchBarSlot2, switchBarSlot3).forEachIndexed { index, row ->
+            row.setOnClickListener {
+                requestSwitchBarPreview()
+                val intent = Intent(this, AppPickerActivity::class.java).apply {
+                    putExtra(AppPickerActivity.EXTRA_PICK_MODE, true)
+                    putExtra(
+                        AppPickerActivity.EXTRA_PICK_TITLE,
+                        getString(R.string.settings_switch_bar_pick_title, index + 1)
+                    )
+                    putExtra(AppPickerActivity.EXTRA_PICK_SLOT, index)
+                }
+                pickSwitchBarApp.launch(intent)
+            }
+        }
+
         cursorSizeSlider.valueFrom = 0.5f
         cursorSizeSlider.valueTo = 3.0f
         cursorSizeSlider.stepSize = 0.1f
@@ -157,16 +259,26 @@ class SettingsActivity : AppCompatActivity() {
                     cursorSizeSlider.value = snapped
                 }
                 SettingsStore.setCursorScale(this, snapped)
+                requestCursorPreview()
             }
         }
+        cursorSizeSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                requestCursorPreview()
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) = Unit
+        })
 
         cursorColorBlack.setOnClickListener {
             SettingsStore.setCursorColor(this, 0xFF000000.toInt())
             updateCursorColorSelection(cursorColorBlack, cursorColorWhite)
+            requestCursorPreview()
         }
         cursorColorWhite.setOnClickListener {
             SettingsStore.setCursorColor(this, 0xFFFFFFFF.toInt())
             updateCursorColorSelection(cursorColorBlack, cursorColorWhite)
+            requestCursorPreview()
         }
         updateCursorColorSelection(cursorColorBlack, cursorColorWhite)
 
@@ -185,8 +297,16 @@ class SettingsActivity : AppCompatActivity() {
             )
             if (fromUser) {
                 SettingsStore.setCursorAlpha(this, value)
+                requestCursorPreview()
             }
         }
+        cursorOpacitySlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                requestCursorPreview()
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) = Unit
+        })
 
         cursorSpeedSlider.valueFrom = 0.7f
         cursorSpeedSlider.valueTo = 1.2f
@@ -197,8 +317,16 @@ class SettingsActivity : AppCompatActivity() {
             cursorSpeedValue.text = getString(R.string.settings_cursor_speed_value, value)
             if (fromUser) {
                 SettingsStore.setPointerSpeed(this, value)
+                requestCursorPreview()
             }
         }
+        cursorSpeedSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                requestCursorPreview()
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) = Unit
+        })
 
         val hideEnabled = SettingsStore.cursorHideDelayMs > 0
         cursorHideSwitch.isChecked = hideEnabled
@@ -211,6 +339,7 @@ class SettingsActivity : AppCompatActivity() {
                 SettingsStore.setCursorHideDelay(this, 2500L)
             }
             updateHideDelay(cursorHideDelayValue, cursorHideDelaySlider)
+            requestCursorPreview()
         }
 
         cursorHideDelaySlider.valueFrom = 1.0f
@@ -223,8 +352,16 @@ class SettingsActivity : AppCompatActivity() {
             cursorHideDelayValue.text = getString(R.string.settings_cursor_hide_delay_value, value)
             if (fromUser) {
                 SettingsStore.setCursorHideDelay(this, (value * 1000).toLong())
+                requestCursorPreview()
             }
         }
+        cursorHideDelaySlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                requestCursorPreview()
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) = Unit
+        })
 
         settingsLogsRow.setOnClickListener {
             startActivity(android.content.Intent(this, DiagnosticsActivity::class.java))
@@ -257,6 +394,54 @@ class SettingsActivity : AppCompatActivity() {
         slider: Slider
     ) {
         label.text = getString(R.string.settings_cursor_hide_delay_value, slider.value)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ControlAccessibilityService.requestSwitchBarForceVisible(false)
+        ControlAccessibilityService.requestCursorForceVisible(false)
+    }
+
+    private fun refreshSwitchBarSlotLabels() {
+        val slots = SwitchBarStore.getFavoriteSlots(this)
+        switchBarSlotIcons.forEachIndexed { index, imageView ->
+            val pkg = slots.getOrNull(index)
+            if (pkg.isNullOrBlank()) {
+                imageView.setImageResource(R.drawable.ic_add)
+                imageView.contentDescription =
+                    getString(R.string.settings_switch_bar_app_add_slot, index + 1)
+            } else {
+                val icon = switchBarIconMap[pkg]
+                if (icon != null) {
+                    imageView.setImageDrawable(icon)
+                } else {
+                    imageView.setImageResource(R.drawable.ic_add)
+                }
+                imageView.contentDescription = switchBarLabelMap[pkg] ?: pkg
+            }
+        }
+    }
+
+    private fun updateSwitchBarControlsEnabled(
+        enabled: Boolean,
+        scaleSlider: Slider,
+        scaleValue: TextView,
+        slotRows: List<android.view.View>
+    ) {
+        scaleSlider.isEnabled = enabled
+        scaleValue.alpha = if (enabled) 1f else 0.4f
+        slotRows.forEach { row ->
+            row.isEnabled = enabled
+            row.alpha = if (enabled) 1f else 0.4f
+        }
+    }
+
+    private fun requestSwitchBarPreview() {
+        ControlAccessibilityService.requestSwitchBarForceVisible(true)
+    }
+
+    private fun requestCursorPreview() {
+        ControlAccessibilityService.requestCursorForceVisible(true)
     }
 
     private fun dpToPx(value: Int): Int {

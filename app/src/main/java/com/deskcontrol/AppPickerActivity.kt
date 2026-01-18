@@ -17,6 +17,8 @@ class AppPickerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAppPickerBinding
     private lateinit var adapter: AppAdapter
     private var allEntries: List<AppEntry> = emptyList()
+    private var pickMode = false
+    private var pickSlotIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,26 +27,41 @@ class AppPickerActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
 
+        pickMode = intent.getBooleanExtra(EXTRA_PICK_MODE, false)
+        pickSlotIndex = intent.getIntExtra(EXTRA_PICK_SLOT, 0)
+
         binding.appList.layoutManager = LinearLayoutManager(this)
         allEntries = loadLaunchableApps()
         adapter = AppAdapter(allEntries) { entry ->
-            val result = AppLauncher.launchOnExternalDisplay(this, entry.packageName)
-            if (result.success) {
-                Toast.makeText(
-                    this,
-                    getString(R.string.app_launched_toast, entry.label),
-                    Toast.LENGTH_SHORT
-                ).show()
-                startActivity(android.content.Intent(this, TouchpadActivity::class.java))
+            if (pickMode) {
+                val data = android.content.Intent().apply {
+                    putExtra(EXTRA_PICK_PACKAGE, entry.packageName)
+                    putExtra(EXTRA_PICK_LABEL, entry.label)
+                    putExtra(EXTRA_PICK_SLOT, pickSlotIndex)
+                }
+                setResult(RESULT_OK, data)
                 finish()
             } else {
-                val message = AppLauncher.buildFailureMessage(this, result)
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                val result = AppLauncher.launchOnExternalDisplay(this, entry.packageName)
+                if (result.success) {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.app_launched_toast, entry.label),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    startActivity(android.content.Intent(this, TouchpadActivity::class.java))
+                    finish()
+                } else {
+                    val message = AppLauncher.buildFailureMessage(this, result)
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                }
             }
         }
         binding.appList.adapter = adapter
 
-        binding.appPickerToolbar.title = getString(R.string.app_picker_title)
+        binding.appPickerToolbar.title = intent.getStringExtra(EXTRA_PICK_TITLE)
+            ?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.app_picker_title)
         binding.appPickerToolbar.setNavigationOnClickListener { finish() }
 
         binding.searchInput.addTextChangedListener(object : TextWatcher {
@@ -129,5 +146,13 @@ class AppPickerActivity : AppCompatActivity() {
                 binding.root.setOnClickListener { onClick(entry) }
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_PICK_MODE = "extra_pick_mode"
+        const val EXTRA_PICK_TITLE = "extra_pick_title"
+        const val EXTRA_PICK_PACKAGE = "extra_pick_package"
+        const val EXTRA_PICK_LABEL = "extra_pick_label"
+        const val EXTRA_PICK_SLOT = "extra_pick_slot"
     }
 }
