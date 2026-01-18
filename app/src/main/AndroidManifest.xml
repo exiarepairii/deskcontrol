@@ -32,6 +32,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".AppDrawerActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".HostActivity"
             android:exported="false" />
 

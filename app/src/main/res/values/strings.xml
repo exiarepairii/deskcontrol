@@ -17,6 +17,8 @@
 
     <string name="app_picker_title">Choose an app</string>
     <string name="app_search_hint">Search apps</string>
+    <string name="app_drawer_title">All apps</string>
+    <string name="switch_bar_all_apps">All apps</string>
     <string name="app_icon_content_description">App icon</string>
     <string name="app_placeholder_name">App name</string>
     <string name="app_placeholder_package" translatable="false">com.example</string>

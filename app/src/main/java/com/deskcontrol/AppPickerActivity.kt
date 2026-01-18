@@ -38,7 +38,7 @@ class AppPickerActivity : AppCompatActivity() {
                 startActivity(android.content.Intent(this, TouchpadActivity::class.java))
                 finish()
             } else {
-                val message = buildLaunchFailureMessage(result)
+                val message = AppLauncher.buildFailureMessage(this, result)
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             }
         }
@@ -54,24 +54,6 @@ class AppPickerActivity : AppCompatActivity() {
                 filterApps(s?.toString().orEmpty())
             }
         })
-    }
-
-    private fun buildLaunchFailureMessage(result: AppLauncher.Result): String {
-        val reason = result.reason
-        if (reason == null) {
-            return getString(R.string.app_launch_failed_generic)
-        }
-        val reasonLabel = getString(AppLauncher.reasonLabelResId(reason))
-        val detailResId = result.detailResId
-        return if (detailResId == null) {
-            getString(R.string.app_launch_failed_reason_only, reasonLabel)
-        } else {
-            getString(
-                R.string.app_launch_failed_with_detail,
-                reasonLabel,
-                getString(detailResId)
-            )
-        }
     }
 
     private fun loadLaunchableApps(): List<AppEntry> {

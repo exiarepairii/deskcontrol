@@ -16,6 +16,8 @@
 
     <string name="app_picker_title">选择应用</string>
     <string name="app_search_hint">搜索应用</string>
+    <string name="app_drawer_title">全部应用</string>
+    <string name="switch_bar_all_apps">全部应用</string>
     <string name="app_icon_content_description">应用图标</string>
     <string name="app_placeholder_name">应用名称</string>
     <string name="app_launched_toast">已启动 %1$s</string>

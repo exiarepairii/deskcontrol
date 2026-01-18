@@ -60,6 +60,7 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private var overlayView: CursorOverlayView? = null
+    private var switchBarController: SwitchBarController? = null
     private var windowManager: WindowManager? = null
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
     private var cursorX = 0f
@@ -113,6 +114,7 @@ class ControlAccessibilityService : AccessibilityService() {
         notifyCursorActivity()
         notifyCursorSpeed(dx, dy)
         updateOverlayPosition()
+        switchBarController?.onCursorMoved(cursorX, cursorY)
     }
 
     fun wakeCursor() {
@@ -397,10 +399,13 @@ class ControlAccessibilityService : AccessibilityService() {
         runCatching { wm.addView(view, params) }.onFailure {
             detachOverlay()
         }
+        switchBarController = SwitchBarController(this, windowContext, wm, info)
         scheduleCursorHide()
     }
 
     private fun detachOverlay() {
+        switchBarController?.teardown()
+        switchBarController = null
         overlayView?.let { view ->
             runCatching { windowManager?.removeView(view) }
         }
