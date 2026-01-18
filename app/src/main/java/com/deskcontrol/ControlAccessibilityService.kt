@@ -69,6 +69,9 @@ class ControlAccessibilityService : AccessibilityService() {
     private var dragStroke: GestureDescription.StrokeDescription? = null
     private var dragPointX = 0f
     private var dragPointY = 0f
+    private var scrollStroke: GestureDescription.StrokeDescription? = null
+    private var scrollPointX = 0f
+    private var scrollPointY = 0f
     private val dragStartDurationMs = 8L
     private val dragSegmentDurationMs = 16L
     private val handler = Handler(Looper.getMainLooper())
@@ -172,40 +175,100 @@ class ControlAccessibilityService : AccessibilityService() {
         dragStroke = null
     }
 
-    fun scrollVertical(steps: Int) {
+    fun startScrollGestureAtCursor() {
+        val info = displayInfo ?: return
+        val anchor = resolveScrollAnchor(info, cursorX, cursorY)
+        startScrollGestureAtPoint(info, anchor.first, anchor.second)
+    }
+
+    private fun startScrollGestureAtPoint(
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        x: Float,
+        y: Float
+    ) {
+        val mapped = CoordinateMapper.mapForRotation(x, y, info)
+        scrollPointX = x
+        scrollPointY = y
+        val path = Path().apply { moveTo(mapped.x, mapped.y) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, dragStartDurationMs, true)
+        scrollStroke = stroke
+        notifyCursorActivity()
+        dispatchScrollStroke(stroke, info.displayId)
+    }
+
+    fun updateScrollGestureBy(dx: Float, dy: Float) {
+        val info = displayInfo ?: return
+        val margin = 24f * resources.displayMetrics.density
+        val minX = margin
+        val maxX = info.width - margin
+        val minY = margin
+        val maxY = info.height - margin
+        var prevX = scrollPointX
+        var prevY = scrollPointY
+        var nextX = scrollPointX + dx
+        var nextY = scrollPointY + dy
+        if (nextX < minX || nextX > maxX || nextY < minY || nextY > maxY) {
+            endScrollGesture()
+            val anchor = resolveScrollAnchor(info, scrollPointX, scrollPointY)
+            startScrollGestureAtPoint(info, anchor.first, anchor.second)
+            return
+        }
+        scrollPointX = nextX
+        scrollPointY = nextY
+        val activeStroke = scrollStroke ?: return
+        val mappedStart = CoordinateMapper.mapForRotation(prevX, prevY, info)
+        val mappedEnd = CoordinateMapper.mapForRotation(scrollPointX, scrollPointY, info)
+        if (abs(mappedEnd.x - mappedStart.x) < 0.5f && abs(mappedEnd.y - mappedStart.y) < 0.5f) return
+        val path = Path().apply {
+            moveTo(mappedStart.x, mappedStart.y)
+            lineTo(mappedEnd.x, mappedEnd.y)
+        }
+        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, true)
+        scrollStroke = stroke
+        notifyCursorActivity()
+        dispatchScrollStroke(stroke, info.displayId)
+    }
+
+    fun endScrollGesture() {
+        val info = displayInfo ?: return
+        val activeStroke = scrollStroke ?: return
+        val mapped = CoordinateMapper.mapForRotation(scrollPointX, scrollPointY, info)
+        val path = Path().apply {
+            moveTo(mapped.x, mapped.y)
+            lineTo(mapped.x, mapped.y)
+        }
+        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, false)
+        scrollStroke = null
+        notifyCursorActivity()
+        dispatchScrollStroke(stroke, info.displayId)
+    }
+
+    fun cancelScrollGesture() {
+        scrollStroke = null
+    }
+
+    private fun resolveScrollAnchor(
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        x: Float,
+        y: Float
+    ): Pair<Float, Float> {
+        val margin = 24f * resources.displayMetrics.density
+        val clampedX = x.coerceIn(margin, info.width - margin)
+        val clampedY = y.coerceIn(margin, info.height - margin)
+        if (clampedX.isNaN() || clampedY.isNaN()) {
+            return Pair(info.width / 2f, info.height / 2f)
+        }
+        return Pair(clampedX, clampedY)
+    }
+
+    fun scrollVertical(steps: Int, stepSizePx: Float) {
         val info = displayInfo ?: run {
             recordInjection(false, getString(R.string.injection_no_external_display))
             return
         }
-        val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
-        val roots = if (targetWindows.isNotEmpty()) {
-            targetWindows.mapNotNull { it.root }
-        } else {
-            listOfNotNull(rootInActiveWindow)
-        }
-        val direction = if (steps >= 0) {
-            AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-        } else {
-            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-        }
-        val count = abs(steps)
-        var success = false
-        for (root in roots) {
-            val node = findScrollableNode(root) ?: continue
-            repeat(count) {
-                success = node.performAction(direction) || success
-            }
-            if (success) break
-        }
         notifyCursorActivity()
-        recordInjection(
-            success,
-            if (success) {
-                getString(R.string.injection_scroll_injected)
-            } else {
-                getString(R.string.injection_scroll_failed)
-            }
-        )
+        DiagnosticsLog.add("Scroll: gesture steps=$steps")
+        dispatchScrollGesture(steps, stepSizePx, info)
     }
 
     fun performBack(): Boolean {
@@ -461,6 +524,76 @@ class ControlAccessibilityService : AccessibilityService() {
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_drag_cancelled))
+                }
+            },
+            null
+        )
+    }
+
+    private fun dispatchScrollStroke(
+        stroke: GestureDescription.StrokeDescription,
+        displayId: Int
+    ) {
+        val builder = GestureDescription.Builder()
+        trySetDisplayId(builder, displayId)
+        builder.addStroke(stroke)
+        dispatchGesture(
+            builder.build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    recordInjection(true, getString(R.string.injection_scroll_injected))
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    recordInjection(false, getString(R.string.injection_scroll_failed))
+                }
+            },
+            null
+        )
+    }
+
+    private fun dispatchScrollGesture(
+        steps: Int,
+        stepSizePx: Float,
+        info: DisplaySessionManager.ExternalDisplayInfo
+    ) {
+        val absSteps = abs(steps)
+        if (absSteps == 0) return
+        val density = resources.displayMetrics.density
+        val minDistance = 8f * density
+        val distancePerStep = stepSizePx.coerceAtLeast(minDistance)
+        val maxDistance = 320f * density
+        val margin = 24f * density
+        val distance = (distancePerStep * absSteps).coerceAtMost(maxDistance)
+        val startX = cursorX.coerceIn(margin, info.width - margin)
+        val startY = cursorY.coerceIn(margin, info.height - margin)
+        val endY = if (steps >= 0) {
+            (startY - distance).coerceAtLeast(margin)
+        } else {
+            (startY + distance).coerceAtMost(info.height - margin)
+        }
+        if (abs(endY - startY) < 1f) {
+            recordInjection(false, getString(R.string.injection_scroll_failed))
+            return
+        }
+        val start = CoordinateMapper.mapForRotation(startX, startY, info)
+        val end = CoordinateMapper.mapForRotation(startX, endY, info)
+        val path = Path().apply {
+            moveTo(start.x, start.y)
+            lineTo(end.x, end.y)
+        }
+        val builder = GestureDescription.Builder()
+        trySetDisplayId(builder, info.displayId)
+        builder.addStroke(GestureDescription.StrokeDescription(path, 0, 180))
+        dispatchGesture(
+            builder.build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    recordInjection(true, getString(R.string.injection_scroll_injected))
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    recordInjection(false, getString(R.string.injection_scroll_failed))
                 }
             },
             null

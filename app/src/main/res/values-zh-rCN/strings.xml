@@ -54,7 +54,7 @@
     <string name="host_end_session">结束会话</string>
 
     <string name="touchpad_title">触控板</string>
-    <string name="touchpad_hint">在触控区域滑动移动光标，双指滚动，双击并长按拖拽。</string>
+    <string name="touchpad_hint">在触控区域滑动移动光标。双击后滑动可触发拖拽。</string>
     <string name="touchpad_tuning">触控板调节</string>
     <string name="touchpad_base_gain">基础增益</string>
     <string name="touchpad_acceleration">加速度</string>
@@ -78,7 +78,7 @@
     <string name="touchpad_intro_got_it">知道了</string>
     <string name="touchpad_intro_gesture_move">移动：单指滑动</string>
     <string name="touchpad_intro_gesture_tap">点击：单击</string>
-    <string name="touchpad_intro_gesture_drag">滑动与拖拽：双击后滑动（震动提示）</string>
+    <string name="touchpad_intro_gesture_drag">滑动与拖拽：双击后滑动（震动提示）或双指滑动</string>
     <string name="touchpad_intro_dim_behavior">自动调暗：在触控板区域内停留 10 秒后降低亮度，点触控板区域外或离开本页会恢复。</string>
     <string name="touchpad_intro_back_behavior">返回键：触控板区域激活时会转发到外接应用。</string>
     <string name="touchpad_intro_exit_hint">退出：点左上角返回箭头，或先点触控板区域外再按返回键。</string>
