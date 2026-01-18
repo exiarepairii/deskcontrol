@@ -22,6 +22,7 @@ object AppLauncher {
     )
 
     fun launchOnExternalDisplay(context: Context, packageName: String): Result {
+        DiagnosticsLog.add("Launch: request package=$packageName")
         val info = DisplaySessionManager.getExternalDisplayInfo()
             ?: return fail(
                 context,
@@ -48,11 +49,13 @@ object AppLauncher {
             )
 
         return try {
+            DiagnosticsLog.add("Launch: target displayId=${info.displayId}")
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(info.displayId)
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(launchIntent, options.toBundle())
             AppLaunchHistory.increment(context.applicationContext, packageName)
             SessionStore.lastLaunchFailure = null
+            DiagnosticsLog.add("Launch: success package=$packageName displayId=${info.displayId}")
             Result(success = true)
         } catch (se: SecurityException) {
             fail(
@@ -77,6 +80,7 @@ object AppLauncher {
             reasonLabel,
             detail
         )
+        DiagnosticsLog.add("Launch: failure reason=$reason detail=$detail")
         return Result(false, reason, detailResId)
     }
 

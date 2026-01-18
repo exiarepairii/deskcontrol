@@ -57,6 +57,7 @@ class TouchpadActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityTouchpadBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        DiagnosticsLog.add("Touchpad: create displayId=${display?.displayId ?: -1}")
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
         val insetsController = WindowInsetsControllerCompat(window, binding.root)
@@ -74,7 +75,10 @@ class TouchpadActivity : AppCompatActivity() {
         doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout()
 
         binding.touchpadToolbar.title = getString(R.string.touchpad_title)
-        binding.touchpadToolbar.setNavigationOnClickListener { finish() }
+        binding.touchpadToolbar.setNavigationOnClickListener {
+            DiagnosticsLog.add("Touchpad: exit via toolbar")
+            finish()
+        }
         binding.touchpadToolbar.setOnLongClickListener {
             toggleTuningPanel()
             true
@@ -91,6 +95,7 @@ class TouchpadActivity : AppCompatActivity() {
 
         setupTuningControls()
         setTouchpadActive(false)
+        showTouchpadIntroIfNeeded()
 
         onBackPressedDispatcher.addCallback(
             this,
@@ -99,9 +104,8 @@ class TouchpadActivity : AppCompatActivity() {
                     if (touchpadActive) {
                         val displayInfo = DisplaySessionManager.getExternalDisplayInfo()
                         val sessionActive = displayInfo != null
-                        val currentDisplayId = window.decorView.display?.displayId
-                        val selectedDisplayId = DisplaySessionManager.getSelectedDisplayId()
                         if (!sessionActive) {
+                            DiagnosticsLog.add("Touchpad: back blocked (no external display)")
                             Toast.makeText(
                                 this@TouchpadActivity,
                                 getString(R.string.touchpad_no_external_display),
@@ -111,12 +115,14 @@ class TouchpadActivity : AppCompatActivity() {
                         }
                         val service = ControlAccessibilityService.current()
                         if (service?.performBack() != true) {
+                            DiagnosticsLog.add("Touchpad: back failed (accessibility missing)")
                             Toast.makeText(
                                 this@TouchpadActivity,
                                 getString(R.string.touchpad_accessibility_required_toast),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
+                        DiagnosticsLog.add("Touchpad: back forwarded")
                     } else {
                         finish()
                     }
@@ -133,13 +139,19 @@ class TouchpadActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateKeepScreenOn(true)
-        startAutoDimSession()
+        if (touchpadActive) {
+            startAutoDimSession()
+        } else {
+            stopAutoDimSession()
+        }
         ControlAccessibilityService.current()?.warmUpBackPipeline()
+        DiagnosticsLog.add("Touchpad: resume")
     }
 
     override fun onPause() {
         stopAutoDimSession()
         updateKeepScreenOn(false)
+        DiagnosticsLog.add("Touchpad: pause")
         super.onPause()
     }
 
@@ -297,6 +309,7 @@ class TouchpadActivity : AppCompatActivity() {
     }
 
     private fun setTouchpadActive(active: Boolean) {
+        val wasActive = touchpadActive
         touchpadActive = active
         binding.touchpadArea.isActivated = active
         val hintColorRes = if (active) {
@@ -305,6 +318,14 @@ class TouchpadActivity : AppCompatActivity() {
             R.color.touchpadHintInactive
         }
         binding.touchpadHint.setTextColor(ContextCompat.getColor(this, hintColorRes))
+        if (wasActive != active) {
+            DiagnosticsLog.add("Touchpad: active=$active")
+            if (active) {
+                startAutoDimSession()
+            } else {
+                stopAutoDimSession()
+            }
+        }
     }
 
     private fun isNightMode(): Boolean {
@@ -422,6 +443,25 @@ class TouchpadActivity : AppCompatActivity() {
         }
     }
 
+    private fun showTouchpadIntroIfNeeded() {
+        if (SettingsStore.touchpadIntroShown) return
+        val message = getString(
+            R.string.touchpad_intro_message,
+            getString(R.string.touchpad_intro_gesture_move),
+            getString(R.string.touchpad_intro_gesture_tap),
+            getString(R.string.touchpad_intro_gesture_drag),
+            getString(R.string.touchpad_intro_dim_behavior),
+            getString(R.string.touchpad_intro_back_behavior),
+            getString(R.string.touchpad_intro_exit_hint)
+        )
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.touchpad_intro_title)
+            .setMessage(message)
+            .setPositiveButton(R.string.touchpad_intro_got_it) { dialog, _ -> dialog.dismiss() }
+            .show()
+        SettingsStore.setTouchpadIntroShown(this)
+    }
+
     private fun startAutoDimSession() {
         isFocused = true
         focusSessionId += 1
@@ -437,6 +477,7 @@ class TouchpadActivity : AppCompatActivity() {
             dimWindowBrightness()
         }
         handler.postDelayed(dimRunnable!!, AUTO_DIM_DELAY_MS)
+        DiagnosticsLog.add("Touchpad: dim timer started")
     }
 
     private fun stopAutoDimSession() {
@@ -444,6 +485,7 @@ class TouchpadActivity : AppCompatActivity() {
         cancelDimTimer()
         cancelDimAnimator()
         restoreOriginalBrightness()
+        DiagnosticsLog.add("Touchpad: dim session stopped")
     }
 
     private fun captureOriginalBrightness() {
@@ -459,6 +501,7 @@ class TouchpadActivity : AppCompatActivity() {
         }
         hasOriginalWindowBrightness = false
         dimmedThisSession = false
+        DiagnosticsLog.add("Touchpad: brightness restored")
     }
 
     private fun dimWindowBrightness() {
@@ -467,6 +510,7 @@ class TouchpadActivity : AppCompatActivity() {
         if (start <= target) {
             applyWindowBrightness(target)
             dimmedThisSession = true
+            DiagnosticsLog.add("Touchpad: dimmed target=$target")
             return
         }
         dimAnimator = ValueAnimator.ofFloat(start, target).apply {
@@ -477,6 +521,7 @@ class TouchpadActivity : AppCompatActivity() {
             start()
         }
         dimmedThisSession = true
+        DiagnosticsLog.add("Touchpad: dimmed target=$target")
     }
 
     private fun applyWindowBrightness(value: Float) {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2
+- Display logging: expanded external display diagnostics and selection reasoning.
+- Diagnostics: copy icon in the toolbar; logs entry moved under Developer section.
+- Touchpad: first-use tips refined; brightness restore now follows touchpad focus.
+
+## 1.0.1
+- Compatibility: lower minSdk to Android 11 (API 30).
+
 ## 1.0.0
 - Touchpad: auto-dim per-window after 10s with smooth animation and focus-loss restore.
 - Settings: touchpad auto-dim toggle and minimum brightness slider grouped with keep-screen-on.
