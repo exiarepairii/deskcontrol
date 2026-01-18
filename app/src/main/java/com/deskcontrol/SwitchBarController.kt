@@ -242,8 +242,9 @@ class SwitchBarController(
         val pinned = favorites.mapNotNull { pkg ->
             pkg?.takeIf { it in launchablePackages }
         }
-        val recents = AppLaunchHistory.getRecent(windowContext, 2)
+        val recents = AppLaunchHistory.getRecent(windowContext, 6)
             .filter { it !in pinned }
+            .take(2)
 
         val items = mutableListOf<SwitchBarOverlayView.Item>()
         pinned.forEach { pkg ->

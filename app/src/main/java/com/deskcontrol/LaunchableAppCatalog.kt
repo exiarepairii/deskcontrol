@@ -15,7 +15,12 @@ object LaunchableAppCatalog {
         val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
             addCategory(android.content.Intent.CATEGORY_LAUNCHER)
         }
-        val apps = pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+        val apps = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(intent, 0)
+        }
         return apps.map { resolveInfo ->
             val appInfo = resolveInfo.activityInfo.applicationInfo
             LaunchableApp(

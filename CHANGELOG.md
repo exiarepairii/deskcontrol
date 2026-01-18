@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+- Compatibility: fix Android 11 crashes when launching app picker or creating overlay contexts.
+- Dock: improve recents filling logic and settings icon row for pinned apps.
+- Settings: Dock and cursor preview behavior while adjusting controls.
+
 ## 1.1.0
 - Dock: add settings to enable, scale, and pin three apps with default browser seeding.
 - Dock: reorder pins/all apps/recents with a divider and improved scaling behavior.

@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.PointF
 import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -383,11 +384,19 @@ class ControlAccessibilityService : AccessibilityService() {
 
         val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
             ?: return
-        val windowContext = createWindowContext(
-            display,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            null
-        )
+        val windowContext = if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                createWindowContext(
+                    display,
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    null
+                )
+            } catch (e: NoSuchMethodError) {
+                createDisplayContext(display)
+            }
+        } else {
+            createDisplayContext(display)
+        }
         overlayWindowContext = windowContext
         val wm = windowContext.getSystemService(WindowManager::class.java)
         windowManager = wm
