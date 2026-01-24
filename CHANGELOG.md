@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.2
+- Touchpad: long-press drag latch with continuous two-finger scroll mode and anchor-based scrolling.
+- Touchpad: add screen-off button and hide system bars on the touchpad page.
+- Back forwarding: focus-aware diagnostics, external-display toasts, and improved window retrieval.
+- Auto-dim: avoid brightening in dark environments; adjust dim range (1–15%) with new default (3%).
+
 ## 1.1.1
 - Compatibility: fix Android 11 crashes when launching app picker or creating overlay contexts.
 - Dock: improve recents filling logic and settings icon row for pinned apps.

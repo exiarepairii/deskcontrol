@@ -57,7 +57,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val dimLevel = findPreference<SeekBarPreference>("pref_touchpad_dim_level")
         dimLevel?.value = (SettingsStore.touchpadDimLevel * 100).toInt()
         dimLevel?.setOnPreferenceChangeListener { _, newValue ->
-            val percent = (newValue as Int).coerceIn(5, 30)
+            val percent = (newValue as Int).coerceIn(1, 15)
             SettingsStore.setTouchpadDimLevel(requireContext(), percent / 100f)
             true
         }

@@ -25,7 +25,7 @@ object SettingsStore {
         private set
     var touchpadAutoDimEnabled = true
         private set
-    var touchpadDimLevel = 0.18f
+    var touchpadDimLevel = 0.03f
         private set
     var touchpadIntroShown = false
         private set
@@ -99,7 +99,7 @@ object SettingsStore {
     }
 
     fun setTouchpadDimLevel(context: Context, value: Float) {
-        val clamped = value.coerceIn(0.05f, 0.30f)
+        val clamped = value.coerceIn(0.01f, 0.15f)
         touchpadDimLevel = clamped
         persist(context) { putFloat("touchpad_dim_level", clamped) }
     }

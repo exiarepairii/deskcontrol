@@ -3,7 +3,11 @@ package com.deskcontrol
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.animation.ValueAnimator
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -27,32 +31,33 @@ class TouchpadActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityTouchpadBinding
     private val processor = TouchpadProcessor(TouchpadTuning)
-    private val twoFingerProcessor = TouchpadProcessor(TouchpadTuning)
     private val handler = Handler(Looper.getMainLooper())
     private var dimRunnable: Runnable? = null
     private var dimAnimator: ValueAnimator? = null
     private var originalWindowBrightness: Float = 0f
+    private var originalSystemBrightness: Float = 1f
     private var hasOriginalWindowBrightness = false
     private var dimmedThisSession = false
     private var focusSessionId = 0
     private var isFocused = false
-    private var isDragging = false
-    private var isTwoFingerDrag = false
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var lastTwoFingerX = 0f
     private var lastTwoFingerY = 0f
     private var downX = 0f
     private var downY = 0f
-    private var downTime = 0L
-    private var lastTapUpTime = 0L
-    private var lastTapUpX = 0f
-    private var lastTapUpY = 0f
-    private var touchSlop = 0
-    private var tapTimeout = 0
-    private var doubleTapTimeout = 0
-    private var pendingSingleTap: Runnable? = null
+    private var touchSlopPx = 0f
+    private var longPressTimeout = 0
+    private var longPressRunnable: Runnable? = null
+    private var scrollAccumDy = 0f
+    private var scrollSpeedMultiplier = 1f
+    private var lastScrollEventTime = 0L
+    private var scrollTickerRunning = false
+    private var scrollAnchorX = 0f
+    private var scrollAnchorY = 0f
+    private var injectAnchorX = 0f
+    private var injectAnchorY = 0f
     private var touchpadActive = false
+    private var touchState = TouchState.IDLE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +67,7 @@ class TouchpadActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
         val insetsController = WindowInsetsControllerCompat(window, binding.root)
-        insetsController.hide(WindowInsetsCompat.Type.statusBars())
+        insetsController.hide(WindowInsetsCompat.Type.systemBars())
         insetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         if (isNightMode()) {
@@ -71,14 +76,23 @@ class TouchpadActivity : AppCompatActivity() {
         }
 
         val viewConfig = ViewConfiguration.get(this)
-        touchSlop = viewConfig.scaledTouchSlop
-        tapTimeout = ViewConfiguration.getTapTimeout()
-        doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout()
+        touchSlopPx = resources.displayMetrics.density * TOUCH_SLOP_DP
+        longPressTimeout = ViewConfiguration.getLongPressTimeout()
 
         binding.touchpadToolbar.title = getString(R.string.touchpad_title)
+        binding.touchpadToolbar.inflateMenu(R.menu.touchpad_menu)
+        tintToolbarMenu()
         binding.touchpadToolbar.setNavigationOnClickListener {
             DiagnosticsLog.add("Touchpad: exit via toolbar")
             finish()
+        }
+        binding.touchpadToolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_blackout) {
+                setBlackoutVisible(true)
+                true
+            } else {
+                false
+            }
         }
         binding.touchpadToolbar.setOnLongClickListener {
             toggleTuningPanel()
@@ -92,6 +106,9 @@ class TouchpadActivity : AppCompatActivity() {
         binding.touchpadArea.setOnTouchListener { _, event ->
             handleTouch(event)
             true
+        }
+        binding.blackoutOverlay.setOnClickListener {
+            setBlackoutVisible(false)
         }
 
         setupTuningControls()
@@ -114,14 +131,29 @@ class TouchpadActivity : AppCompatActivity() {
                             ).show()
                             return
                         }
+                        val backTimestamp = SystemClock.uptimeMillis()
+                        DiagnosticsLog.add("Touchpad: back requested t=$backTimestamp")
                         val service = ControlAccessibilityService.current()
-                        if (service?.performBack() != true) {
+                        if (service == null) {
                             DiagnosticsLog.add("Touchpad: back failed (accessibility missing)")
                             Toast.makeText(
                                 this@TouchpadActivity,
                                 getString(R.string.touchpad_accessibility_required_toast),
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } else {
+                            val success = service.performBack()
+                            if (!success && SessionStore.lastBackFailure == "external_not_focused") {
+                                val message =
+                                    getString(R.string.touchpad_back_external_not_focused)
+                                service.showToastOnExternalDisplay(message)
+                            } else if (!success &&
+                                SessionStore.lastBackFailure == "external_window_missing"
+                            ) {
+                                val message =
+                                    getString(R.string.touchpad_back_external_window_missing)
+                                service.showToastOnExternalDisplay(message)
+                            }
                         }
                         DiagnosticsLog.add("Touchpad: back forwarded")
                     } else {
@@ -151,7 +183,8 @@ class TouchpadActivity : AppCompatActivity() {
 
     override fun onPause() {
         stopAutoDimSession()
-        cancelPendingSingleTap()
+        cancelLongPress()
+        exitScrollMode()
         updateKeepScreenOn(false)
         DiagnosticsLog.add("Touchpad: pause")
         super.onPause()
@@ -159,17 +192,22 @@ class TouchpadActivity : AppCompatActivity() {
 
     override fun onStop() {
         stopAutoDimSession()
-        cancelPendingSingleTap()
+        cancelLongPress()
+        exitScrollMode()
         super.onStop()
     }
 
     override fun onDestroy() {
         stopAutoDimSession()
-        cancelPendingSingleTap()
+        cancelLongPress()
+        exitScrollMode()
         super.onDestroy()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (binding.blackoutOverlay.isVisible) {
+            return super.dispatchTouchEvent(event)
+        }
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             val rect = android.graphics.Rect()
             binding.touchpadArea.getGlobalVisibleRect(rect)
@@ -183,48 +221,26 @@ class TouchpadActivity : AppCompatActivity() {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 processor.reset()
-                twoFingerProcessor.reset()
-                isTwoFingerDrag = false
-                isDragging = false
                 downX = event.x
                 downY = event.y
-                downTime = event.eventTime
                 lastTouchX = event.x
                 lastTouchY = event.y
+                touchState = TouchState.ONE_FINGER_DOWN
+                scheduleLongPress(service)
                 service.wakeCursor()
-                if (isSecondTapHold(event)) {
-                    cancelPendingSingleTap()
-                    isDragging = true
-                    binding.touchpadArea.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    service.startDragAtCursor()
-                }
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.pointerCount >= 2) {
-                    cancelPendingSingleTap()
-                    isTwoFingerDrag = true
-                    isDragging = true
-                    lastTwoFingerX = averageX(event)
-                    lastTwoFingerY = averageY(event)
-                    twoFingerProcessor.reset()
-                    service.startDragAtCursor()
-                    service.wakeCursor()
+                    cancelLongPress()
+                    if (touchState == TouchState.DRAGGING) {
+                        service.endDragAtCursor()
+                    }
+                    enterScrollMode(service, event)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isTwoFingerDrag && event.pointerCount >= 2) {
-                    val currentX = averageX(event)
-                    val currentY = averageY(event)
-                    val deltaX = currentX - lastTwoFingerX
-                    val deltaY = currentY - lastTwoFingerY
-                    lastTwoFingerX = currentX
-                    lastTwoFingerY = currentY
-                    val output = twoFingerProcessor.process(deltaX, deltaY, event.eventTime)
-                    if (output.dx != 0f || output.dy != 0f) {
-                        val boost = TouchpadTuning.twoFingerDragBoost
-                        service.moveCursorBy(output.dx * boost, output.dy * boost)
-                        service.updateDragToCursor()
-                    }
+                if (touchState == TouchState.SCROLL_MODE && event.pointerCount >= 2) {
+                    updateScrollMode(event)
                     return
                 }
 
@@ -232,92 +248,64 @@ class TouchpadActivity : AppCompatActivity() {
                 val dy = event.y - lastTouchY
                 val output = processor.process(dx, dy, event.eventTime)
                 if (output.dx != 0f || output.dy != 0f) {
-                    val boost = if (isDragging) TouchpadTuning.dragBoost else 1f
+                    val boost = if (touchState == TouchState.DRAGGING) {
+                        TouchpadTuning.dragBoost
+                    } else {
+                        1f
+                    }
                     service.moveCursorBy(output.dx * boost, output.dy * boost)
-                    if (isDragging) {
+                    if (touchState == TouchState.DRAGGING) {
                         service.updateDragToCursor()
                     }
                 }
                 lastTouchX = event.x
                 lastTouchY = event.y
 
-                val moved = abs(event.x - downX) > touchSlop ||
-                    abs(event.y - downY) > touchSlop
-                if (moved) {
-                    cancelPendingSingleTap()
+                if (touchState == TouchState.ONE_FINGER_DOWN) {
+                    val moved = abs(event.x - downX) > touchSlopPx ||
+                        abs(event.y - downY) > touchSlopPx
+                    if (moved) {
+                        cancelLongPress()
+                        touchState = TouchState.MOVING_CURSOR
+                    }
                 }
             }
             MotionEvent.ACTION_POINTER_UP -> {
-                if (event.pointerCount <= 2) {
-                    if (isTwoFingerDrag) {
-                        service.endDragAtCursor()
-                    }
-                    isTwoFingerDrag = false
-                    isDragging = false
+                if (touchState == TouchState.SCROLL_MODE && event.pointerCount <= 2) {
+                    exitScrollMode()
                     resetTouchBaseline(event)
-                    lastTwoFingerX = 0f
-                    lastTwoFingerY = 0f
-                    twoFingerProcessor.reset()
                 }
             }
             MotionEvent.ACTION_UP -> {
-                if (isTwoFingerDrag) {
-                    service.endDragAtCursor()
-                    isTwoFingerDrag = false
-                    isDragging = false
+                cancelLongPress()
+                if (touchState == TouchState.SCROLL_MODE) {
+                    exitScrollMode()
                     resetTouchBaseline(event)
                     return
                 }
-                if (isDragging) {
+                if (touchState == TouchState.DRAGGING) {
                     service.endDragAtCursor()
-                    isDragging = false
+                    touchState = TouchState.IDLE
                     return
                 }
-                val duration = event.eventTime - downTime
-                val moved = abs(event.x - downX) > touchSlop ||
-                    abs(event.y - downY) > touchSlop
-                if (duration <= tapTimeout && !moved) {
-                    scheduleSingleTap(service, event.eventTime, event.x, event.y)
+                val moved = abs(event.x - downX) > touchSlopPx ||
+                    abs(event.y - downY) > touchSlopPx
+                if (touchState == TouchState.ONE_FINGER_DOWN && !moved) {
+                    service.tapAtCursor()
                 }
+                touchState = TouchState.IDLE
             }
             MotionEvent.ACTION_CANCEL -> {
-                cancelPendingSingleTap()
-                if (isDragging) {
+                cancelLongPress()
+                if (touchState == TouchState.DRAGGING) {
                     service.cancelDrag()
                 }
-                isDragging = false
-                isTwoFingerDrag = false
+                if (touchState == TouchState.SCROLL_MODE) {
+                    exitScrollMode()
+                }
+                touchState = TouchState.IDLE
             }
         }
-    }
-
-    private fun scheduleSingleTap(
-        service: ControlAccessibilityService,
-        eventTime: Long,
-        x: Float,
-        y: Float
-    ) {
-        lastTapUpTime = eventTime
-        lastTapUpX = x
-        lastTapUpY = y
-        pendingSingleTap = Runnable {
-            service.tapAtCursor()
-            pendingSingleTap = null
-        }
-        handler.postDelayed(pendingSingleTap!!, doubleTapTimeout.toLong())
-    }
-
-    private fun cancelPendingSingleTap() {
-        pendingSingleTap?.let { handler.removeCallbacks(it) }
-        pendingSingleTap = null
-    }
-
-    private fun isSecondTapHold(event: MotionEvent): Boolean {
-        val timeDelta = event.eventTime - lastTapUpTime
-        if (timeDelta <= 0 || timeDelta > doubleTapTimeout) return false
-        val moved = abs(event.x - lastTapUpX) > touchSlop ||
-            abs(event.y - lastTapUpY) > touchSlop
-        return !moved
     }
 
     private fun averageY(event: MotionEvent): Float {
@@ -335,7 +323,130 @@ class TouchpadActivity : AppCompatActivity() {
         lastTouchY = averageY(event)
         downX = lastTouchX
         downY = lastTouchY
-        downTime = event.eventTime
+    }
+
+    private fun scheduleLongPress(service: ControlAccessibilityService) {
+        cancelLongPress()
+        longPressRunnable = Runnable {
+            if (touchState != TouchState.ONE_FINGER_DOWN) return@Runnable
+            val moved = abs(lastTouchX - downX) > touchSlopPx ||
+                abs(lastTouchY - downY) > touchSlopPx
+            if (moved) return@Runnable
+            touchState = TouchState.DRAGGING
+            binding.touchpadArea.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            service.startDragAtCursor()
+        }
+        handler.postDelayed(longPressRunnable!!, longPressTimeout.toLong())
+    }
+
+    private fun cancelLongPress() {
+        longPressRunnable?.let { handler.removeCallbacks(it) }
+        longPressRunnable = null
+    }
+
+    private fun setBlackoutVisible(visible: Boolean) {
+        if (binding.blackoutOverlay.isVisible == visible) return
+        if (visible) {
+            cancelLongPress()
+            exitScrollMode()
+            if (touchState == TouchState.DRAGGING) {
+                ControlAccessibilityService.current()?.endDragAtCursor()
+                touchState = TouchState.IDLE
+            }
+        }
+        binding.blackoutOverlay.isVisible = visible
+        DiagnosticsLog.add("Touchpad: blackout=$visible")
+    }
+
+    private fun enterScrollMode(service: ControlAccessibilityService, event: MotionEvent) {
+        touchState = TouchState.SCROLL_MODE
+        lastTwoFingerY = averageY(event)
+        lastScrollEventTime = event.eventTime
+        scrollAccumDy = 0f
+        scrollSpeedMultiplier = 1f
+        val cursor = service.getCursorPosition()
+        scrollAnchorX = cursor.x
+        scrollAnchorY = cursor.y
+        val injectAnchor = service.prepareScrollMode(scrollAnchorX, scrollAnchorY)
+        injectAnchorX = injectAnchor.x
+        injectAnchorY = injectAnchor.y
+        DiagnosticsLog.add(
+            "Touchpad: scroll mode enter anchor=(${scrollAnchorX.toInt()},${scrollAnchorY.toInt()})"
+        )
+        startScrollTicker()
+    }
+
+    private fun updateScrollMode(event: MotionEvent) {
+        val currentY = averageY(event)
+        val deltaY = currentY - lastTwoFingerY
+        lastTwoFingerY = currentY
+        scrollAccumDy += deltaY
+        val dt = (event.eventTime - lastScrollEventTime).coerceAtLeast(1L)
+        val velocity = abs(deltaY) / dt.toFloat()
+        scrollSpeedMultiplier = computeScrollSpeedMultiplier(velocity)
+        lastScrollEventTime = event.eventTime
+    }
+
+    private fun exitScrollMode() {
+        if (touchState != TouchState.SCROLL_MODE) return
+        touchState = TouchState.IDLE
+        stopScrollTicker()
+        scrollAccumDy = 0f
+        lastScrollEventTime = 0L
+        DiagnosticsLog.add("Touchpad: scroll mode exit")
+    }
+
+    private fun startScrollTicker() {
+        if (scrollTickerRunning) return
+        scrollTickerRunning = true
+        handler.post(scrollTicker)
+    }
+
+    private fun stopScrollTicker() {
+        if (!scrollTickerRunning) return
+        handler.removeCallbacks(scrollTicker)
+        scrollTickerRunning = false
+    }
+
+    private val scrollTicker = object : Runnable {
+        override fun run() {
+            if (touchState != TouchState.SCROLL_MODE) {
+                scrollTickerRunning = false
+                return
+            }
+            emitScrollSteps()
+            handler.postDelayed(this, SCROLL_TICK_MS)
+        }
+    }
+
+    private fun emitScrollSteps() {
+        val service = ControlAccessibilityService.current() ?: return
+        val multiplier = scrollSpeedMultiplier.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
+        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / multiplier
+        val absAccum = abs(scrollAccumDy)
+        if (stepThreshold <= 0f || absAccum < stepThreshold) return
+        val direction = if (scrollAccumDy > 0f) 1 else -1
+        val maxSteps = SCROLL_MAX_STEPS_PER_TICK
+        var stepsToEmit = (absAccum / stepThreshold).toInt()
+        if (stepsToEmit > maxSteps) stepsToEmit = maxSteps
+        var emitted = 0
+        while (emitted < stepsToEmit) {
+            val success = service.performScrollStep(
+                direction,
+                injectAnchorX,
+                injectAnchorY,
+                multiplier
+            )
+            if (!success) break
+            scrollAccumDy -= direction * stepThreshold
+            emitted += 1
+        }
+    }
+
+    private fun computeScrollSpeedMultiplier(velocityPxPerMs: Float): Float {
+        if (velocityPxPerMs <= 0f) return 1f
+        val scaled = velocityPxPerMs / SCROLL_SPEED_BASE_PX_PER_MS
+        return scaled.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
     }
 
     private fun toggleTuningPanel() {
@@ -345,6 +456,23 @@ class TouchpadActivity : AppCompatActivity() {
             } else {
                 android.view.View.VISIBLE
             }
+    }
+
+    private fun tintToolbarMenu() {
+        val color = ContextCompat.getColor(this, R.color.touchpadToolbarText)
+        val menu = binding.touchpadToolbar.menu
+        for (i in 0 until menu.size()) {
+            val item = menu.getItem(i)
+            val title = item.title ?: continue
+            val spannable = SpannableString(title)
+            spannable.setSpan(
+                ForegroundColorSpan(color),
+                0,
+                spannable.length,
+                Spanned.SPAN_INCLUSIVE_INCLUSIVE
+            )
+            item.title = spannable
+        }
     }
 
     private fun setTouchpadActive(active: Boolean) {
@@ -531,6 +659,7 @@ class TouchpadActivity : AppCompatActivity() {
         val current = window.attributes.screenBrightness
         originalWindowBrightness = current
         hasOriginalWindowBrightness = true
+        originalSystemBrightness = readSystemBrightness()
     }
 
     private fun restoreOriginalBrightness() {
@@ -544,7 +673,10 @@ class TouchpadActivity : AppCompatActivity() {
     }
 
     private fun dimWindowBrightness() {
-        val target = computeDimTarget()
+        val target = computeDimTarget() ?: run {
+            DiagnosticsLog.add("Touchpad: dim skipped (avoid brightening)")
+            return
+        }
         val start = getEstimatedCurrentBrightness().coerceAtLeast(target)
         if (start <= target) {
             applyWindowBrightness(target)
@@ -574,6 +706,23 @@ class TouchpadActivity : AppCompatActivity() {
         if (windowValue >= 0f) {
             return windowValue.coerceIn(0f, 1f)
         }
+        return readSystemBrightness()
+    }
+
+    private fun computeDimTarget(): Float? {
+        val preferred = SettingsStore.touchpadDimLevel.coerceIn(0f, 1f)
+        if (originalWindowBrightness < 0f) {
+            val systemBrightness = originalSystemBrightness.coerceIn(0f, 1f)
+            if (preferred >= systemBrightness) {
+                return null
+            }
+            return preferred.coerceAtMost(systemBrightness)
+        }
+        val current = getEstimatedCurrentBrightness()
+        return minOf(preferred, current)
+    }
+
+    private fun readSystemBrightness(): Float {
         return try {
             val systemValue = Settings.System.getInt(
                 contentResolver,
@@ -583,12 +732,6 @@ class TouchpadActivity : AppCompatActivity() {
         } catch (e: Exception) {
             SettingsStore.touchpadDimLevel.coerceIn(0f, 1f)
         }
-    }
-
-    private fun computeDimTarget(): Float {
-        val preferred = SettingsStore.touchpadDimLevel.coerceIn(0f, 1f)
-        val current = getEstimatedCurrentBrightness()
-        return minOf(preferred, current)
     }
 
     private fun cancelDimTimer() {
@@ -604,5 +747,20 @@ class TouchpadActivity : AppCompatActivity() {
     companion object {
         private const val AUTO_DIM_DELAY_MS = 10_000L
         private const val DIM_ANIMATION_DURATION_MS = 400L
+        private const val TOUCH_SLOP_DP = 8f
+        private const val SCROLL_STEP_DP = 8f
+        private const val SCROLL_TICK_MS = 16L
+        private const val SCROLL_MAX_STEPS_PER_TICK = 3
+        private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.6f
+        private const val SCROLL_SPEED_MIN = 0.6f
+        private const val SCROLL_SPEED_MAX = 2.0f
+    }
+
+    private enum class TouchState {
+        IDLE,
+        ONE_FINGER_DOWN,
+        MOVING_CURSOR,
+        DRAGGING,
+        SCROLL_MODE
     }
 }
