@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3
+- Touchpad: revamped two-finger scroll tuning (natural scrolling, speed baseline, adaptive distance/velocity, micro-precision).
+- Touchpad: toolbar layout refresh and hint copy simplification.
+- Dock: hot-plug recovery, cursor overshoot and trigger tuning, drawer close button.
+- Build: release signing via CI/local properties; ignore keystore files; warning cleanup.
+
 ## 1.1.2.post2
 - Build: release signing via CI/local properties; ignore keystore files.
 - Maintenance: address Kotlin/Gradle warnings.

@@ -8,6 +8,7 @@ object SettingsStore {
     private const val LANGUAGE_SYSTEM = "system"
     private const val LANGUAGE_ENGLISH = "en"
     private const val LANGUAGE_CHINESE = "zh-CN"
+    private const val BASE_SCROLL_SPEED = 0.4f
 
     var nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         private set
@@ -29,8 +30,10 @@ object SettingsStore {
         private set
     var touchpadIntroShown = false
         private set
-    var touchpadScrollSpeed = 0.7f
+    var touchpadScrollSpeed = 1.0f
         private set
+    private const val PREF_SCROLL_SPEED_SCALE = "tp_scroll_scale"
+    private const val PREF_SCROLL_SPEED_LEGACY = "tp_scroll_speed"
     var touchpadScrollInverted = true
         private set
     var switchBarEnabled = true
@@ -50,8 +53,14 @@ object SettingsStore {
         touchpadAutoDimEnabled = prefs.getBoolean("touchpad_auto_dim", touchpadAutoDimEnabled)
         touchpadDimLevel = prefs.getFloat("touchpad_dim_level", touchpadDimLevel)
         touchpadIntroShown = prefs.getBoolean("touchpad_intro_shown", touchpadIntroShown)
-        touchpadScrollSpeed = prefs.getFloat("tp_scroll_speed", touchpadScrollSpeed)
-            .coerceIn(0.4f, 1.2f)
+        touchpadScrollSpeed = if (prefs.contains(PREF_SCROLL_SPEED_SCALE)) {
+            prefs.getFloat(PREF_SCROLL_SPEED_SCALE, touchpadScrollSpeed)
+        } else if (prefs.contains(PREF_SCROLL_SPEED_LEGACY)) {
+            val legacy = prefs.getFloat(PREF_SCROLL_SPEED_LEGACY, BASE_SCROLL_SPEED)
+            (legacy / BASE_SCROLL_SPEED)
+        } else {
+            touchpadScrollSpeed
+        }.coerceIn(0.5f, 3.0f)
         touchpadScrollInverted = prefs.getBoolean("tp_scroll_invert", touchpadScrollInverted)
         switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
         switchBarScale = prefs.getFloat("switch_bar_scale", switchBarScale)
@@ -117,10 +126,12 @@ object SettingsStore {
     }
 
     fun setTouchpadScrollSpeed(context: Context, value: Float) {
-        val clamped = value.coerceIn(0.4f, 1.2f)
+        val clamped = value.coerceIn(0.5f, 3.0f)
         touchpadScrollSpeed = clamped
-        persist(context) { putFloat("tp_scroll_speed", clamped) }
+        persist(context) { putFloat(PREF_SCROLL_SPEED_SCALE, clamped) }
     }
+
+    fun getTouchpadScrollBaseSpeed(): Float = BASE_SCROLL_SPEED
 
     fun setTouchpadScrollInverted(context: Context, inverted: Boolean) {
         touchpadScrollInverted = inverted

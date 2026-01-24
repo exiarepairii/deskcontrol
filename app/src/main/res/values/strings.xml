@@ -18,6 +18,7 @@
     <string name="app_picker_title">Choose an app</string>
     <string name="app_search_hint">Search apps</string>
     <string name="app_drawer_title">All apps</string>
+    <string name="app_drawer_close">Close</string>
     <string name="switch_bar_all_apps">All apps</string>
     <string name="app_icon_content_description">App icon</string>
     <string name="app_placeholder_name">App name</string>
@@ -59,7 +60,8 @@
 
     <string name="touchpad_title">Touchpad</string>
     <string name="touchpad_blackout">Screen off</string>
-    <string name="touchpad_hint">Slide on the touchpad area to move the cursor. Long-press and slide to drag. Two fingers to scroll.</string>
+    <string name="touchpad_back_button">Back</string>
+    <string name="touchpad_hint">Tap the rectangle to activate; Back is forwarded to the external display.\nSlide: move cursor; press and slide: drag; two fingers: scroll.</string>
     <string name="touchpad_tuning">Touchpad tuning</string>
     <string name="touchpad_base_gain">Base gain</string>
     <string name="touchpad_acceleration">Acceleration</string>
@@ -122,7 +124,7 @@
     <string name="settings_touchpad_dim_level_default">18%</string>
     <string name="settings_touchpad_scroll_speed">Two-finger scroll speed</string>
     <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
-    <string name="settings_touchpad_scroll_speed_default">0.7x</string>
+    <string name="settings_touchpad_scroll_speed_default">1.0x</string>
     <string name="settings_touchpad_scroll_invert">Natural scrolling</string>
     <string name="settings_touchpad_scroll_invert_summary">Two-finger up scrolls up.</string>
     <string name="language_system">System</string>

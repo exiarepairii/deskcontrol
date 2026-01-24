@@ -5,9 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.animation.ValueAnimator
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -56,6 +53,7 @@ class TouchpadActivity : AppCompatActivity() {
     private var scrollAnchorY = 0f
     private var injectAnchorX = 0f
     private var injectAnchorY = 0f
+    private var scrollDistanceAccum = 0f
     private var touchpadActive = false
     private var touchState = TouchState.IDLE
 
@@ -85,20 +83,12 @@ class TouchpadActivity : AppCompatActivity() {
         touchSlopPx = resources.displayMetrics.density * TOUCH_SLOP_DP
         longPressTimeout = ViewConfiguration.getLongPressTimeout()
 
-        binding.touchpadToolbar.title = getString(R.string.touchpad_title)
-        binding.touchpadToolbar.inflateMenu(R.menu.touchpad_menu)
-        tintToolbarMenu()
-        binding.touchpadToolbar.setNavigationOnClickListener {
+        binding.touchpadBack.setOnClickListener {
             DiagnosticsLog.add("Touchpad: exit via toolbar")
             finish()
         }
-        binding.touchpadToolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_blackout) {
-                setBlackoutVisible(true)
-                true
-            } else {
-                false
-            }
+        binding.touchpadBlackout.setOnClickListener {
+            setBlackoutVisible(true)
         }
         binding.touchpadToolbar.setOnLongClickListener {
             toggleTuningPanel()
@@ -369,6 +359,7 @@ class TouchpadActivity : AppCompatActivity() {
         lastTwoFingerY = averageY(event)
         lastScrollEventTime = event.eventTime
         scrollAccumDy = 0f
+        scrollDistanceAccum = 0f
         scrollSpeedMultiplier = 1f
         val cursor = service.getCursorPosition()
         scrollAnchorX = cursor.x
@@ -388,12 +379,27 @@ class TouchpadActivity : AppCompatActivity() {
         lastTwoFingerY = currentY
         if ((deltaY > 0f && scrollAccumDy < 0f) || (deltaY < 0f && scrollAccumDy > 0f)) {
             scrollAccumDy = 0f
+            scrollDistanceAccum = 0f
         }
         scrollAccumDy += deltaY
+        scrollDistanceAccum += abs(deltaY)
         val dt = (event.eventTime - lastScrollEventTime).coerceAtLeast(1L)
         val velocity = abs(deltaY) / dt.toFloat()
         scrollSpeedMultiplier = computeScrollSpeedMultiplier(velocity)
         lastScrollEventTime = event.eventTime
+        if (velocity < SCROLL_STOP_VELOCITY && abs(scrollAccumDy) < scrollStopThreshold()) {
+            scrollAccumDy = 0f
+            if (scrollDistanceAccum < scrollStopThreshold() * SCROLL_STOP_DISTANCE_WINDOW) {
+                scrollDistanceAccum = 0f
+            }
+            stopScrollTicker()
+        }
+        if (velocity < SCROLL_DISTANCE_DECAY_VELOCITY) {
+            scrollDistanceAccum *= SCROLL_DISTANCE_DECAY_FACTOR
+        }
+        if (!scrollTickerRunning) {
+            startScrollTicker()
+        }
         emitScrollSteps()
     }
 
@@ -402,6 +408,7 @@ class TouchpadActivity : AppCompatActivity() {
         touchState = TouchState.IDLE
         stopScrollTicker()
         scrollAccumDy = 0f
+        scrollDistanceAccum = 0f
         lastScrollEventTime = 0L
         DiagnosticsLog.add("Touchpad: scroll mode exit")
     }
@@ -437,20 +444,38 @@ class TouchpadActivity : AppCompatActivity() {
 
     private fun emitScrollSteps() {
         val service = ControlAccessibilityService.current() ?: return
-        val userSpeed = SettingsStore.touchpadScrollSpeed.coerceIn(
+        val userScale = SettingsStore.touchpadScrollSpeed.coerceIn(
             SCROLL_SPEED_SETTING_MIN,
             SCROLL_SPEED_SETTING_MAX
         )
-        val multiplier = (scrollSpeedMultiplier * userSpeed)
-            .coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
-        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / multiplier
+        val baseSpeed = SettingsStore.getTouchpadScrollBaseSpeed()
+        val effectiveSpeed = baseSpeed * userScale
+        val velocityMultiplier = scrollSpeedMultiplier.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
+        val adaptiveMultiplier =
+            1f + (velocityMultiplier - 1f) * SCROLL_SPEED_ADAPTIVITY
+        val adaptiveStepMultiplier =
+            1f + (velocityMultiplier - 1f) * SCROLL_STEP_ADAPTIVITY
+        val distanceFactor = computeDistanceFactor(scrollDistanceAccum)
+        val adaptiveSpeed = (effectiveSpeed * adaptiveMultiplier * distanceFactor)
+            .coerceIn(effectiveSpeed * 0.35f, effectiveSpeed * 3.0f)
+        val adaptiveStepSpeed = (effectiveSpeed * adaptiveStepMultiplier * distanceFactor)
+            .coerceIn(effectiveSpeed * 0.5f, effectiveSpeed * 2.2f)
+        val gestureSpeed = adaptiveSpeed
+            .coerceIn(SCROLL_GESTURE_SPEED_MIN, SCROLL_SPEED_MAX)
+        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / adaptiveStepSpeed
         val absAccum = abs(scrollAccumDy)
         if (stepThreshold <= 0f || absAccum < stepThreshold) return
         var direction = if (scrollAccumDy > 0f) 1 else -1
         if (SettingsStore.touchpadScrollInverted) {
             direction *= -1
         }
-        val maxSteps = SCROLL_MAX_STEPS_PER_TICK
+        val precisionScroll = velocityMultiplier <= SCROLL_PRECISION_VELOCITY_MAX ||
+            absAccum < stepThreshold * SCROLL_PRECISION_WINDOW_STEPS
+        val maxSteps = if (distanceFactor >= SCROLL_MAX_STEP_BOOST_THRESHOLD) {
+            SCROLL_MAX_STEPS_FAST
+        } else {
+            SCROLL_MAX_STEPS_PER_TICK
+        }
         var stepsToEmit = (absAccum / stepThreshold).toInt()
         if (stepsToEmit > maxSteps) stepsToEmit = maxSteps
         var emitted = 0
@@ -459,7 +484,8 @@ class TouchpadActivity : AppCompatActivity() {
                 direction,
                 injectAnchorX,
                 injectAnchorY,
-                multiplier
+                gestureSpeed,
+                preferGesture = true
             )
             if (!success) break
             scrollAccumDy -= direction * stepThreshold
@@ -471,6 +497,26 @@ class TouchpadActivity : AppCompatActivity() {
         if (velocityPxPerMs <= 0f) return 1f
         val scaled = velocityPxPerMs / SCROLL_SPEED_BASE_PX_PER_MS
         return scaled.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
+    }
+
+    private fun computeDistanceFactor(distancePx: Float): Float {
+        if (distancePx <= 0f) return 1f
+        val threshold = resources.displayMetrics.density * SCROLL_DISTANCE_ACCEL_DP
+        if (threshold <= 0f) return 1f
+        val normalized = (distancePx / threshold).coerceAtLeast(0f)
+        val factor = 1f + kotlin.math.sqrt(normalized) * SCROLL_DISTANCE_ACCEL_GAIN
+        return factor.coerceIn(1f, SCROLL_DISTANCE_ACCEL_MAX)
+    }
+
+    private fun scrollStopThreshold(): Float {
+        val userScale = SettingsStore.touchpadScrollSpeed.coerceIn(
+            SCROLL_SPEED_SETTING_MIN,
+            SCROLL_SPEED_SETTING_MAX
+        )
+        val baseSpeed = SettingsStore.getTouchpadScrollBaseSpeed()
+        val effectiveSpeed = baseSpeed * userScale
+        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / effectiveSpeed
+        return stepThreshold * SCROLL_STOP_WINDOW_STEPS
     }
 
     private fun applyToolbarInsets() {
@@ -496,23 +542,6 @@ class TouchpadActivity : AppCompatActivity() {
             } else {
                 android.view.View.VISIBLE
             }
-    }
-
-    private fun tintToolbarMenu() {
-        val color = ContextCompat.getColor(this, R.color.touchpadToolbarText)
-        val menu = binding.touchpadToolbar.menu
-        for (i in 0 until menu.size()) {
-            val item = menu.getItem(i)
-            val title = item.title ?: continue
-            val spannable = SpannableString(title)
-            spannable.setSpan(
-                ForegroundColorSpan(color),
-                0,
-                spannable.length,
-                Spanned.SPAN_INCLUSIVE_INCLUSIVE
-            )
-            item.title = spannable
-        }
     }
 
     private fun setTouchpadActive(active: Boolean) {
@@ -783,14 +812,29 @@ class TouchpadActivity : AppCompatActivity() {
         private const val AUTO_DIM_DELAY_MS = 10_000L
         private const val DIM_ANIMATION_DURATION_MS = 400L
         private const val TOUCH_SLOP_DP = 8f
-        private const val SCROLL_STEP_DP = 8f
+        private const val SCROLL_STEP_DP = 6f
         private const val SCROLL_TICK_MS = 16L
         private const val SCROLL_MAX_STEPS_PER_TICK = 3
-        private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.6f
-        private const val SCROLL_SPEED_MIN = 0.6f
-        private const val SCROLL_SPEED_MAX = 2.0f
-        private const val SCROLL_SPEED_SETTING_MIN = 0.4f
-        private const val SCROLL_SPEED_SETTING_MAX = 1.2f
+        private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.35f
+        private const val SCROLL_SPEED_MIN = 0.35f
+        private const val SCROLL_SPEED_MAX = 3.0f
+        private const val SCROLL_GESTURE_SPEED_MIN = 0.2f
+        private const val SCROLL_SPEED_SETTING_MIN = 0.5f
+        private const val SCROLL_SPEED_SETTING_MAX = 3.0f
+        private const val SCROLL_SPEED_ADAPTIVITY = 1.05f
+        private const val SCROLL_STEP_ADAPTIVITY = 0.85f
+        private const val SCROLL_DISTANCE_ACCEL_DP = 120f
+        private const val SCROLL_DISTANCE_ACCEL_GAIN = 0.35f
+        private const val SCROLL_DISTANCE_ACCEL_MAX = 1.8f
+        private const val SCROLL_DISTANCE_DECAY_VELOCITY = 0.35f
+        private const val SCROLL_DISTANCE_DECAY_FACTOR = 0.85f
+        private const val SCROLL_PRECISION_VELOCITY_MAX = 0.95f
+        private const val SCROLL_PRECISION_WINDOW_STEPS = 1.5f
+        private const val SCROLL_STOP_VELOCITY = 0.22f
+        private const val SCROLL_STOP_WINDOW_STEPS = 0.8f
+        private const val SCROLL_STOP_DISTANCE_WINDOW = 2.0f
+        private const val SCROLL_MAX_STEPS_FAST = 6
+        private const val SCROLL_MAX_STEP_BOOST_THRESHOLD = 1.3f
         private const val SCROLL_IDLE_TIMEOUT_MS = 50L
     }
 
