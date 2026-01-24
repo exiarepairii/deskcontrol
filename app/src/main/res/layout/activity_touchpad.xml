@@ -13,9 +13,11 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/touchpadToolbar"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:background="@color/touchpadBackground"
             android:title="@string/touchpad_title"
             app:titleTextColor="@color/touchpadToolbarText"
             app:contentInsetStartWithNavigation="0dp"

@@ -21,15 +21,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Decode release keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/deskcontrol-release.jks"
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/deskcontrol-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Locate and rename APK
         id: apk
         run: |
-          APK_PATH=$(ls app/build/outputs/apk/debug/*.apk | head -n 1)
+          APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
           TAG_NAME="${GITHUB_REF_NAME}"
-          RENAMED_PATH="app/build/outputs/apk/debug/deskcontrol-${TAG_NAME}.apk"
+          RENAMED_PATH="app/build/outputs/apk/release/deskcontrol-${TAG_NAME}.apk"
           mv "$APK_PATH" "$RENAMED_PATH"
           echo "path=$RENAMED_PATH" >> $GITHUB_OUTPUT
 

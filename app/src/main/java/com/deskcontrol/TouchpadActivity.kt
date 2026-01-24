@@ -18,9 +18,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import android.content.Intent
-import android.content.res.Configuration
-import android.graphics.Color
+import android.os.Build
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
@@ -66,16 +66,22 @@ class TouchpadActivity : AppCompatActivity() {
         DiagnosticsLog.add("Touchpad: create displayId=${display?.displayId ?: -1}")
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root, includeTop = false)
+        applyToolbarInsets()
         val insetsController = WindowInsetsControllerCompat(window, binding.root)
         insetsController.hide(WindowInsetsCompat.Type.statusBars())
         insetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (isNightMode()) {
-            window.statusBarColor = Color.BLACK
-            window.navigationBarColor = Color.BLACK
+        insetsController.isAppearanceLightStatusBars = false
+        insetsController.isAppearanceLightNavigationBars = false
+        val touchpadBg = ContextCompat.getColor(this, R.color.touchpadBackground)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = touchpadBg
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = touchpadBg
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.isNavigationBarContrastEnforced = false
         }
 
-        val viewConfig = ViewConfiguration.get(this)
         touchSlopPx = resources.displayMetrics.density * TOUCH_SLOP_DP
         longPressTimeout = ViewConfiguration.getLongPressTimeout()
 
@@ -380,11 +386,15 @@ class TouchpadActivity : AppCompatActivity() {
         val currentY = averageY(event)
         val deltaY = currentY - lastTwoFingerY
         lastTwoFingerY = currentY
+        if ((deltaY > 0f && scrollAccumDy < 0f) || (deltaY < 0f && scrollAccumDy > 0f)) {
+            scrollAccumDy = 0f
+        }
         scrollAccumDy += deltaY
         val dt = (event.eventTime - lastScrollEventTime).coerceAtLeast(1L)
         val velocity = abs(deltaY) / dt.toFloat()
         scrollSpeedMultiplier = computeScrollSpeedMultiplier(velocity)
         lastScrollEventTime = event.eventTime
+        emitScrollSteps()
     }
 
     private fun exitScrollMode() {
@@ -411,6 +421,12 @@ class TouchpadActivity : AppCompatActivity() {
     private val scrollTicker = object : Runnable {
         override fun run() {
             if (touchState != TouchState.SCROLL_MODE) {
+                scrollTickerRunning = false
+                return
+            }
+            val idleFor = SystemClock.uptimeMillis() - lastScrollEventTime
+            if (idleFor > SCROLL_IDLE_TIMEOUT_MS) {
+                scrollAccumDy = 0f
                 scrollTickerRunning = false
                 return
             }
@@ -457,6 +473,22 @@ class TouchpadActivity : AppCompatActivity() {
         return scaled.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
     }
 
+    private fun applyToolbarInsets() {
+        val initialTop = binding.touchpadToolbar.paddingTop
+        ViewCompat.setOnApplyWindowInsetsListener(binding.touchpadToolbar) { view, insets ->
+            val systemInsets = insets.getInsetsIgnoringVisibility(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                view.paddingLeft,
+                initialTop + systemInsets.top,
+                view.paddingRight,
+                view.paddingBottom
+            )
+            insets
+        }
+    }
+
     private fun toggleTuningPanel() {
         binding.tuningPanel.visibility =
             if (binding.tuningPanel.visibility == android.view.View.VISIBLE) {
@@ -501,11 +533,6 @@ class TouchpadActivity : AppCompatActivity() {
                 stopAutoDimSession()
             }
         }
-    }
-
-    private fun isNightMode(): Boolean {
-        return (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
     }
 
     private fun setupTuningControls() {
@@ -762,8 +789,9 @@ class TouchpadActivity : AppCompatActivity() {
         private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.6f
         private const val SCROLL_SPEED_MIN = 0.6f
         private const val SCROLL_SPEED_MAX = 2.0f
-        private const val SCROLL_SPEED_SETTING_MIN = 0.5f
-        private const val SCROLL_SPEED_SETTING_MAX = 1.5f
+        private const val SCROLL_SPEED_SETTING_MIN = 0.4f
+        private const val SCROLL_SPEED_SETTING_MAX = 1.2f
+        private const val SCROLL_IDLE_TIMEOUT_MS = 50L
     }
 
     private enum class TouchState {

@@ -106,7 +106,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     ) {
         val pref = findPreference<ListPreference>(key) ?: return
         pref.value = currentValue
-        pref.setOnPreferenceChangeListener { preference, newValue ->
+        pref.setOnPreferenceChangeListener { _, newValue ->
             val value = newValue as String
             onChange(value)
             true

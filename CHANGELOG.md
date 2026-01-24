@@ -1,9 +1,15 @@
 # Changelog
 
+## 1.1.2.post2
+- Build: release signing via CI/local properties; ignore keystore files.
+- Maintenance: address Kotlin/Gradle warnings.
+
 ## 1.1.2.post1
 - External display: retry overlay attach after hot-plug to restore cursor/Dock.
 - Touchpad: immersive top area on cutout devices; reduce system bar interference with edge back.
 - Touchpad: add scroll speed control and natural scrolling toggle (default on).
+- Touchpad: improve top spacing and keep gesture bar area consistent with touchpad background.
+- Scroll: lower default speed, narrower range, and stop/flip behavior now tracks finger changes.
 
 ## 1.1.2
 - Touchpad: long-press drag latch with continuous two-finger scroll mode and anchor-based scrolling.

@@ -29,7 +29,7 @@ object SettingsStore {
         private set
     var touchpadIntroShown = false
         private set
-    var touchpadScrollSpeed = 0.8f
+    var touchpadScrollSpeed = 0.7f
         private set
     var touchpadScrollInverted = true
         private set
@@ -51,7 +51,7 @@ object SettingsStore {
         touchpadDimLevel = prefs.getFloat("touchpad_dim_level", touchpadDimLevel)
         touchpadIntroShown = prefs.getBoolean("touchpad_intro_shown", touchpadIntroShown)
         touchpadScrollSpeed = prefs.getFloat("tp_scroll_speed", touchpadScrollSpeed)
-            .coerceIn(0.5f, 1.5f)
+            .coerceIn(0.4f, 1.2f)
         touchpadScrollInverted = prefs.getBoolean("tp_scroll_invert", touchpadScrollInverted)
         switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
         switchBarScale = prefs.getFloat("switch_bar_scale", switchBarScale)
@@ -117,7 +117,7 @@ object SettingsStore {
     }
 
     fun setTouchpadScrollSpeed(context: Context, value: Float) {
-        val clamped = value.coerceIn(0.5f, 1.5f)
+        val clamped = value.coerceIn(0.4f, 1.2f)
         touchpadScrollSpeed = clamped
         persist(context) { putFloat("tp_scroll_speed", clamped) }
     }

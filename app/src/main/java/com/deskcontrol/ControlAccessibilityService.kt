@@ -563,7 +563,7 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     fun warmUpBackPipeline() {
-        val info = displayInfo ?: return
+        if (displayInfo == null) return
         val now = SystemClock.uptimeMillis()
         if (now - SessionStore.lastBackWarmupUptime < WARMUP_MIN_INTERVAL_MS) return
         SessionStore.lastBackWarmupUptime = now
@@ -706,6 +706,10 @@ class ControlAccessibilityService : AccessibilityService() {
         params.y = cursorY.toInt()
         runCatching { wm.addView(view, params) }.onFailure {
             detachOverlay()
+            if (allowRetry) {
+                DiagnosticsLog.add("Accessibility: attach failed, retrying id=${info.displayId}")
+                scheduleAttachRetry(info)
+            }
         }
         scheduleCursorHide()
         cancelAttachRetry()
@@ -1059,6 +1063,7 @@ class ControlAccessibilityService : AccessibilityService() {
             val sys = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
             Insets(sys.left, sys.top, sys.right, sys.bottom)
         } else {
+            @Suppress("DEPRECATION")
             Insets(
                 windowInsets.systemWindowInsetLeft,
                 windowInsets.systemWindowInsetTop,
@@ -1093,7 +1098,7 @@ class ControlAccessibilityService : AccessibilityService() {
             ?: targetWindows.firstOrNull()
         val root = window?.root ?: return null
         val hitNode = findNodeAtPoint(root, x.toInt(), y.toInt())
-        var node = hitNode ?: root
+        var node: AccessibilityNodeInfo? = hitNode ?: root
         while (node != null) {
             if (node.isScrollable && node.isVisibleToUser) {
                 return node

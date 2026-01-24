@@ -125,7 +125,9 @@ object DisplaySessionManager {
         if (previousDisplayId != null && newInfo == null) {
             stopSession()
         }
-        if (previousDisplayId != newInfo?.displayId) {
+        if (previousDisplayId != newInfo?.displayId ||
+            (newInfo != null && ControlAccessibilityService.current()?.hasExternalDisplaySession() == false)
+        ) {
             ControlAccessibilityService.requestAttachToDisplay(newInfo)
         }
         val ids = displays.joinToString { it.displayId.toString() }

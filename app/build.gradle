@@ -7,17 +7,34 @@ android {
     namespace = "com.deskcontrol"
     compileSdk = 35
 
+    def keystorePath = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH")
+    def keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD")
+    def keyAliasValue = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS")
+    def keyPasswordValue = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD")
+
+    signingConfigs {
+        create("release") {
+            if (keystorePath && keystorePassword && keyAliasValue && keyPasswordValue) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.deskcontrol"
         minSdk = 30
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.1.2.post1"
+        versionCode = 15
+        versionName = "1.1.2.post2"
     }
 
     buildTypes {
         release {
             minifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

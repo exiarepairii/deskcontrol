@@ -151,8 +151,8 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        touchpadScrollSpeedSlider.valueFrom = 0.5f
-        touchpadScrollSpeedSlider.valueTo = 1.5f
+        touchpadScrollSpeedSlider.valueFrom = 0.4f
+        touchpadScrollSpeedSlider.valueTo = 1.2f
         touchpadScrollSpeedSlider.stepSize = 0.1f
         touchpadScrollSpeedSlider.value = snapToStep(
             SettingsStore.touchpadScrollSpeed.coerceIn(

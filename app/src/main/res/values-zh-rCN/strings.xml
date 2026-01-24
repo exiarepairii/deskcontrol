@@ -120,7 +120,7 @@
     <string name="settings_touchpad_dim_level_default">18%</string>
     <string name="settings_touchpad_scroll_speed">双指滚动速度</string>
     <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
-    <string name="settings_touchpad_scroll_speed_default">0.8x</string>
+    <string name="settings_touchpad_scroll_speed_default">0.7x</string>
     <string name="settings_touchpad_scroll_invert">自然滚动</string>
     <string name="settings_touchpad_scroll_invert_summary">双指上滑时页面向上滚动。</string>
     <string name="language_system">跟随系统</string>
