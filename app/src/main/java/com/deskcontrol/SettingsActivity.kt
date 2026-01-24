@@ -127,8 +127,8 @@ class SettingsActivity : AppCompatActivity() {
             SettingsStore.setTouchpadAutoDimEnabled(this, isChecked)
         }
 
-        touchpadDimLevelSlider.valueFrom = 0.05f
-        touchpadDimLevelSlider.valueTo = 0.30f
+        touchpadDimLevelSlider.valueFrom = 0.01f
+        touchpadDimLevelSlider.valueTo = 0.15f
         touchpadDimLevelSlider.stepSize = 0.01f
         touchpadDimLevelSlider.value = SettingsStore.touchpadDimLevel.coerceIn(
             touchpadDimLevelSlider.valueFrom,

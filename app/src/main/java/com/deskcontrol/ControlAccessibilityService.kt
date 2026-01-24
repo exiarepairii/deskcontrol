@@ -2,11 +2,13 @@ package com.deskcontrol
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.PointF
+import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
@@ -15,8 +17,11 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import android.widget.Toast
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -24,6 +29,16 @@ class ControlAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
+        private const val BACK_FOCUS_DELAY_MS = 40L
+        private const val SCROLL_SAFE_PAD_X_DP = 24f
+        private const val SCROLL_SAFE_PAD_TOP_DP = 24f
+        private const val SCROLL_SAFE_PAD_BOTTOM_DP = 32f
+        private const val SCROLL_SWIPE_BASE_DP = 48f
+        private const val SCROLL_SWIPE_MIN_DP = 36f
+        private const val SCROLL_SWIPE_MAX_DP = 60f
+        private const val SCROLL_SWIPE_BASE_DURATION_MS = 45L
+        private const val SCROLL_SWIPE_MIN_DURATION_MS = 35L
+        private const val SCROLL_SWIPE_MAX_DURATION_MS = 60L
         @Volatile
         private var instance: ControlAccessibilityService? = null
         @Volatile
@@ -89,6 +104,8 @@ class ControlAccessibilityService : AccessibilityService() {
     private var scrollPointY = 0f
     private val dragStartDurationMs = 8L
     private val dragSegmentDurationMs = 16L
+    @Volatile
+    private var gesturesInFlight = 0
     private val handler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
     private var cursorVisible = true
@@ -98,6 +115,14 @@ class ControlAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        val currentInfo = serviceInfo
+        if (currentInfo != null) {
+            currentInfo.flags = currentInfo.flags or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            serviceInfo = currentInfo
+            DiagnosticsLog.add("Accessibility: flags=${currentInfo.flags}")
+        }
         cursorSizePx = (resources.displayMetrics.density * 14f).toInt().coerceAtLeast(10)
         attachToDisplay(pendingDisplayInfo)
         DiagnosticsLog.add("Accessibility: connected")
@@ -288,8 +313,248 @@ class ControlAccessibilityService : AccessibilityService() {
         dispatchScrollGesture(steps, stepSizePx, info)
     }
 
+    fun prepareScrollMode(anchorX: Float, anchorY: Float): PointF {
+        val info = displayInfo ?: return PointF(anchorX, anchorY)
+        val safeRect = computeSafeRect(info)
+        val clampedX = anchorX.coerceIn(safeRect.left, safeRect.right)
+        val clampedY = anchorY.coerceIn(safeRect.top, safeRect.bottom)
+        DiagnosticsLog.add(
+            "ScrollMode: enter anchor=(${anchorX.toInt()},${anchorY.toInt()}) " +
+                "inject=(${clampedX.toInt()},${clampedY.toInt()}) " +
+                "insets=(${safeRect.insetsLeft},${safeRect.insetsTop}," +
+                "${safeRect.insetsRight},${safeRect.insetsBottom})"
+        )
+        return PointF(clampedX, clampedY)
+    }
+
+    fun performScrollStep(
+        direction: Int,
+        injectAnchorX: Float,
+        injectAnchorY: Float,
+        speedMultiplier: Float
+    ): Boolean {
+        val info = displayInfo ?: return false
+        val mapped = CoordinateMapper.mapForRotation(injectAnchorX, injectAnchorY, info)
+        val action = if (direction >= 0) {
+            AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        } else {
+            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        }
+        val actionTarget = findScrollableTargetAtPoint(info, mapped.x, mapped.y)
+        if (actionTarget != null) {
+            val success = actionTarget.performAction(action)
+            DiagnosticsLog.add("Scroll: action=${if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) "forward" else "back"} success=$success")
+            if (success) return true
+        } else {
+            DiagnosticsLog.add("Scroll: action target missing at (${mapped.x.toInt()},${mapped.y.toInt()})")
+        }
+        if (gesturesInFlight > 0) {
+            DiagnosticsLog.add("Scroll: swipe skipped (gesture busy)")
+            return false
+        }
+        val safeRect = computeSafeRect(info)
+        val clampedX = injectAnchorX.coerceIn(safeRect.left, safeRect.right)
+        val clampedY = injectAnchorY.coerceIn(safeRect.top, safeRect.bottom)
+        val swipeDistance = computeSwipeDistancePx(speedMultiplier, safeRect)
+        val half = swipeDistance / 2f
+        val startY: Float
+        val endY: Float
+        if (direction >= 0) {
+            startY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
+            endY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
+        } else {
+            startY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
+            endY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
+        }
+        val start = CoordinateMapper.mapForRotation(clampedX, startY, info)
+        val end = CoordinateMapper.mapForRotation(clampedX, endY, info)
+        val duration = computeSwipeDurationMs(speedMultiplier)
+        val path = Path().apply {
+            moveTo(start.x, start.y)
+            lineTo(end.x, end.y)
+        }
+        val builder = GestureDescription.Builder()
+        trySetDisplayId(builder, info.displayId)
+        builder.addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+        dispatchGestureTracked(
+            builder.build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    DiagnosticsLog.add("Scroll: swipe injected")
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    DiagnosticsLog.add("Scroll: swipe cancelled")
+                }
+            }
+        )
+        return true
+    }
+
     fun performBack(): Boolean {
-        return performGlobalAction(GLOBAL_ACTION_BACK)
+        SessionStore.lastBackFailure = null
+        val now = SystemClock.uptimeMillis()
+        DiagnosticsLog.add("Back: request t=$now")
+        DiagnosticsLog.add(
+            "Back: gestureInFlight=$gesturesInFlight dragActive=${dragStroke != null} " +
+                "scrollActive=${scrollStroke != null}"
+        )
+        val info = displayInfo
+        if (info == null) {
+            DiagnosticsLog.add("Back: blocked (no external display)")
+            SessionStore.lastBackFailure = "no_display"
+            return false
+        }
+        val snapshot = snapshotWindows()
+        if (snapshot.none { it.displayId == info.displayId }) {
+            DiagnosticsLog.add("Back: no window for external displayId=${info.displayId}")
+            SessionStore.lastBackFailure = "external_window_missing"
+            return false
+        }
+        val externalState = resolveExternalWindowState(info, snapshot)
+        if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
+            DiagnosticsLog.add(
+                "Back: external display not focused before back " +
+                    "active=${externalState?.isActive ?: false} " +
+                    "focused=${externalState?.isFocused ?: false}"
+            )
+            cancelDrag()
+            cancelScrollGesture()
+            if (dispatchFocusActivationGesture(info)) {
+                handler.postDelayed({
+                    executeBackWithLogging("after focus activation", allowFocusRetry = false)
+                }, BACK_FOCUS_DELAY_MS)
+                return true
+            }
+        }
+        return executeBackWithLogging("immediate", allowFocusRetry = true)
+    }
+
+    private fun executeBackWithLogging(reason: String, allowFocusRetry: Boolean): Boolean {
+        val now = SystemClock.uptimeMillis()
+        DiagnosticsLog.add("Back: execute $reason t=$now")
+        DiagnosticsLog.add(
+            "Back: gestureInFlight=$gesturesInFlight dragActive=${dragStroke != null} " +
+                "scrollActive=${scrollStroke != null}"
+        )
+        val info = displayInfo
+        if (info == null) {
+            DiagnosticsLog.add("Back: blocked (no external display)")
+            return false
+        }
+        val snapshot = snapshotWindows()
+        dumpWindows("Back: window", snapshot)
+        val externalState = resolveExternalWindowState(info, snapshot)
+        if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
+            DiagnosticsLog.add(
+                "Back: external display not focused at action " +
+                    "active=${externalState?.isActive ?: false} " +
+                    "focused=${externalState?.isFocused ?: false}"
+            )
+            if (allowFocusRetry && dispatchFocusActivationGesture(info)) {
+                handler.postDelayed({
+                    executeBackWithLogging("after focus activation", allowFocusRetry = false)
+                }, BACK_FOCUS_DELAY_MS)
+                return true
+            }
+            SessionStore.lastBackFailure = "external_not_focused"
+            DiagnosticsLog.add("Back: skipped (external display not focused)")
+            return false
+        }
+        val success = performGlobalAction(GLOBAL_ACTION_BACK)
+        if (!success) {
+            SessionStore.lastBackFailure = "dispatch_failed"
+        }
+        DiagnosticsLog.add("Back: dispatched success=$success")
+        return success
+    }
+
+    fun showToastOnExternalDisplay(message: String, long: Boolean = false): Boolean {
+        val displayContext = overlayWindowContext ?: run {
+            val info = displayInfo ?: return false
+            val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
+                ?: return false
+            createDisplayContext(display)
+        }
+        Toast.makeText(
+            displayContext,
+            message,
+            if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+        ).show()
+        return true
+    }
+
+    private data class ExternalWindowState(
+        val displayId: Int,
+        val type: Int,
+        val isActive: Boolean,
+        val isFocused: Boolean,
+        val packageName: String?
+    )
+
+    private fun snapshotWindows(): List<AccessibilityWindowInfo> {
+        return windows?.toList().orEmpty()
+    }
+
+    private fun resolveExternalWindowState(
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        windows: List<AccessibilityWindowInfo>
+    ): ExternalWindowState? {
+        val matches = windows.filter { it.displayId == info.displayId }
+        if (matches.isEmpty()) return null
+        val preferred = matches.firstOrNull { it.isFocused || it.isActive } ?: matches.first()
+        val packageName = preferred.root?.packageName?.toString()
+        return ExternalWindowState(
+            displayId = preferred.displayId,
+            type = preferred.type,
+            isActive = matches.any { it.isActive },
+            isFocused = matches.any { it.isFocused },
+            packageName = packageName
+        )
+    }
+
+    private fun dumpWindows(tag: String, windows: List<AccessibilityWindowInfo>) {
+        if (windows.isEmpty()) {
+            DiagnosticsLog.add("$tag: none")
+            return
+        }
+        windows.forEach { window ->
+            val packageName = window.root?.packageName?.toString() ?: "none"
+            DiagnosticsLog.add(
+                "$tag displayId=${window.displayId} type=${window.type} " +
+                    "active=${window.isActive} focused=${window.isFocused} root=$packageName"
+            )
+        }
+    }
+
+    private fun dispatchFocusActivationGesture(
+        info: DisplaySessionManager.ExternalDisplayInfo
+    ): Boolean {
+        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val targetWindow = windows
+            ?.filter { it.displayId == info.displayId }
+            ?.firstOrNull { it.isFocused || it.isActive }
+            ?: windows?.firstOrNull { it.displayId == info.displayId }
+        val root = targetWindow?.root ?: run {
+            DiagnosticsLog.add("Back: focus activation skipped (no window root)")
+            return false
+        }
+        val hitNode = findNodeAtPoint(root, mapped.x.toInt(), mapped.y.toInt())
+        val focusTarget = when {
+            hitNode == null -> if (root.isFocusable) root else findFocusableNode(root)
+            hitNode.isFocusable -> hitNode
+            else -> findFocusableAncestor(hitNode) ?: findFocusableNode(root)
+        }
+        if (focusTarget == null) {
+            DiagnosticsLog.add("Back: focus activation skipped (no focusable node)")
+            return false
+        }
+        val focused = focusTarget.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
+            focusTarget.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
+        DiagnosticsLog.add(
+            "Back: focus activation via node success=$focused at=(${mapped.x.toInt()},${mapped.y.toInt()})"
+        )
+        return focused
     }
 
     fun warmUpBackPipeline() {
@@ -558,7 +823,7 @@ class ControlAccessibilityService : AccessibilityService() {
         val builder = GestureDescription.Builder()
         trySetDisplayId(builder, displayId)
         builder.addStroke(GestureDescription.StrokeDescription(path, 0, 50))
-        dispatchGesture(
+        dispatchGestureTracked(
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
@@ -568,8 +833,7 @@ class ControlAccessibilityService : AccessibilityService() {
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_tap_cancelled))
                 }
-            },
-            null
+            }
         )
     }
 
@@ -580,7 +844,7 @@ class ControlAccessibilityService : AccessibilityService() {
         val builder = GestureDescription.Builder()
         trySetDisplayId(builder, displayId)
         builder.addStroke(stroke)
-        dispatchGesture(
+        dispatchGestureTracked(
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
@@ -590,8 +854,7 @@ class ControlAccessibilityService : AccessibilityService() {
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_drag_cancelled))
                 }
-            },
-            null
+            }
         )
     }
 
@@ -602,7 +865,7 @@ class ControlAccessibilityService : AccessibilityService() {
         val builder = GestureDescription.Builder()
         trySetDisplayId(builder, displayId)
         builder.addStroke(stroke)
-        dispatchGesture(
+        dispatchGestureTracked(
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
@@ -612,9 +875,34 @@ class ControlAccessibilityService : AccessibilityService() {
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_scroll_failed))
                 }
+            }
+        )
+    }
+
+    private fun dispatchGestureTracked(
+        description: GestureDescription,
+        callback: GestureResultCallback
+    ) {
+        gesturesInFlight += 1
+        val accepted = dispatchGesture(
+            description,
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
+                    callback.onCompleted(gestureDescription)
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
+                    callback.onCancelled(gestureDescription)
+                }
             },
             null
         )
+        if (!accepted) {
+            gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
+            callback.onCancelled(null)
+        }
     }
 
     private fun dispatchScrollGesture(
@@ -650,7 +938,7 @@ class ControlAccessibilityService : AccessibilityService() {
         val builder = GestureDescription.Builder()
         trySetDisplayId(builder, info.displayId)
         builder.addStroke(GestureDescription.StrokeDescription(path, 0, 180))
-        dispatchGesture(
+        dispatchGestureTracked(
             builder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
@@ -660,9 +948,135 @@ class ControlAccessibilityService : AccessibilityService() {
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_scroll_failed))
                 }
-            },
-            null
+            }
         )
+    }
+
+    private data class SafeRect(
+        val left: Float,
+        val top: Float,
+        val right: Float,
+        val bottom: Float,
+        val insetsLeft: Int,
+        val insetsTop: Int,
+        val insetsRight: Int,
+        val insetsBottom: Int
+    )
+
+    private data class Insets(
+        val left: Int,
+        val top: Int,
+        val right: Int,
+        val bottom: Int
+    )
+
+    private fun computeSafeRect(info: DisplaySessionManager.ExternalDisplayInfo): SafeRect {
+        val insets = resolveDisplayInsets()
+        val density = resources.displayMetrics.density
+        val left = insets.left + (SCROLL_SAFE_PAD_X_DP * density)
+        val right = info.width - insets.right - (SCROLL_SAFE_PAD_X_DP * density)
+        val top = insets.top + (SCROLL_SAFE_PAD_TOP_DP * density)
+        val bottom = info.height - insets.bottom - (SCROLL_SAFE_PAD_BOTTOM_DP * density)
+        var safeLeft = left
+        var safeRight = right
+        if (safeRight < safeLeft) {
+            val mid = info.width / 2f
+            safeLeft = mid
+            safeRight = mid
+        }
+        var safeTop = top
+        var safeBottom = bottom
+        if (safeBottom < safeTop) {
+            val mid = info.height / 2f
+            safeTop = mid
+            safeBottom = mid
+        }
+        return SafeRect(
+            left = safeLeft,
+            top = safeTop,
+            right = safeRight,
+            bottom = safeBottom,
+            insetsLeft = insets.left,
+            insetsTop = insets.top,
+            insetsRight = insets.right,
+            insetsBottom = insets.bottom
+        )
+    }
+
+    private fun resolveDisplayInsets(): Insets {
+        val windowInsets = overlayView?.rootWindowInsets ?: return Insets(0, 0, 0, 0)
+        return if (Build.VERSION.SDK_INT >= 30) {
+            val sys = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+            Insets(sys.left, sys.top, sys.right, sys.bottom)
+        } else {
+            Insets(
+                windowInsets.systemWindowInsetLeft,
+                windowInsets.systemWindowInsetTop,
+                windowInsets.systemWindowInsetRight,
+                windowInsets.systemWindowInsetBottom
+            )
+        }
+    }
+
+    private fun computeSwipeDistancePx(speedMultiplier: Float, safeRect: SafeRect): Float {
+        val density = resources.displayMetrics.density
+        val base = SCROLL_SWIPE_BASE_DP * density * speedMultiplier.coerceIn(0.6f, 2.0f)
+        val min = SCROLL_SWIPE_MIN_DP * density
+        val max = SCROLL_SWIPE_MAX_DP * density
+        val clamped = base.coerceIn(min, max)
+        val maxAllowed = (safeRect.bottom - safeRect.top) * 0.8f
+        return clamped.coerceAtMost(maxAllowed)
+    }
+
+    private fun computeSwipeDurationMs(speedMultiplier: Float): Long {
+        val scaled = (SCROLL_SWIPE_BASE_DURATION_MS / speedMultiplier.coerceIn(0.6f, 2.0f))
+        return scaled.toLong().coerceIn(SCROLL_SWIPE_MIN_DURATION_MS, SCROLL_SWIPE_MAX_DURATION_MS)
+    }
+
+    private fun findScrollableTargetAtPoint(
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        x: Float,
+        y: Float
+    ): AccessibilityNodeInfo? {
+        val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
+        val window = targetWindows.firstOrNull { it.isFocused || it.isActive }
+            ?: targetWindows.firstOrNull()
+        val root = window?.root ?: return null
+        val hitNode = findNodeAtPoint(root, x.toInt(), y.toInt())
+        var node = hitNode ?: root
+        while (node != null) {
+            if (node.isScrollable && node.isVisibleToUser) {
+                return node
+            }
+            node = node.parent
+        }
+        return findScrollableNode(root)
+    }
+
+    private fun findNodeAtPoint(
+        root: AccessibilityNodeInfo,
+        x: Int,
+        y: Int
+    ): AccessibilityNodeInfo? {
+        val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
+        queue.add(root to 0)
+        var best: AccessibilityNodeInfo? = null
+        var bestDepth = -1
+        val rect = Rect()
+        while (queue.isNotEmpty()) {
+            val (node, depth) = queue.removeFirst()
+            node.getBoundsInScreen(rect)
+            if (rect.contains(x, y)) {
+                if (depth >= bestDepth) {
+                    best = node
+                    bestDepth = depth
+                }
+                for (i in 0 until node.childCount) {
+                    node.getChild(i)?.let { queue.add(it to depth + 1) }
+                }
+            }
+        }
+        return best
     }
 
     private fun findScrollableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -676,6 +1090,32 @@ class ControlAccessibilityService : AccessibilityService() {
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { queue.add(it) }
             }
+        }
+        return null
+    }
+
+    private fun findFocusableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isFocusable && node.isVisibleToUser) {
+                return node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return null
+    }
+
+    private fun findFocusableAncestor(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        var current: AccessibilityNodeInfo? = node
+        while (current != null) {
+            if (current.isFocusable && current.isVisibleToUser) {
+                return current
+            }
+            current = current.parent
         }
         return null
     }

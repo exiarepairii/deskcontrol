@@ -58,7 +58,8 @@
     <string name="host_end_session">End session</string>
 
     <string name="touchpad_title">Touchpad</string>
-    <string name="touchpad_hint">Slide on the touchpad area to move the cursor. Double-tap then slide to drag.</string>
+    <string name="touchpad_blackout">Screen off</string>
+    <string name="touchpad_hint">Slide on the touchpad area to move the cursor. Long-press and slide to drag. Two fingers to scroll.</string>
     <string name="touchpad_tuning">Touchpad tuning</string>
     <string name="touchpad_base_gain">Base gain</string>
     <string name="touchpad_acceleration">Acceleration</string>
@@ -71,6 +72,8 @@
     <string name="touchpad_accessibility_hint">Enable accessibility to control the cursor and send taps.</string>
     <string name="touchpad_open_accessibility_settings">Open accessibility settings</string>
     <string name="touchpad_accessibility_required_toast">Enable accessibility service first</string>
+    <string name="touchpad_back_external_not_focused">External display not focused. Tap once to focus, then press Back.</string>
+    <string name="touchpad_back_external_window_missing">Unable to get focus on the external display. Tap the window content, then press Back again.</string>
     <string name="touchpad_no_external_display">No external display session</string>
     <string name="touchpad_base_gain_value">Base gain: %1$.2f</string>
     <string name="touchpad_acceleration_value">Acceleration: %1$.2fx</string>
@@ -93,7 +96,7 @@
     <string name="touchpad_intro_got_it">Got it</string>
     <string name="touchpad_intro_gesture_move">Move: slide one finger</string>
     <string name="touchpad_intro_gesture_tap">Click: tap once</string>
-    <string name="touchpad_intro_gesture_drag">Slide &amp; drag: double-tap then slide (vibration confirms), or slide with two fingers</string>
+    <string name="touchpad_intro_gesture_drag">Drag: press and hold, then slide. Scroll: slide with two fingers.</string>
     <string name="touchpad_intro_dim_behavior">Auto-dim: after 10s inside the touchpad area, the screen dims. It restores when you tap outside the touchpad area or leave this screen.</string>
     <string name="touchpad_intro_back_behavior">Back: when the touchpad area is active, Back is forwarded to the external app.</string>
     <string name="touchpad_intro_exit_hint">Exit: tap the top-left back arrow, or tap outside the touchpad area and then press Back.</string>

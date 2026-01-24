@@ -19,9 +19,9 @@
         <SeekBarPreference
             android:key="pref_touchpad_dim_level"
             android:title="@string/settings_touchpad_dim_level"
-            android:defaultValue="18"
-            android:max="30"
-            app:min="5"
+            android:defaultValue="3"
+            android:max="15"
+            app:min="1"
             app:showSeekBarValue="true" />
     </PreferenceCategory>
 
