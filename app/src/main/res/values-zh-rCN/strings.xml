@@ -17,6 +17,7 @@
     <string name="app_picker_title">选择应用</string>
     <string name="app_search_hint">搜索应用</string>
     <string name="app_drawer_title">全部应用</string>
+    <string name="app_drawer_close">关闭</string>
     <string name="switch_bar_all_apps">全部应用</string>
     <string name="app_icon_content_description">应用图标</string>
     <string name="app_placeholder_name">应用名称</string>
@@ -27,12 +28,12 @@
     <string name="app_launch_reason_no_external_display">无外接显示器</string>
     <string name="app_launch_reason_feature_unsupported">功能不支持</string>
     <string name="app_launch_reason_no_launch_intent">无可启动入口</string>
-    <string name="app_launch_reason_security_exception">安全异常</string>
+    <string name="app_launch_reason_security_exception">被系统阻止启动</string>
     <string name="app_launch_reason_start_failed">启动失败</string>
     <string name="app_launch_detail_no_external_display">未检测到外接显示器</string>
     <string name="app_launch_detail_feature_unsupported">设备不支持在副显示器上启动应用</string>
     <string name="app_launch_detail_no_launch_intent">所选应用没有可启动的活动</string>
-    <string name="app_launch_detail_security_exception">安全异常</string>
+    <string name="app_launch_detail_security_exception">被系统阻止启动</string>
     <string name="app_launch_detail_unknown_failure">未知启动失败</string>
 
     <string name="diagnostics_title">诊断</string>
@@ -57,7 +58,8 @@
 
     <string name="touchpad_title">触控板</string>
     <string name="touchpad_blackout">熄屏</string>
-    <string name="touchpad_hint">在触控区域滑动移动光标。长按后滑动可拖拽。双指滑动可滚动。</string>
+    <string name="touchpad_back_button">返回</string>
+    <string name="touchpad_hint">点击矩形区域激活，激活后返回操作自动转发到外屏\n滑动:移动光标; 长按滑动:拖拽; 双指:滚动</string>
     <string name="touchpad_tuning">触控板调节</string>
     <string name="touchpad_base_gain">基础增益</string>
     <string name="touchpad_acceleration">加速度</string>
@@ -118,6 +120,11 @@
     <string name="settings_touchpad_dim_level">最低亮度</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>
+    <string name="settings_touchpad_scroll_speed">双指滚动速度</string>
+    <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
+    <string name="settings_touchpad_scroll_speed_default">1.0x</string>
+    <string name="settings_touchpad_scroll_invert">自然滚动</string>
+    <string name="settings_touchpad_scroll_invert_summary">双指上滑时页面向上滚动。</string>
     <string name="language_system">跟随系统</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>

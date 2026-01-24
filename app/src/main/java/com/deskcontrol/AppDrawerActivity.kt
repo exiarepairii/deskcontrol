@@ -28,8 +28,7 @@ class AppDrawerActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyEdgeToEdgePadding(binding.root)
 
-        binding.appDrawerToolbar.title = getString(R.string.app_drawer_title)
-        binding.appDrawerToolbar.setNavigationOnClickListener { finish() }
+        binding.appDrawerClose.setOnClickListener { finish() }
 
         val spanCount = 4
         binding.appGrid.layoutManager = GridLayoutManager(this, spanCount)

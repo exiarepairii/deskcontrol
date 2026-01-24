@@ -30,12 +30,21 @@ class ControlAccessibilityService : AccessibilityService() {
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
         private const val BACK_FOCUS_DELAY_MS = 40L
+        private const val ATTACH_RETRY_DELAY_MS = 250L
+        private const val ATTACH_RETRY_MAX = 8
         private const val SCROLL_SAFE_PAD_X_DP = 24f
         private const val SCROLL_SAFE_PAD_TOP_DP = 24f
         private const val SCROLL_SAFE_PAD_BOTTOM_DP = 32f
         private const val SCROLL_SWIPE_BASE_DP = 48f
         private const val SCROLL_SWIPE_MIN_DP = 36f
         private const val SCROLL_SWIPE_MAX_DP = 60f
+        private const val SCROLL_SWIPE_MIN_DP_PRECISION = 8f
+        private const val SCROLL_SWIPE_BASE_DP_PRECISION = 24f
+        private const val SCROLL_SWIPE_MAX_DP_PRECISION = 36f
+        private const val SCROLL_SWIPE_MIN_DP_MICRO = 6f
+        private const val SCROLL_SWIPE_BASE_DP_MICRO = 18f
+        private const val SCROLL_SWIPE_MAX_DP_MICRO = 28f
+        private const val SCROLL_SWIPE_MICRO_SPEED_MAX = 0.55f
         private const val SCROLL_SWIPE_BASE_DURATION_MS = 45L
         private const val SCROLL_SWIPE_MIN_DURATION_MS = 35L
         private const val SCROLL_SWIPE_MAX_DURATION_MS = 60L
@@ -92,6 +101,9 @@ class ControlAccessibilityService : AccessibilityService() {
     private var windowManager: WindowManager? = null
     private var overlayWindowContext: Context? = null
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
+    private var attachRetryInfo: DisplaySessionManager.ExternalDisplayInfo? = null
+    private var attachRetryCount = 0
+    private var attachRetryRunnable: Runnable? = null
     private var cursorX = 0f
     private var cursorY = 0f
     private var cursorSizePx = 24
@@ -147,14 +159,14 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun moveCursorBy(dx: Float, dy: Float) {
         val info = displayInfo ?: return
-        val maxX = info.width.toFloat()
-        val maxY = info.height.toFloat()
+        val maxX = info.width + (cursorSizePx / 4f)
+        val maxY = info.height + (cursorSizePx / 4f)
         cursorX = (cursorX + dx).coerceIn(0f, maxX)
         cursorY = (cursorY + dy).coerceIn(0f, maxY)
         notifyCursorActivity()
         notifyCursorSpeed(dx, dy)
         updateOverlayPosition()
-        switchBarController?.onCursorMoved(cursorX, cursorY)
+        switchBarController?.onCursorMoved(cursorX, cursorY, cursorSizePx)
     }
 
     fun wakeCursor() {
@@ -163,14 +175,16 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun tapAtCursor() {
         val info = displayInfo ?: return
-        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         notifyCursorActivity()
         dispatchTap(mapped.x, mapped.y, info.displayId)
     }
 
     fun startDragAtCursor() {
         val info = displayInfo ?: return
-        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         dragPointX = mapped.x
         dragPointY = mapped.y
         val path = Path().apply { moveTo(dragPointX, dragPointY) }
@@ -183,7 +197,8 @@ class ControlAccessibilityService : AccessibilityService() {
     fun updateDragToCursor() {
         val info = displayInfo ?: return
         val activeStroke = dragStroke ?: return
-        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         if (abs(mapped.x - dragPointX) < 0.5f && abs(mapped.y - dragPointY) < 0.5f) return
         val path = Path().apply {
             moveTo(dragPointX, dragPointY)
@@ -200,7 +215,8 @@ class ControlAccessibilityService : AccessibilityService() {
     fun endDragAtCursor() {
         val info = displayInfo ?: return
         val activeStroke = dragStroke ?: return
-        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         val path = Path().apply {
             moveTo(dragPointX, dragPointY)
             lineTo(mapped.x, mapped.y)
@@ -331,7 +347,8 @@ class ControlAccessibilityService : AccessibilityService() {
         direction: Int,
         injectAnchorX: Float,
         injectAnchorY: Float,
-        speedMultiplier: Float
+        speedMultiplier: Float,
+        preferGesture: Boolean = false
     ): Boolean {
         val info = displayInfo ?: return false
         val mapped = CoordinateMapper.mapForRotation(injectAnchorX, injectAnchorY, info)
@@ -340,13 +357,17 @@ class ControlAccessibilityService : AccessibilityService() {
         } else {
             AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
         }
-        val actionTarget = findScrollableTargetAtPoint(info, mapped.x, mapped.y)
-        if (actionTarget != null) {
-            val success = actionTarget.performAction(action)
-            DiagnosticsLog.add("Scroll: action=${if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) "forward" else "back"} success=$success")
-            if (success) return true
+        if (!preferGesture) {
+            val actionTarget = findScrollableTargetAtPoint(info, mapped.x, mapped.y)
+            if (actionTarget != null) {
+                val success = actionTarget.performAction(action)
+                DiagnosticsLog.add("Scroll: action=${if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) "forward" else "back"} success=$success")
+                if (success) return true
+            } else {
+                DiagnosticsLog.add("Scroll: action target missing at (${mapped.x.toInt()},${mapped.y.toInt()})")
+            }
         } else {
-            DiagnosticsLog.add("Scroll: action target missing at (${mapped.x.toInt()},${mapped.y.toInt()})")
+            DiagnosticsLog.add("Scroll: prefer gesture injection")
         }
         if (gesturesInFlight > 0) {
             DiagnosticsLog.add("Scroll: swipe skipped (gesture busy)")
@@ -355,7 +376,27 @@ class ControlAccessibilityService : AccessibilityService() {
         val safeRect = computeSafeRect(info)
         val clampedX = injectAnchorX.coerceIn(safeRect.left, safeRect.right)
         val clampedY = injectAnchorY.coerceIn(safeRect.top, safeRect.bottom)
-        val swipeDistance = computeSwipeDistancePx(speedMultiplier, safeRect)
+        val useMicro = preferGesture && speedMultiplier < SCROLL_SWIPE_MICRO_SPEED_MAX
+        val swipeDistance = computeSwipeDistancePx(
+            speedMultiplier,
+            safeRect,
+            minDpOverride = if (useMicro) SCROLL_SWIPE_MIN_DP_MICRO else if (preferGesture) {
+                SCROLL_SWIPE_MIN_DP_PRECISION
+            } else {
+                null
+            },
+            maxDpOverride = if (useMicro) SCROLL_SWIPE_MAX_DP_MICRO else if (preferGesture) {
+                SCROLL_SWIPE_MAX_DP_PRECISION
+            } else {
+                null
+            },
+            minSpeedMultiplier = if (preferGesture) 0.2f else 0.6f,
+            baseDpOverride = if (useMicro) SCROLL_SWIPE_BASE_DP_MICRO else if (preferGesture) {
+                SCROLL_SWIPE_BASE_DP_PRECISION
+            } else {
+                null
+            }
+        )
         val half = swipeDistance / 2f
         val startY: Float
         val endY: Float
@@ -530,7 +571,8 @@ class ControlAccessibilityService : AccessibilityService() {
     private fun dispatchFocusActivationGesture(
         info: DisplaySessionManager.ExternalDisplayInfo
     ): Boolean {
-        val mapped = CoordinateMapper.mapForRotation(cursorX, cursorY, info)
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         val targetWindow = windows
             ?.filter { it.displayId == info.displayId }
             ?.firstOrNull { it.isFocused || it.isActive }
@@ -558,7 +600,7 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     fun warmUpBackPipeline() {
-        val info = displayInfo ?: return
+        if (displayInfo == null) return
         val now = SystemClock.uptimeMillis()
         if (now - SessionStore.lastBackWarmupUptime < WARMUP_MIN_INTERVAL_MS) return
         SessionStore.lastBackWarmupUptime = now
@@ -631,9 +673,13 @@ class ControlAccessibilityService : AccessibilityService() {
         return null
     }
 
-    private fun attachToDisplay(info: DisplaySessionManager.ExternalDisplayInfo?) {
+    private fun attachToDisplay(
+        info: DisplaySessionManager.ExternalDisplayInfo?,
+        allowRetry: Boolean = true
+    ) {
         if (info == null) {
             detachOverlay()
+            cancelAttachRetry()
             return
         }
         if (displayInfo?.displayId == info.displayId && overlayView != null) {
@@ -648,7 +694,13 @@ class ControlAccessibilityService : AccessibilityService() {
         cursorY = (info.height / 2f)
 
         val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
-            ?: return
+        if (display == null) {
+            DiagnosticsLog.add("Accessibility: attach deferred (display missing) id=${info.displayId}")
+            if (allowRetry) {
+                scheduleAttachRetry(info)
+            }
+            return
+        }
         val windowContext = if (Build.VERSION.SDK_INT >= 30) {
             try {
                 createWindowContext(
@@ -667,7 +719,12 @@ class ControlAccessibilityService : AccessibilityService() {
         windowManager = wm
 
         if (SettingsStore.switchBarEnabled) {
-            switchBarController = SwitchBarController(this, windowContext, wm, info)
+            switchBarController = SwitchBarController(
+                this,
+                windowContext,
+                wm,
+                info
+            )
         }
 
         val view = CursorOverlayView(windowContext)
@@ -683,19 +740,59 @@ class ControlAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = cursorX.toInt()
-        params.y = cursorY.toInt()
+        params.x = (cursorX - (cursorSizePx / 2f)).toInt()
+        params.y = (cursorY - (cursorSizePx / 2f)).toInt()
         runCatching { wm.addView(view, params) }.onFailure {
             detachOverlay()
+            if (allowRetry) {
+                DiagnosticsLog.add("Accessibility: attach failed, retrying id=${info.displayId}")
+                scheduleAttachRetry(info)
+            }
         }
         scheduleCursorHide()
+        cancelAttachRetry()
+    }
+
+    private fun scheduleAttachRetry(info: DisplaySessionManager.ExternalDisplayInfo) {
+        if (attachRetryInfo?.displayId == info.displayId && attachRetryRunnable != null) return
+        attachRetryInfo = info
+        attachRetryCount = 0
+        attachRetryRunnable?.let { handler.removeCallbacks(it) }
+        val runnable = object : Runnable {
+            override fun run() {
+                val currentInfo = attachRetryInfo ?: return
+                attachRetryCount += 1
+                attachToDisplay(currentInfo, allowRetry = false)
+                if (overlayView == null && attachRetryCount < ATTACH_RETRY_MAX) {
+                    handler.postDelayed(this, ATTACH_RETRY_DELAY_MS)
+                } else {
+                    if (overlayView == null) {
+                        DiagnosticsLog.add(
+                            "Accessibility: attach retry exhausted id=${currentInfo.displayId}"
+                        )
+                    }
+                    cancelAttachRetry()
+                }
+            }
+        }
+        attachRetryRunnable = runnable
+        handler.postDelayed(runnable, ATTACH_RETRY_DELAY_MS)
+    }
+
+    private fun cancelAttachRetry() {
+        attachRetryRunnable?.let { handler.removeCallbacks(it) }
+        attachRetryRunnable = null
+        attachRetryInfo = null
+        attachRetryCount = 0
     }
 
     private fun detachOverlay() {
+        cancelAttachRetry()
         switchBarController?.teardown()
         switchBarController = null
         overlayView?.let { view ->
@@ -720,7 +817,12 @@ class ControlAccessibilityService : AccessibilityService() {
             return
         }
         if (switchBarController == null) {
-            switchBarController = SwitchBarController(this, context, wm, info)
+            switchBarController = SwitchBarController(
+                this,
+                context,
+                wm,
+                info
+            )
         } else {
             switchBarController?.refreshScale()
             switchBarController?.refreshItems()
@@ -741,12 +843,21 @@ class ControlAccessibilityService : AccessibilityService() {
         return (baseSize * CursorOverlayView.MAX_SCALE).toInt().coerceAtLeast(baseSize)
     }
 
+    private fun clampToDisplay(
+        x: Float,
+        y: Float,
+        info: DisplaySessionManager.ExternalDisplayInfo
+    ): PointF {
+        val clampedX = x.coerceIn(0f, info.width.toFloat())
+        val clampedY = y.coerceIn(0f, info.height.toFloat())
+        return PointF(clampedX, clampedY)
+    }
     private fun updateOverlayPosition() {
         val view = overlayView ?: return
         val wm = windowManager ?: return
         val params = view.layoutParams as WindowManager.LayoutParams
-        params.x = cursorX.toInt()
-        params.y = cursorY.toInt()
+        params.x = (cursorX - (cursorSizePx / 2f)).toInt()
+        params.y = (cursorY - (cursorSizePx / 2f)).toInt()
         wm.updateViewLayout(view, params)
     }
 
@@ -812,8 +923,8 @@ class ControlAccessibilityService : AccessibilityService() {
             val params = view.layoutParams as WindowManager.LayoutParams
             params.width = cursorSizePx
             params.height = cursorSizePx
-            params.x = cursorX.toInt()
-            params.y = cursorY.toInt()
+            params.x = (cursorX - (cursorSizePx / 2f)).toInt()
+            params.y = (cursorY - (cursorSizePx / 2f)).toInt()
             wm.updateViewLayout(view, params)
         }
     }
@@ -1009,6 +1120,7 @@ class ControlAccessibilityService : AccessibilityService() {
             val sys = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
             Insets(sys.left, sys.top, sys.right, sys.bottom)
         } else {
+            @Suppress("DEPRECATION")
             Insets(
                 windowInsets.systemWindowInsetLeft,
                 windowInsets.systemWindowInsetTop,
@@ -1018,11 +1130,21 @@ class ControlAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun computeSwipeDistancePx(speedMultiplier: Float, safeRect: SafeRect): Float {
+    private fun computeSwipeDistancePx(
+        speedMultiplier: Float,
+        safeRect: SafeRect,
+        minDpOverride: Float? = null,
+        maxDpOverride: Float? = null,
+        minSpeedMultiplier: Float = 0.6f,
+        baseDpOverride: Float? = null
+    ): Float {
         val density = resources.displayMetrics.density
-        val base = SCROLL_SWIPE_BASE_DP * density * speedMultiplier.coerceIn(0.6f, 2.0f)
-        val min = SCROLL_SWIPE_MIN_DP * density
-        val max = SCROLL_SWIPE_MAX_DP * density
+        val baseDp = baseDpOverride ?: SCROLL_SWIPE_BASE_DP
+        val base = baseDp * density * speedMultiplier.coerceIn(minSpeedMultiplier, 2.0f)
+        val minDp = minDpOverride ?: SCROLL_SWIPE_MIN_DP
+        val min = minDp * density
+        val maxDp = maxDpOverride ?: SCROLL_SWIPE_MAX_DP
+        val max = maxDp * density
         val clamped = base.coerceIn(min, max)
         val maxAllowed = (safeRect.bottom - safeRect.top) * 0.8f
         return clamped.coerceAtMost(maxAllowed)
@@ -1043,7 +1165,7 @@ class ControlAccessibilityService : AccessibilityService() {
             ?: targetWindows.firstOrNull()
         val root = window?.root ?: return null
         val hitNode = findNodeAtPoint(root, x.toInt(), y.toInt())
-        var node = hitNode ?: root
+        var node: AccessibilityNodeInfo? = hitNode ?: root
         while (node != null) {
             if (node.isScrollable && node.isVisibleToUser) {
                 return node

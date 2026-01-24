@@ -10,17 +10,49 @@
         android:orientation="vertical"
         android:background="@color/touchpadBackground">
 
-        <com.google.android.material.appbar.MaterialToolbar
+        <LinearLayout
             android:id="@+id/touchpadToolbar"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:paddingHorizontal="16dp"
-            android:title="@string/touchpad_title"
-            app:titleTextColor="@color/touchpadToolbarText"
-            app:contentInsetStartWithNavigation="0dp"
-            app:navigationIcon="@drawable/ic_back"
-            app:navigationIconTint="@color/touchpadToolbarText" />
+            android:paddingVertical="6dp"
+            android:gravity="center_vertical"
+            android:background="@color/touchpadBackground">
+
+            <ImageButton
+                android:id="@+id/touchpadBack"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/touchpad_back_button"
+                android:scaleType="center"
+                android:src="@drawable/ic_back"
+                android:tint="@color/touchpadToolbarText" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/touchpadTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical|start"
+                android:text="@string/touchpad_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@color/touchpadToolbarText" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/touchpadBlackout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/touchpad_blackout"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/touchpadToolbarText" />
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="match_parent"

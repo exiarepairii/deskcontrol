@@ -27,9 +27,9 @@ class SwitchBarController(
     private val view = SwitchBarOverlayView(windowContext)
     private val interpolator = FastOutSlowInInterpolator()
     private val density = windowContext.resources.displayMetrics.density
-    private val showThresholdPx = (6f * density).toInt()
+    private val showThresholdPx = 0
     private val hideThresholdPx = (28f * density).toInt()
-    private val showDelayMs = 120L
+    private val showDelayMs = 160L
     private val hideDelayMs = 260L
     private val showDurationMs = 170L
     private val hideDurationMs = 130L
@@ -71,14 +71,15 @@ class SwitchBarController(
         }
     }
 
-    fun onCursorMoved(x: Float, y: Float) {
+    fun onCursorMoved(x: Float, y: Float, cursorSizePx: Int) {
         if (forceVisible) {
             scheduleShow("force")
             cancelHide()
             return
         }
         val height = displayInfo.height.toFloat()
-        val inShowZone = y >= height - showThresholdPx
+        val triggerY = height + (cursorSizePx * 0.25f)
+        val inShowZone = y >= triggerY - showThresholdPx
         val barHeight = if (currentBarHeightPx > 0) currentBarHeightPx else baseBarHeightPx
         val inHideZone = y >= height - maxOf(hideThresholdPx, barHeight + view.bottomInsetPx)
         val bounds = view.getContainerBoundsInView()
@@ -125,6 +126,8 @@ class SwitchBarController(
             show("force")
         }
     }
+
+
 
     fun onBarHoverChanged(insideBar: Boolean) {
         if (state == State.SHOWN && insideBar) {

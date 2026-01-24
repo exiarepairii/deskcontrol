@@ -36,6 +36,7 @@ local.properties
 *.iml
 *.apk
 *.ap_
+*.jks
 *.dex
 *.class
 captures/

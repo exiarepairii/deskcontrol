@@ -82,6 +82,9 @@ class SettingsActivity : AppCompatActivity() {
         val touchpadAutoDimSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadAutoDim)
         val touchpadDimLevelValue = findViewById<android.widget.TextView>(R.id.touchpadDimLevelValue)
         val touchpadDimLevelSlider = findViewById<Slider>(R.id.sliderTouchpadDimLevel)
+        val touchpadScrollSpeedValue = findViewById<android.widget.TextView>(R.id.touchpadScrollSpeedValue)
+        val touchpadScrollSpeedSlider = findViewById<Slider>(R.id.sliderTouchpadScrollSpeed)
+        val touchpadScrollInvertSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadScrollInvert)
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
         val cursorHideDelaySlider = findViewById<Slider>(R.id.sliderCursorHideDelay)
@@ -146,6 +149,44 @@ class SettingsActivity : AppCompatActivity() {
             if (fromUser) {
                 SettingsStore.setTouchpadDimLevel(this, value)
             }
+        }
+
+        touchpadScrollSpeedSlider.valueFrom = 0.5f
+        touchpadScrollSpeedSlider.valueTo = 3.0f
+        touchpadScrollSpeedSlider.stepSize = 0.1f
+        touchpadScrollSpeedSlider.value = snapToStep(
+            SettingsStore.touchpadScrollSpeed.coerceIn(
+                touchpadScrollSpeedSlider.valueFrom,
+                touchpadScrollSpeedSlider.valueTo
+            ),
+            touchpadScrollSpeedSlider.valueFrom,
+            touchpadScrollSpeedSlider.stepSize
+        )
+        touchpadScrollSpeedValue.text = getString(
+            R.string.settings_touchpad_scroll_speed_value,
+            touchpadScrollSpeedSlider.value
+        )
+        touchpadScrollSpeedSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(
+                value,
+                touchpadScrollSpeedSlider.valueFrom,
+                touchpadScrollSpeedSlider.stepSize
+            )
+            touchpadScrollSpeedValue.text = getString(
+                R.string.settings_touchpad_scroll_speed_value,
+                snapped
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    touchpadScrollSpeedSlider.value = snapped
+                }
+                SettingsStore.setTouchpadScrollSpeed(this, snapped)
+            }
+        }
+
+        touchpadScrollInvertSwitch.isChecked = SettingsStore.touchpadScrollInverted
+        touchpadScrollInvertSwitch.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setTouchpadScrollInverted(this, isChecked)
         }
 
         when {
