@@ -5,7 +5,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 
-fun applyEdgeToEdgePadding(view: View) {
+fun applyEdgeToEdgePadding(view: View, includeTop: Boolean = true) {
     val initialLeft = view.paddingLeft
     val initialTop = view.paddingTop
     val initialRight = view.paddingRight
@@ -17,7 +17,7 @@ fun applyEdgeToEdgePadding(view: View) {
         )
         v.updatePadding(
             left = initialLeft + systemInsets.left,
-            top = initialTop + systemInsets.top,
+            top = initialTop + if (includeTop) systemInsets.top else 0,
             right = initialRight + systemInsets.right,
             bottom = initialBottom + systemInsets.bottom
         )

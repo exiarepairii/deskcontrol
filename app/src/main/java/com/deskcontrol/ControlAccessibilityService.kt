@@ -30,6 +30,8 @@ class ControlAccessibilityService : AccessibilityService() {
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
         private const val BACK_FOCUS_DELAY_MS = 40L
+        private const val ATTACH_RETRY_DELAY_MS = 250L
+        private const val ATTACH_RETRY_MAX = 8
         private const val SCROLL_SAFE_PAD_X_DP = 24f
         private const val SCROLL_SAFE_PAD_TOP_DP = 24f
         private const val SCROLL_SAFE_PAD_BOTTOM_DP = 32f
@@ -92,6 +94,9 @@ class ControlAccessibilityService : AccessibilityService() {
     private var windowManager: WindowManager? = null
     private var overlayWindowContext: Context? = null
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
+    private var attachRetryInfo: DisplaySessionManager.ExternalDisplayInfo? = null
+    private var attachRetryCount = 0
+    private var attachRetryRunnable: Runnable? = null
     private var cursorX = 0f
     private var cursorY = 0f
     private var cursorSizePx = 24
@@ -631,9 +636,13 @@ class ControlAccessibilityService : AccessibilityService() {
         return null
     }
 
-    private fun attachToDisplay(info: DisplaySessionManager.ExternalDisplayInfo?) {
+    private fun attachToDisplay(
+        info: DisplaySessionManager.ExternalDisplayInfo?,
+        allowRetry: Boolean = true
+    ) {
         if (info == null) {
             detachOverlay()
+            cancelAttachRetry()
             return
         }
         if (displayInfo?.displayId == info.displayId && overlayView != null) {
@@ -648,7 +657,13 @@ class ControlAccessibilityService : AccessibilityService() {
         cursorY = (info.height / 2f)
 
         val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
-            ?: return
+        if (display == null) {
+            DiagnosticsLog.add("Accessibility: attach deferred (display missing) id=${info.displayId}")
+            if (allowRetry) {
+                scheduleAttachRetry(info)
+            }
+            return
+        }
         val windowContext = if (Build.VERSION.SDK_INT >= 30) {
             try {
                 createWindowContext(
@@ -693,9 +708,44 @@ class ControlAccessibilityService : AccessibilityService() {
             detachOverlay()
         }
         scheduleCursorHide()
+        cancelAttachRetry()
+    }
+
+    private fun scheduleAttachRetry(info: DisplaySessionManager.ExternalDisplayInfo) {
+        if (attachRetryInfo?.displayId == info.displayId && attachRetryRunnable != null) return
+        attachRetryInfo = info
+        attachRetryCount = 0
+        attachRetryRunnable?.let { handler.removeCallbacks(it) }
+        val runnable = object : Runnable {
+            override fun run() {
+                val currentInfo = attachRetryInfo ?: return
+                attachRetryCount += 1
+                attachToDisplay(currentInfo, allowRetry = false)
+                if (overlayView == null && attachRetryCount < ATTACH_RETRY_MAX) {
+                    handler.postDelayed(this, ATTACH_RETRY_DELAY_MS)
+                } else {
+                    if (overlayView == null) {
+                        DiagnosticsLog.add(
+                            "Accessibility: attach retry exhausted id=${currentInfo.displayId}"
+                        )
+                    }
+                    cancelAttachRetry()
+                }
+            }
+        }
+        attachRetryRunnable = runnable
+        handler.postDelayed(runnable, ATTACH_RETRY_DELAY_MS)
+    }
+
+    private fun cancelAttachRetry() {
+        attachRetryRunnable?.let { handler.removeCallbacks(it) }
+        attachRetryRunnable = null
+        attachRetryInfo = null
+        attachRetryCount = 0
     }
 
     private fun detachOverlay() {
+        cancelAttachRetry()
         switchBarController?.teardown()
         switchBarController = null
         overlayView?.let { view ->

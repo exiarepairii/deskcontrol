@@ -65,9 +65,9 @@ class TouchpadActivity : AppCompatActivity() {
         setContentView(binding.root)
         DiagnosticsLog.add("Touchpad: create displayId=${display?.displayId ?: -1}")
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        applyEdgeToEdgePadding(binding.root)
+        applyEdgeToEdgePadding(binding.root, includeTop = false)
         val insetsController = WindowInsetsControllerCompat(window, binding.root)
-        insetsController.hide(WindowInsetsCompat.Type.systemBars())
+        insetsController.hide(WindowInsetsCompat.Type.statusBars())
         insetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         if (isNightMode()) {
@@ -421,11 +421,19 @@ class TouchpadActivity : AppCompatActivity() {
 
     private fun emitScrollSteps() {
         val service = ControlAccessibilityService.current() ?: return
-        val multiplier = scrollSpeedMultiplier.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
+        val userSpeed = SettingsStore.touchpadScrollSpeed.coerceIn(
+            SCROLL_SPEED_SETTING_MIN,
+            SCROLL_SPEED_SETTING_MAX
+        )
+        val multiplier = (scrollSpeedMultiplier * userSpeed)
+            .coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
         val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / multiplier
         val absAccum = abs(scrollAccumDy)
         if (stepThreshold <= 0f || absAccum < stepThreshold) return
-        val direction = if (scrollAccumDy > 0f) 1 else -1
+        var direction = if (scrollAccumDy > 0f) 1 else -1
+        if (SettingsStore.touchpadScrollInverted) {
+            direction *= -1
+        }
         val maxSteps = SCROLL_MAX_STEPS_PER_TICK
         var stepsToEmit = (absAccum / stepThreshold).toInt()
         if (stepsToEmit > maxSteps) stepsToEmit = maxSteps
@@ -754,6 +762,8 @@ class TouchpadActivity : AppCompatActivity() {
         private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.6f
         private const val SCROLL_SPEED_MIN = 0.6f
         private const val SCROLL_SPEED_MAX = 2.0f
+        private const val SCROLL_SPEED_SETTING_MIN = 0.5f
+        private const val SCROLL_SPEED_SETTING_MAX = 1.5f
     }
 
     private enum class TouchState {

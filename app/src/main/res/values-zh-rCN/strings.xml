@@ -27,12 +27,12 @@
     <string name="app_launch_reason_no_external_display">无外接显示器</string>
     <string name="app_launch_reason_feature_unsupported">功能不支持</string>
     <string name="app_launch_reason_no_launch_intent">无可启动入口</string>
-    <string name="app_launch_reason_security_exception">安全异常</string>
+    <string name="app_launch_reason_security_exception">被系统阻止启动</string>
     <string name="app_launch_reason_start_failed">启动失败</string>
     <string name="app_launch_detail_no_external_display">未检测到外接显示器</string>
     <string name="app_launch_detail_feature_unsupported">设备不支持在副显示器上启动应用</string>
     <string name="app_launch_detail_no_launch_intent">所选应用没有可启动的活动</string>
-    <string name="app_launch_detail_security_exception">安全异常</string>
+    <string name="app_launch_detail_security_exception">被系统阻止启动</string>
     <string name="app_launch_detail_unknown_failure">未知启动失败</string>
 
     <string name="diagnostics_title">诊断</string>
@@ -118,6 +118,11 @@
     <string name="settings_touchpad_dim_level">最低亮度</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>
+    <string name="settings_touchpad_scroll_speed">双指滚动速度</string>
+    <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
+    <string name="settings_touchpad_scroll_speed_default">0.8x</string>
+    <string name="settings_touchpad_scroll_invert">自然滚动</string>
+    <string name="settings_touchpad_scroll_invert_summary">双指上滑时页面向上滚动。</string>
     <string name="language_system">跟随系统</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>

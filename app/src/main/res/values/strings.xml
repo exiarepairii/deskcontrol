@@ -120,6 +120,11 @@
     <string name="settings_touchpad_dim_level">Minimum brightness</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>
+    <string name="settings_touchpad_scroll_speed">Two-finger scroll speed</string>
+    <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
+    <string name="settings_touchpad_scroll_speed_default">0.8x</string>
+    <string name="settings_touchpad_scroll_invert">Natural scrolling</string>
+    <string name="settings_touchpad_scroll_invert_summary">Two-finger up scrolls up.</string>
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>
