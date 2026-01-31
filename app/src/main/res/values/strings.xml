@@ -72,8 +72,17 @@
     <string name="touchpad_accessibility_content_description">Accessibility</string>
     <string name="touchpad_accessibility_required">Accessibility required</string>
     <string name="touchpad_accessibility_hint">Enable accessibility to control the cursor and send taps.</string>
+    <string name="touchpad_enable_accessibility_shizuku">Enable with Shizuku</string>
     <string name="touchpad_open_accessibility_settings">Open accessibility settings</string>
     <string name="touchpad_accessibility_required_toast">Enable accessibility service first</string>
+    <string name="touchpad_shizuku_unavailable">Shizuku is not running</string>
+    <string name="touchpad_shizuku_permission_denied">Shizuku permission denied</string>
+    <string name="touchpad_shizuku_permission_rationale">Grant Shizuku permission to enable accessibility.</string>
+    <string name="touchpad_shizuku_enable_success">Accessibility enabled</string>
+    <string name="touchpad_shizuku_enable_failed">Failed to enable accessibility via Shizuku</string>
+    <string name="touchpad_shizuku_intro_title">What is Shizuku?</string>
+    <string name="touchpad_shizuku_intro_message">Shizuku lets advanced users grant system-level access with a one-time authorization.\n\nIf Shizuku is running, DeskControl can enable accessibility automatically so you don’t have to do it manually each time.</string>
+    <string name="touchpad_shizuku_intro_ok">Got it</string>
     <string name="touchpad_back_external_not_focused">External display not focused. Tap once to focus, then press Back.</string>
     <string name="touchpad_back_external_window_missing">Unable to get focus on the external display. Tap the window content, then press Back again.</string>
     <string name="touchpad_no_external_display">No external display session</string>
@@ -106,6 +115,7 @@
 
     <string name="settings_title">Settings</string>
     <string name="settings_display_section">Display</string>
+    <string name="settings_touchpad_section">Touchpad</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_dark_mode">Theme</string>
     <string name="theme_system">System</string>
