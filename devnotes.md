@@ -14,6 +14,7 @@
 - Display selector uses 1-based labels (Display 1/2/3) and shows resolution as the secondary line.
 - Touchpad hints: when touchpad is active, hint text should dim; inactive should be brighter to draw attention.
 - Accessibility gating for touchpad happens inside Touchpad screen, not on the home screen.
+- Touchpad accessibility gate: manual settings button is primary; Shizuku is secondary and should explain itself when unavailable.
 - Keep-screen-on toggle defaults to ON; it only applies while Touchpad/Host are visible.
 - Touchpad auto-dim uses a 10s delay and never increases brightness while the touchpad remains focused.
 
@@ -61,6 +62,9 @@
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
 ## Recent changes (touchpad-blind-ops)
+## Recent changes (1.1.4)
+- Accessibility: optional Shizuku flow to auto-enable service with manual fallback (Touchpad gate).
+- Settings: add Touchpad section header and section dividers; titles bolded for legibility.
 ## Recent changes (1.0.2)
 - Display: expanded diagnostics logging for display enumeration and selection.
 - Diagnostics: copy icon in the toolbar; logs entry grouped under Developer.
@@ -88,5 +92,7 @@
 
 ## Gotchas
 - `performGlobalAction(GLOBAL_ACTION_BACK)` may have random latency on device (OS-level).
+- Shizuku: provider authority must be `${applicationId}.shizuku` and `android:exported="true"` or provider lookup fails.
+- Shizuku: `newProcess` is private in the API; use reflection and guard with try/catch around `checkSelfPermission()`.
 - Drag uses accessibility gestures with short segments; tuning is in `dragStartDurationMs` and `dragSegmentDurationMs`.
 - Cursor alpha is controlled via view alpha (paint stays opaque).
