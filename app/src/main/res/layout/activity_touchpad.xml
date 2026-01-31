@@ -213,6 +213,14 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="@string/touchpad_open_accessibility_settings" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEnableAccessibilityShizuku"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="@string/touchpad_enable_accessibility_shizuku" />
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>

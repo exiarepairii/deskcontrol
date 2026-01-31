@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4
+- Accessibility: optional Shizuku flow to auto-enable the service, with fallback to manual settings.
+- Touchpad: accessibility gate refreshed with a primary manual button and Shizuku info for advanced users.
+- Settings: add a Touchpad section header and subtle dividers; section titles are bold.
+
 ## 1.1.3
 - Touchpad: revamped two-finger scroll tuning (natural scrolling, speed baseline, adaptive distance/velocity, micro-precision).
 - Touchpad: toolbar layout refresh and hint copy simplification.

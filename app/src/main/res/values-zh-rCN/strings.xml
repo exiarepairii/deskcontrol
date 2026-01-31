@@ -70,8 +70,17 @@
     <string name="touchpad_accessibility_content_description">无障碍</string>
     <string name="touchpad_accessibility_required">需要启用无障碍</string>
     <string name="touchpad_accessibility_hint">启用无障碍以控制光标并发送点击。</string>
+    <string name="touchpad_enable_accessibility_shizuku">使用 Shizuku 启用</string>
     <string name="touchpad_open_accessibility_settings">打开无障碍设置</string>
     <string name="touchpad_accessibility_required_toast">请先启用无障碍服务</string>
+    <string name="touchpad_shizuku_unavailable">Shizuku 未运行</string>
+    <string name="touchpad_shizuku_permission_denied">Shizuku 权限被拒绝</string>
+    <string name="touchpad_shizuku_permission_rationale">授予 Shizuku 权限以启用无障碍。</string>
+    <string name="touchpad_shizuku_enable_success">已启用无障碍</string>
+    <string name="touchpad_shizuku_enable_failed">通过 Shizuku 启用无障碍失败</string>
+    <string name="touchpad_shizuku_intro_title">什么是 Shizuku？</string>
+    <string name="touchpad_shizuku_intro_message">Shizuku 让高级用户通过一次性授权获得系统级能力。\n\n当 Shizuku 在运行时，DeskControl 可自动启用无障碍，省去每次手动开启的步骤。</string>
+    <string name="touchpad_shizuku_intro_ok">知道了</string>
     <string name="touchpad_back_external_not_focused">外接屏未获得焦点。轻点一下聚焦后再按返回。</string>
     <string name="touchpad_back_external_window_missing">无法获取外接屏焦点，请点击窗口内容后再按返回。</string>
     <string name="touchpad_no_external_display">未检测到外接显示器会话</string>
@@ -104,6 +113,7 @@
 
     <string name="settings_title">设置</string>
     <string name="settings_display_section">显示</string>
+    <string name="settings_touchpad_section">触控板</string>
     <string name="settings_theme">主题</string>
     <string name="settings_dark_mode">主题</string>
     <string name="theme_system">跟随系统</string>
