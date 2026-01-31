@@ -10,6 +10,7 @@
     <string name="accessibility_required">Required</string>
     <string name="choose_app_for_display">Choose app for external display</string>
     <string name="open_touchpad">Open touchpad</string>
+    <string name="open_motion_pointer">Open Motion Pointer (Experimental)</string>
     <string name="settings">Settings</string>
 
     <string name="display_selector_title">Display %1$d</string>
@@ -59,6 +60,24 @@
     <string name="host_end_session">End session</string>
 
     <string name="touchpad_title">Touchpad</string>
+    <string name="motion_pointer_title">Motion Pointer (Experimental)</string>
+    <string name="motion_pointer_hint">Move your phone to move the cursor. Tap the screen to click. Use Quick Calibrate anytime.</string>
+    <string name="motion_pointer_hint_calibrate">Aim your phone at the screen and tap Quick Calibrate.</string>
+    <string name="motion_pointer_recenter">Quick Calibrate</string>
+    <string name="motion_pointer_no_gyro">Gyroscope unavailable. Motion Pointer disabled.</string>
+    <string name="motion_calibration_title">Calibrate for AR screen</string>
+    <string name="motion_calibration_subtitle">Adjust these if tracking feels off.</string>
+    <string name="motion_calibration_expand">Expand</string>
+    <string name="motion_calibration_collapse">Collapse</string>
+    <string name="motion_calibration_captured">Captured ✓</string>
+    <string name="motion_calibration_quick_range">Quick range: %1$.1f°</string>
+    <string name="motion_calibration_smoothing">Smoothing: %1$.2f</string>
+    <string name="motion_calibration_deadzone">Deadzone: %1$.3f</string>
+    <string name="motion_calibration_reset">Reset calibration</string>
+    <string name="motion_calibration_reset_done">Calibration cleared</string>
+    <string name="motion_calibration_too_small">Calibration range too small. Try again with wider points.</string>
+    <string name="motion_calibration_no_rotation">Rotation sensor unavailable. Using relative mode.</string>
+    <string name="motion_calibration_wait_for_motion">Move the phone a bit and try again.</string>
     <string name="touchpad_blackout">Screen off</string>
     <string name="touchpad_back_button">Back</string>
     <string name="touchpad_hint">Tap the rectangle to activate; Back is forwarded to the external display.\nSlide: move cursor; press and slide: drag; two fingers: scroll.</string>
@@ -138,6 +157,10 @@
     <string name="settings_cursor_speed">Cursor speed</string>
     <string name="settings_cursor_auto_hide">Cursor auto-hide</string>
     <string name="settings_hide_delay">Hide delay</string>
+    <string name="settings_motion_pointer_section">Motion Pointer</string>
+    <string name="settings_motion_sensitivity">Motion sensitivity</string>
+    <string name="settings_motion_smoothing">Motion smoothing</string>
+    <string name="settings_motion_deadzone">Motion deadzone</string>
     <string name="settings_on">On</string>
     <string name="settings_off">Off</string>
     <string name="settings_cursor_opacity_value">%1$d%%</string>

@@ -133,6 +133,16 @@
             android:text="@string/open_touchpad" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMotionPointer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle"
+            app:strokeColor="@color/surfaceStroke"
+            android:textColor="@color/textPrimary"
+            android:text="@string/open_motion_pointer" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSettings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

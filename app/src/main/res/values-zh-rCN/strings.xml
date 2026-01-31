@@ -9,6 +9,7 @@
     <string name="accessibility_required">需要启用</string>
     <string name="choose_app_for_display">为外接显示器选择应用</string>
     <string name="open_touchpad">打开触控板</string>
+    <string name="open_motion_pointer">打开动作指针（实验）</string>
     <string name="settings">设置</string>
 
     <string name="display_selector_title">显示器 %1$d</string>
@@ -57,6 +58,24 @@
     <string name="host_end_session">结束会话</string>
 
     <string name="touchpad_title">触控板</string>
+    <string name="motion_pointer_title">动作指针（实验）</string>
+    <string name="motion_pointer_hint">移动手机以移动光标，点击屏幕进行单击，可随时快速校准。</string>
+    <string name="motion_pointer_hint_calibrate">将手机对准屏幕后点击“快速校准”。</string>
+    <string name="motion_pointer_recenter">快速校准</string>
+    <string name="motion_pointer_no_gyro">陀螺仪不可用，已禁用动作指针。</string>
+    <string name="motion_calibration_title">为 AR 屏幕校准</string>
+    <string name="motion_calibration_subtitle">若跟手不理想，可调这些参数。</string>
+    <string name="motion_calibration_expand">展开</string>
+    <string name="motion_calibration_collapse">收起</string>
+    <string name="motion_calibration_captured">已捕捉 ✓</string>
+    <string name="motion_calibration_quick_range">快速范围：%1$.1f°</string>
+    <string name="motion_calibration_smoothing">平滑：%1$.2f</string>
+    <string name="motion_calibration_deadzone">死区：%1$.3f</string>
+    <string name="motion_calibration_reset">重置校准</string>
+    <string name="motion_calibration_reset_done">校准已清除</string>
+    <string name="motion_calibration_too_small">校准范围过小，请选更宽的点重试。</string>
+    <string name="motion_calibration_no_rotation">旋转传感器不可用，已切换为相对模式。</string>
+    <string name="motion_calibration_wait_for_motion">请稍微移动手机后重试。</string>
     <string name="touchpad_blackout">熄屏</string>
     <string name="touchpad_back_button">返回</string>
     <string name="touchpad_hint">点击矩形区域激活，激活后返回操作自动转发到外屏\n滑动:移动光标; 长按滑动:拖拽; 双指:滚动</string>
@@ -136,6 +155,10 @@
     <string name="settings_cursor_speed">光标速度</string>
     <string name="settings_cursor_auto_hide">光标自动隐藏</string>
     <string name="settings_hide_delay">隐藏延迟</string>
+    <string name="settings_motion_pointer_section">动作指针</string>
+    <string name="settings_motion_sensitivity">动作灵敏度</string>
+    <string name="settings_motion_smoothing">动作平滑</string>
+    <string name="settings_motion_deadzone">动作死区</string>
     <string name="settings_on">开</string>
     <string name="settings_off">关</string>
     <string name="settings_cursor_opacity_value">%1$d%%</string>

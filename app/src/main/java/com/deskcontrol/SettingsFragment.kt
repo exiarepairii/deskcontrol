@@ -97,6 +97,30 @@ class SettingsFragment : PreferenceFragmentCompat() {
         ) { value ->
             SettingsStore.setCursorHideDelay(requireContext(), value.toLong())
         }
+
+        val motionSensitivity = findPreference<SeekBarPreference>("pref_motion_sensitivity")
+        motionSensitivity?.value = (SettingsStore.motionSensitivity * 100).toInt()
+        motionSensitivity?.setOnPreferenceChangeListener { _, newValue ->
+            val percent = (newValue as Int).coerceIn(60, 200)
+            SettingsStore.setMotionSensitivity(requireContext(), percent / 100f)
+            true
+        }
+
+        val motionSmoothing = findPreference<SeekBarPreference>("pref_motion_smoothing")
+        motionSmoothing?.value = (SettingsStore.motionSmoothingAlpha * 100).toInt()
+        motionSmoothing?.setOnPreferenceChangeListener { _, newValue ->
+            val percent = (newValue as Int).coerceIn(5, 60)
+            SettingsStore.setMotionSmoothingAlpha(requireContext(), percent / 100f)
+            true
+        }
+
+        val motionDeadzone = findPreference<SeekBarPreference>("pref_motion_deadzone")
+        motionDeadzone?.value = (SettingsStore.motionDeadzone * 100).toInt()
+        motionDeadzone?.setOnPreferenceChangeListener { _, newValue ->
+            val percent = (newValue as Int).coerceIn(1, 8)
+            SettingsStore.setMotionDeadzone(requireContext(), percent / 100f)
+            true
+        }
     }
 
     private fun bindListPreference(

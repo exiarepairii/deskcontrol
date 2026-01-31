@@ -34,6 +34,9 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         binding.btnTouchpad.setOnClickListener {
             startActivity(Intent(this, TouchpadActivity::class.java))
         }
+        binding.btnMotionPointer.setOnClickListener {
+            startActivity(Intent(this, MotionPointerActivity::class.java))
+        }
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -81,6 +84,8 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun updateSecondaryActions() {
         binding.btnTouchpad.isEnabled = true
         binding.btnTouchpad.alpha = 1f
+        binding.btnMotionPointer.isEnabled = true
+        binding.btnMotionPointer.alpha = 1f
     }
 
     private fun updateDisplaySelector() {

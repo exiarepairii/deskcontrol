@@ -66,6 +66,35 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="@string/settings_motion_pointer_section"
+        android:key="category_motion_pointer">
+
+        <SeekBarPreference
+            android:key="pref_motion_sensitivity"
+            android:title="@string/settings_motion_sensitivity"
+            android:defaultValue="100"
+            android:max="200"
+            app:min="60"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:key="pref_motion_smoothing"
+            android:title="@string/settings_motion_smoothing"
+            android:defaultValue="22"
+            android:max="60"
+            app:min="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:key="pref_motion_deadzone"
+            android:title="@string/settings_motion_deadzone"
+            android:defaultValue="3"
+            android:max="8"
+            app:min="1"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/settings_advanced_section"
         android:key="category_advanced">
 

@@ -40,6 +40,30 @@ object SettingsStore {
         private set
     var switchBarScale = 1.0f
         private set
+    var motionSensitivity = 1.0f
+        private set
+    var motionSmoothingAlpha = 0.22f
+        private set
+    var motionDeadzone = 0.03f
+        private set
+    var motionQuickRangeDeg = 12f
+        private set
+    var motionCalibrationValid = false
+        private set
+    var motionCalibrationYawTopLeft = 0f
+        private set
+    var motionCalibrationPitchTopLeft = 0f
+        private set
+    var motionCalibrationYawBottomRight = 0f
+        private set
+    var motionCalibrationPitchBottomRight = 0f
+        private set
+    var motionCalibrationYawOffset = 0f
+        private set
+    var motionCalibrationPitchOffset = 0f
+        private set
+    var motionCalibrationReference: FloatArray? = null
+        private set
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -65,6 +89,30 @@ object SettingsStore {
         switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
         switchBarScale = prefs.getFloat("switch_bar_scale", switchBarScale)
             .coerceIn(0.7f, 1.3f)
+        motionSensitivity = prefs.getFloat("motion_sensitivity", motionSensitivity)
+            .coerceIn(0.6f, 2.0f)
+        motionSmoothingAlpha = prefs.getFloat("motion_smoothing", motionSmoothingAlpha)
+            .coerceIn(0.05f, 0.6f)
+        motionDeadzone = prefs.getFloat("motion_deadzone", motionDeadzone)
+            .coerceIn(0.01f, 0.08f)
+        motionQuickRangeDeg = prefs.getFloat("motion_quick_range_deg", motionQuickRangeDeg)
+            .coerceIn(6f, 24f)
+        motionCalibrationValid = prefs.getBoolean("motion_calibration_valid", motionCalibrationValid)
+        motionCalibrationYawTopLeft =
+            prefs.getFloat("motion_calibration_yaw_top_left", motionCalibrationYawTopLeft)
+        motionCalibrationPitchTopLeft =
+            prefs.getFloat("motion_calibration_pitch_top_left", motionCalibrationPitchTopLeft)
+        motionCalibrationYawBottomRight =
+            prefs.getFloat("motion_calibration_yaw_bottom_right", motionCalibrationYawBottomRight)
+        motionCalibrationPitchBottomRight =
+            prefs.getFloat("motion_calibration_pitch_bottom_right", motionCalibrationPitchBottomRight)
+        motionCalibrationYawOffset =
+            prefs.getFloat("motion_calibration_yaw_offset", motionCalibrationYawOffset)
+        motionCalibrationPitchOffset =
+            prefs.getFloat("motion_calibration_pitch_offset", motionCalibrationPitchOffset)
+        motionCalibrationReference = decodeMatrix(
+            prefs.getString("motion_calibration_reference", null)
+        )
 
         TouchpadTuning.baseGain = prefs.getFloat("tp_base_gain", TouchpadTuning.baseGain)
         TouchpadTuning.maxAccelGain = prefs.getFloat("tp_max_accel", TouchpadTuning.maxAccelGain)
@@ -149,6 +197,103 @@ object SettingsStore {
         switchBarScale = clamped
         persist(context) { putFloat("switch_bar_scale", clamped) }
         ControlAccessibilityService.requestSwitchBarRefresh()
+    }
+
+    fun setMotionSensitivity(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.6f, 2.0f)
+        motionSensitivity = clamped
+        persist(context) { putFloat("motion_sensitivity", clamped) }
+    }
+
+    fun setMotionSmoothingAlpha(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.05f, 0.6f)
+        motionSmoothingAlpha = clamped
+        persist(context) { putFloat("motion_smoothing", clamped) }
+    }
+
+    fun setMotionDeadzone(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.01f, 0.08f)
+        motionDeadzone = clamped
+        persist(context) { putFloat("motion_deadzone", clamped) }
+    }
+
+    fun setMotionQuickRangeDeg(context: Context, value: Float) {
+        val clamped = value.coerceIn(6f, 24f)
+        motionQuickRangeDeg = clamped
+        persist(context) { putFloat("motion_quick_range_deg", clamped) }
+    }
+
+    fun setMotionCalibration(
+        context: Context,
+        reference: FloatArray,
+        yawTopLeft: Float,
+        pitchTopLeft: Float,
+        yawBottomRight: Float,
+        pitchBottomRight: Float
+    ) {
+        motionCalibrationReference = reference.copyOf()
+        motionCalibrationYawTopLeft = yawTopLeft
+        motionCalibrationPitchTopLeft = pitchTopLeft
+        motionCalibrationYawBottomRight = yawBottomRight
+        motionCalibrationPitchBottomRight = pitchBottomRight
+        motionCalibrationYawOffset = 0f
+        motionCalibrationPitchOffset = 0f
+        motionCalibrationValid = true
+        persist(context) {
+            putBoolean("motion_calibration_valid", true)
+            putFloat("motion_calibration_yaw_top_left", yawTopLeft)
+            putFloat("motion_calibration_pitch_top_left", pitchTopLeft)
+            putFloat("motion_calibration_yaw_bottom_right", yawBottomRight)
+            putFloat("motion_calibration_pitch_bottom_right", pitchBottomRight)
+            putFloat("motion_calibration_yaw_offset", 0f)
+            putFloat("motion_calibration_pitch_offset", 0f)
+            putString("motion_calibration_reference", encodeMatrix(reference))
+        }
+    }
+
+    fun setMotionCalibrationOffsets(context: Context, yawOffset: Float, pitchOffset: Float) {
+        motionCalibrationYawOffset = yawOffset
+        motionCalibrationPitchOffset = pitchOffset
+        persist(context) {
+            putFloat("motion_calibration_yaw_offset", yawOffset)
+            putFloat("motion_calibration_pitch_offset", pitchOffset)
+        }
+    }
+
+    fun clearMotionCalibration(context: Context) {
+        motionCalibrationValid = false
+        motionCalibrationReference = null
+        motionCalibrationYawTopLeft = 0f
+        motionCalibrationPitchTopLeft = 0f
+        motionCalibrationYawBottomRight = 0f
+        motionCalibrationPitchBottomRight = 0f
+        motionCalibrationYawOffset = 0f
+        motionCalibrationPitchOffset = 0f
+        persist(context) {
+            putBoolean("motion_calibration_valid", false)
+            remove("motion_calibration_reference")
+            remove("motion_calibration_yaw_top_left")
+            remove("motion_calibration_pitch_top_left")
+            remove("motion_calibration_yaw_bottom_right")
+            remove("motion_calibration_pitch_bottom_right")
+            remove("motion_calibration_yaw_offset")
+            remove("motion_calibration_pitch_offset")
+        }
+    }
+
+    private fun encodeMatrix(matrix: FloatArray): String {
+        return matrix.joinToString(separator = ",")
+    }
+
+    private fun decodeMatrix(encoded: String?): FloatArray? {
+        if (encoded.isNullOrBlank()) return null
+        val parts = encoded.split(",")
+        if (parts.size != 9) return null
+        val values = FloatArray(9)
+        for (i in 0 until 9) {
+            values[i] = parts[i].toFloatOrNull() ?: return null
+        }
+        return values
     }
 
     fun setAppLanguage(context: Context, languageTag: String) {

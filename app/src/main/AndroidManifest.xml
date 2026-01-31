@@ -17,30 +17,42 @@
 
         <activity
             android:name=".DiagnosticsActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".SettingsActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".TouchpadActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
+        <activity
+            android:name=".MotionPointerActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".AppPickerActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".AppDrawerActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".HostActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
