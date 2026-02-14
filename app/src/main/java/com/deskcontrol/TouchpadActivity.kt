@@ -27,7 +27,7 @@ import com.deskcontrol.databinding.ActivityTouchpadBinding
 import rikka.shizuku.Shizuku
 import kotlin.math.abs
 
-class TouchpadActivity : AppCompatActivity() {
+class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     private lateinit var binding: ActivityTouchpadBinding
     private val processor = TouchpadProcessor(TouchpadTuning)
@@ -42,23 +42,24 @@ class TouchpadActivity : AppCompatActivity() {
     private var isFocused = false
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var lastTwoFingerY = 0f
     private var downX = 0f
     private var downY = 0f
     private var touchSlopPx = 0f
+    private var longPressCancelSlopPx = 0f
     private var longPressTimeout = 0
     private var longPressRunnable: Runnable? = null
-    private var scrollAccumDy = 0f
-    private var scrollSpeedMultiplier = 1f
-    private var lastScrollEventTime = 0L
-    private var scrollTickerRunning = false
-    private var scrollAnchorX = 0f
-    private var scrollAnchorY = 0f
-    private var injectAnchorX = 0f
-    private var injectAnchorY = 0f
-    private var scrollDistanceAccum = 0f
+    private var blackoutHintFadeRunnable: Runnable? = null
+    private var blackoutDownX = 0f
+    private var blackoutDownY = 0f
+    private var blackoutMoved = false
+    private var blackoutSwipeMinPx = 0f
+    private var blackoutSwipeOffset = 0f
+    private lateinit var legacyScrollController: LegacyScrollController
+    private lateinit var directScrollController: DirectScrollController
+    private var activeScrollController = ActiveScrollController.NONE
     private var touchpadActive = false
     private var touchState = TouchState.IDLE
+    private var suppressSingleUntilUp = false
     private var shizukuBinderReady = false
     private var shizukuEnableInFlight = false
     private val shizukuBinderListener = Shizuku.OnBinderReceivedListener {
@@ -107,7 +108,19 @@ class TouchpadActivity : AppCompatActivity() {
         }
 
         touchSlopPx = resources.displayMetrics.density * TOUCH_SLOP_DP
+        longPressCancelSlopPx = resources.displayMetrics.density * LONG_PRESS_CANCEL_DP
+        blackoutSwipeMinPx = resources.displayMetrics.density * BLACKOUT_SWIPE_MIN_DP
         longPressTimeout = ViewConfiguration.getLongPressTimeout()
+        legacyScrollController = LegacyScrollController(
+            context = this,
+            handler = handler,
+            serviceProvider = { ControlAccessibilityService.current() }
+        )
+        directScrollController = DirectScrollController(
+            context = this,
+            touchpadSizeProvider = { binding.touchpadArea.width to binding.touchpadArea.height },
+            serviceProvider = { ControlAccessibilityService.current() }
+        )
 
         binding.touchpadBack.setOnClickListener {
             DiagnosticsLog.add("Touchpad: exit via toolbar")
@@ -137,8 +150,77 @@ class TouchpadActivity : AppCompatActivity() {
             handleTouch(event)
             true
         }
-        binding.blackoutOverlay.setOnClickListener {
-            setBlackoutVisible(false)
+        binding.blackoutOverlay.setOnTouchListener { view, event ->
+            if (!binding.blackoutOverlay.isVisible) return@setOnTouchListener false
+            if (event.pointerCount > 1) return@setOnTouchListener true
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    blackoutDownX = event.x
+                    blackoutDownY = event.y
+                    blackoutMoved = false
+                    blackoutSwipeOffset = 0f
+                    view.translationY = 0f
+                    showBlackoutHintImmediate()
+                    restoreOriginalBrightness()
+                    if (binding.blackoutOverlay.isVisible || touchpadActive) {
+                        startAutoDimSession()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - blackoutDownX
+                    val dy = event.y - blackoutDownY
+                    if (!blackoutMoved && (abs(dx) > touchSlopPx || abs(dy) > touchSlopPx)) {
+                        blackoutMoved = true
+                    }
+                    showBlackoutHintImmediate()
+                    if (blackoutMoved) {
+                        val offset = minOf(0f, dy)
+                        blackoutSwipeOffset += (offset - blackoutSwipeOffset) * BLACKOUT_SWIPE_SMOOTHING
+                        view.translationY = blackoutSwipeOffset
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - blackoutDownX
+                    val dy = event.y - blackoutDownY
+                    val isSwipeUp = dy <= -blackoutSwipeMinPx && abs(dy) > abs(dx)
+                    if (isSwipeUp) {
+                        val target = -view.height.toFloat().coerceAtLeast(1f)
+                        view.animate()
+                            .translationY(target)
+                            .setDuration(BLACKOUT_SWIPE_ANIM_MS)
+                            .withEndAction {
+                                view.translationY = 0f
+                                blackoutSwipeOffset = 0f
+                                unlockFromBlackout()
+                            }
+                            .start()
+                    } else if (!blackoutMoved) {
+                        showBlackoutHintImmediate()
+                        view.animate()
+                            .translationY(0f)
+                            .setDuration(BLACKOUT_SWIPE_ANIM_MS)
+                            .withEndAction { blackoutSwipeOffset = 0f }
+                            .start()
+                    } else {
+                        view.animate()
+                            .translationY(0f)
+                            .setDuration(BLACKOUT_SWIPE_ANIM_MS)
+                            .withEndAction { blackoutSwipeOffset = 0f }
+                            .start()
+                    }
+                    if (!isSwipeUp) {
+                        scheduleBlackoutHintFade()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    scheduleBlackoutHintFade()
+                    true
+                }
+                else -> false
+            }
         }
 
         setupTuningControls()
@@ -183,6 +265,12 @@ class TouchpadActivity : AppCompatActivity() {
                                 val message =
                                     getString(R.string.touchpad_back_external_window_missing)
                                 service.showToastOnExternalDisplay(message)
+                            } else if (!success &&
+                                SessionStore.lastBackFailure == "dispatch_failed"
+                            ) {
+                                val message =
+                                    getString(R.string.touchpad_back_dispatch_failed)
+                                service.showToastOnExternalDisplay(message)
                             }
                         }
                         DiagnosticsLog.add("Touchpad: back forwarded")
@@ -196,6 +284,7 @@ class TouchpadActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        DisplaySessionManager.addListener(this)
         refreshShizukuBinderState()
         updateAccessibilityGate()
     }
@@ -222,10 +311,23 @@ class TouchpadActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        DisplaySessionManager.removeListener(this)
         stopAutoDimSession()
         cancelLongPress()
         exitScrollMode()
         super.onStop()
+    }
+
+    override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
+        if (info == null) {
+            cancelDimTimer()
+            cancelDimAnimator()
+            restoreOriginalBrightness()
+            setBlackoutVisible(false)
+            DiagnosticsLog.add("Touchpad: brightness restored (external display removed)")
+        } else if (touchpadActive) {
+            startAutoDimSession()
+        }
     }
 
     override fun onDestroy() {
@@ -252,6 +354,19 @@ class TouchpadActivity : AppCompatActivity() {
 
     private fun handleTouch(event: MotionEvent) {
         val service = serviceOrToast() ?: return
+        if (suppressSingleUntilUp) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    suppressSingleUntilUp = false
+                    touchState = TouchState.IDLE
+                    return
+                }
+                MotionEvent.ACTION_DOWN -> {
+                    suppressSingleUntilUp = false
+                }
+                else -> return
+            }
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 processor.reset()
@@ -296,6 +411,11 @@ class TouchpadActivity : AppCompatActivity() {
                 lastTouchY = event.y
 
                 if (touchState == TouchState.ONE_FINGER_DOWN) {
+                    val movedForLongPress = abs(event.x - downX) > longPressCancelSlopPx ||
+                        abs(event.y - downY) > longPressCancelSlopPx
+                    if (movedForLongPress) {
+                        cancelLongPress()
+                    }
                     val moved = abs(event.x - downX) > touchSlopPx ||
                         abs(event.y - downY) > touchSlopPx
                     if (moved) {
@@ -307,14 +427,13 @@ class TouchpadActivity : AppCompatActivity() {
             MotionEvent.ACTION_POINTER_UP -> {
                 if (touchState == TouchState.SCROLL_MODE && event.pointerCount <= 2) {
                     exitScrollMode()
-                    resetTouchBaseline(event)
+                    suppressSingleUntilUp = true
                 }
             }
             MotionEvent.ACTION_UP -> {
                 cancelLongPress()
                 if (touchState == TouchState.SCROLL_MODE) {
                     exitScrollMode()
-                    resetTouchBaseline(event)
                     return
                 }
                 if (touchState == TouchState.DRAGGING) {
@@ -363,8 +482,8 @@ class TouchpadActivity : AppCompatActivity() {
         cancelLongPress()
         longPressRunnable = Runnable {
             if (touchState != TouchState.ONE_FINGER_DOWN) return@Runnable
-            val moved = abs(lastTouchX - downX) > touchSlopPx ||
-                abs(lastTouchY - downY) > touchSlopPx
+            val moved = abs(lastTouchX - downX) > longPressCancelSlopPx ||
+                abs(lastTouchY - downY) > longPressCancelSlopPx
             if (moved) return@Runnable
             touchState = TouchState.DRAGGING
             binding.touchpadArea.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -387,174 +506,83 @@ class TouchpadActivity : AppCompatActivity() {
                 ControlAccessibilityService.current()?.endDragAtCursor()
                 touchState = TouchState.IDLE
             }
+            hideBlackoutHint()
+            binding.blackoutOverlay.translationY = 0f
+        } else {
+            hideBlackoutHint()
+            binding.blackoutOverlay.translationY = 0f
         }
         binding.blackoutOverlay.isVisible = visible
         DiagnosticsLog.add("Touchpad: blackout=$visible")
     }
 
+    private fun unlockFromBlackout() {
+        setBlackoutVisible(false)
+        restoreOriginalBrightness()
+        if (touchpadActive) {
+            startAutoDimSession()
+        }
+    }
+
+    private fun showBlackoutHintImmediate() {
+        val hint = binding.blackoutHint
+        hint.animate().cancel()
+        blackoutHintFadeRunnable?.let { handler.removeCallbacks(it) }
+        hint.alpha = 1f
+        hint.isVisible = true
+    }
+
+    private fun scheduleBlackoutHintFade() {
+        blackoutHintFadeRunnable?.let { handler.removeCallbacks(it) }
+        blackoutHintFadeRunnable = Runnable {
+            val hint = binding.blackoutHint
+            if (!binding.blackoutOverlay.isVisible) return@Runnable
+            hint.animate()
+                .alpha(0f)
+                .setDuration(BLACKOUT_HINT_FADE_MS)
+                .withEndAction { hint.isVisible = false }
+                .start()
+        }
+        handler.postDelayed(blackoutHintFadeRunnable!!, BLACKOUT_HINT_VISIBLE_MS)
+    }
+
+    private fun hideBlackoutHint() {
+        blackoutHintFadeRunnable?.let { handler.removeCallbacks(it) }
+        blackoutHintFadeRunnable = null
+        binding.blackoutHint.animate().cancel()
+        binding.blackoutHint.alpha = 0f
+        binding.blackoutHint.isVisible = false
+    }
+
     private fun enterScrollMode(service: ControlAccessibilityService, event: MotionEvent) {
         touchState = TouchState.SCROLL_MODE
-        lastTwoFingerY = averageY(event)
-        lastScrollEventTime = event.eventTime
-        scrollAccumDy = 0f
-        scrollDistanceAccum = 0f
-        scrollSpeedMultiplier = 1f
-        val cursor = service.getCursorPosition()
-        scrollAnchorX = cursor.x
-        scrollAnchorY = cursor.y
-        val injectAnchor = service.prepareScrollMode(scrollAnchorX, scrollAnchorY)
-        injectAnchorX = injectAnchor.x
-        injectAnchorY = injectAnchor.y
-        DiagnosticsLog.add(
-            "Touchpad: scroll mode enter anchor=(${scrollAnchorX.toInt()},${scrollAnchorY.toInt()})"
-        )
-        startScrollTicker()
+        val useDirect = SettingsStore.touchpadDirectScrollGestureEnabled &&
+            directScrollController.enter(service, event)
+        if (useDirect) {
+            activeScrollController = ActiveScrollController.DIRECT
+            return
+        }
+        legacyScrollController.enter(service, event)
+        activeScrollController = ActiveScrollController.LEGACY
     }
 
     private fun updateScrollMode(event: MotionEvent) {
-        val currentY = averageY(event)
-        val deltaY = currentY - lastTwoFingerY
-        lastTwoFingerY = currentY
-        if ((deltaY > 0f && scrollAccumDy < 0f) || (deltaY < 0f && scrollAccumDy > 0f)) {
-            scrollAccumDy = 0f
-            scrollDistanceAccum = 0f
+        when (activeScrollController) {
+            ActiveScrollController.DIRECT -> directScrollController.update(event)
+            ActiveScrollController.LEGACY -> legacyScrollController.update(event)
+            ActiveScrollController.NONE -> Unit
         }
-        scrollAccumDy += deltaY
-        scrollDistanceAccum += abs(deltaY)
-        val dt = (event.eventTime - lastScrollEventTime).coerceAtLeast(1L)
-        val velocity = abs(deltaY) / dt.toFloat()
-        scrollSpeedMultiplier = computeScrollSpeedMultiplier(velocity)
-        lastScrollEventTime = event.eventTime
-        if (velocity < SCROLL_STOP_VELOCITY && abs(scrollAccumDy) < scrollStopThreshold()) {
-            scrollAccumDy = 0f
-            if (scrollDistanceAccum < scrollStopThreshold() * SCROLL_STOP_DISTANCE_WINDOW) {
-                scrollDistanceAccum = 0f
-            }
-            stopScrollTicker()
-        }
-        if (velocity < SCROLL_DISTANCE_DECAY_VELOCITY) {
-            scrollDistanceAccum *= SCROLL_DISTANCE_DECAY_FACTOR
-        }
-        if (!scrollTickerRunning) {
-            startScrollTicker()
-        }
-        emitScrollSteps()
     }
 
     private fun exitScrollMode() {
         if (touchState != TouchState.SCROLL_MODE) return
         touchState = TouchState.IDLE
-        stopScrollTicker()
-        scrollAccumDy = 0f
-        scrollDistanceAccum = 0f
-        lastScrollEventTime = 0L
-        DiagnosticsLog.add("Touchpad: scroll mode exit")
-    }
-
-    private fun startScrollTicker() {
-        if (scrollTickerRunning) return
-        scrollTickerRunning = true
-        handler.post(scrollTicker)
-    }
-
-    private fun stopScrollTicker() {
-        if (!scrollTickerRunning) return
-        handler.removeCallbacks(scrollTicker)
-        scrollTickerRunning = false
-    }
-
-    private val scrollTicker = object : Runnable {
-        override fun run() {
-            if (touchState != TouchState.SCROLL_MODE) {
-                scrollTickerRunning = false
-                return
-            }
-            val idleFor = SystemClock.uptimeMillis() - lastScrollEventTime
-            if (idleFor > SCROLL_IDLE_TIMEOUT_MS) {
-                scrollAccumDy = 0f
-                scrollTickerRunning = false
-                return
-            }
-            emitScrollSteps()
-            handler.postDelayed(this, SCROLL_TICK_MS)
+        when (activeScrollController) {
+            ActiveScrollController.DIRECT -> directScrollController.exit()
+            ActiveScrollController.LEGACY -> legacyScrollController.exit()
+            ActiveScrollController.NONE -> Unit
         }
-    }
-
-    private fun emitScrollSteps() {
-        val service = ControlAccessibilityService.current() ?: return
-        val userScale = SettingsStore.touchpadScrollSpeed.coerceIn(
-            SCROLL_SPEED_SETTING_MIN,
-            SCROLL_SPEED_SETTING_MAX
-        )
-        val baseSpeed = SettingsStore.getTouchpadScrollBaseSpeed()
-        val effectiveSpeed = baseSpeed * userScale
-        val velocityMultiplier = scrollSpeedMultiplier.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
-        val adaptiveMultiplier =
-            1f + (velocityMultiplier - 1f) * SCROLL_SPEED_ADAPTIVITY
-        val adaptiveStepMultiplier =
-            1f + (velocityMultiplier - 1f) * SCROLL_STEP_ADAPTIVITY
-        val distanceFactor = computeDistanceFactor(scrollDistanceAccum)
-        val adaptiveSpeed = (effectiveSpeed * adaptiveMultiplier * distanceFactor)
-            .coerceIn(effectiveSpeed * 0.35f, effectiveSpeed * 3.0f)
-        val adaptiveStepSpeed = (effectiveSpeed * adaptiveStepMultiplier * distanceFactor)
-            .coerceIn(effectiveSpeed * 0.5f, effectiveSpeed * 2.2f)
-        val gestureSpeed = adaptiveSpeed
-            .coerceIn(SCROLL_GESTURE_SPEED_MIN, SCROLL_SPEED_MAX)
-        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / adaptiveStepSpeed
-        val absAccum = abs(scrollAccumDy)
-        if (stepThreshold <= 0f || absAccum < stepThreshold) return
-        var direction = if (scrollAccumDy > 0f) 1 else -1
-        if (SettingsStore.touchpadScrollInverted) {
-            direction *= -1
-        }
-        val precisionScroll = velocityMultiplier <= SCROLL_PRECISION_VELOCITY_MAX ||
-            absAccum < stepThreshold * SCROLL_PRECISION_WINDOW_STEPS
-        val maxSteps = if (distanceFactor >= SCROLL_MAX_STEP_BOOST_THRESHOLD) {
-            SCROLL_MAX_STEPS_FAST
-        } else {
-            SCROLL_MAX_STEPS_PER_TICK
-        }
-        var stepsToEmit = (absAccum / stepThreshold).toInt()
-        if (stepsToEmit > maxSteps) stepsToEmit = maxSteps
-        var emitted = 0
-        while (emitted < stepsToEmit) {
-            val success = service.performScrollStep(
-                direction,
-                injectAnchorX,
-                injectAnchorY,
-                gestureSpeed,
-                preferGesture = true
-            )
-            if (!success) break
-            scrollAccumDy -= direction * stepThreshold
-            emitted += 1
-        }
-    }
-
-    private fun computeScrollSpeedMultiplier(velocityPxPerMs: Float): Float {
-        if (velocityPxPerMs <= 0f) return 1f
-        val scaled = velocityPxPerMs / SCROLL_SPEED_BASE_PX_PER_MS
-        return scaled.coerceIn(SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
-    }
-
-    private fun computeDistanceFactor(distancePx: Float): Float {
-        if (distancePx <= 0f) return 1f
-        val threshold = resources.displayMetrics.density * SCROLL_DISTANCE_ACCEL_DP
-        if (threshold <= 0f) return 1f
-        val normalized = (distancePx / threshold).coerceAtLeast(0f)
-        val factor = 1f + kotlin.math.sqrt(normalized) * SCROLL_DISTANCE_ACCEL_GAIN
-        return factor.coerceIn(1f, SCROLL_DISTANCE_ACCEL_MAX)
-    }
-
-    private fun scrollStopThreshold(): Float {
-        val userScale = SettingsStore.touchpadScrollSpeed.coerceIn(
-            SCROLL_SPEED_SETTING_MIN,
-            SCROLL_SPEED_SETTING_MAX
-        )
-        val baseSpeed = SettingsStore.getTouchpadScrollBaseSpeed()
-        val effectiveSpeed = baseSpeed * userScale
-        val stepThreshold = (resources.displayMetrics.density * SCROLL_STEP_DP) / effectiveSpeed
-        return stepThreshold * SCROLL_STOP_WINDOW_STEPS
+        activeScrollController = ActiveScrollController.NONE
     }
 
     private fun applyToolbarInsets() {
@@ -1036,30 +1064,12 @@ class TouchpadActivity : AppCompatActivity() {
         private const val AUTO_DIM_DELAY_MS = 10_000L
         private const val DIM_ANIMATION_DURATION_MS = 400L
         private const val TOUCH_SLOP_DP = 8f
-        private const val SCROLL_STEP_DP = 6f
-        private const val SCROLL_TICK_MS = 16L
-        private const val SCROLL_MAX_STEPS_PER_TICK = 3
-        private const val SCROLL_SPEED_BASE_PX_PER_MS = 0.35f
-        private const val SCROLL_SPEED_MIN = 0.35f
-        private const val SCROLL_SPEED_MAX = 3.0f
-        private const val SCROLL_GESTURE_SPEED_MIN = 0.2f
-        private const val SCROLL_SPEED_SETTING_MIN = 0.5f
-        private const val SCROLL_SPEED_SETTING_MAX = 3.0f
-        private const val SCROLL_SPEED_ADAPTIVITY = 1.05f
-        private const val SCROLL_STEP_ADAPTIVITY = 0.85f
-        private const val SCROLL_DISTANCE_ACCEL_DP = 120f
-        private const val SCROLL_DISTANCE_ACCEL_GAIN = 0.35f
-        private const val SCROLL_DISTANCE_ACCEL_MAX = 1.8f
-        private const val SCROLL_DISTANCE_DECAY_VELOCITY = 0.35f
-        private const val SCROLL_DISTANCE_DECAY_FACTOR = 0.85f
-        private const val SCROLL_PRECISION_VELOCITY_MAX = 0.95f
-        private const val SCROLL_PRECISION_WINDOW_STEPS = 1.5f
-        private const val SCROLL_STOP_VELOCITY = 0.22f
-        private const val SCROLL_STOP_WINDOW_STEPS = 0.8f
-        private const val SCROLL_STOP_DISTANCE_WINDOW = 2.0f
-        private const val SCROLL_MAX_STEPS_FAST = 6
-        private const val SCROLL_MAX_STEP_BOOST_THRESHOLD = 1.3f
-        private const val SCROLL_IDLE_TIMEOUT_MS = 50L
+        private const val LONG_PRESS_CANCEL_DP = 3f
+        private const val BLACKOUT_SWIPE_MIN_DP = 120f
+        private const val BLACKOUT_HINT_VISIBLE_MS = 2000L
+        private const val BLACKOUT_HINT_FADE_MS = 400L
+        private const val BLACKOUT_SWIPE_ANIM_MS = 180L
+        private const val BLACKOUT_SWIPE_SMOOTHING = 0.25f
         private const val SHIZUKU_PERMISSION_REQUEST = 1201
     }
 
@@ -1075,5 +1085,11 @@ class TouchpadActivity : AppCompatActivity() {
         MOVING_CURSOR,
         DRAGGING,
         SCROLL_MODE
+    }
+
+    private enum class ActiveScrollController {
+        NONE,
+        LEGACY,
+        DIRECT
     }
 }

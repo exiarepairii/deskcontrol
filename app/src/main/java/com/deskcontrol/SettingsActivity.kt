@@ -84,6 +84,18 @@ class SettingsActivity : AppCompatActivity() {
         val touchpadDimLevelSlider = findViewById<Slider>(R.id.sliderTouchpadDimLevel)
         val touchpadScrollSpeedValue = findViewById<android.widget.TextView>(R.id.touchpadScrollSpeedValue)
         val touchpadScrollSpeedSlider = findViewById<Slider>(R.id.sliderTouchpadScrollSpeed)
+        val touchpadScrollDistanceValue =
+            findViewById<android.widget.TextView>(R.id.touchpadScrollDistanceValue)
+        val touchpadScrollDistanceSlider = findViewById<Slider>(R.id.sliderTouchpadScrollDistance)
+        val touchpadScrollGestureSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadScrollGesture)
+        val touchpadScrollGestureGainValue =
+            findViewById<android.widget.TextView>(R.id.touchpadScrollGestureGainValue)
+        val touchpadScrollGestureGainSlider = findViewById<Slider>(R.id.sliderTouchpadScrollGestureGain)
+        val touchpadScrollGestureStepValue =
+            findViewById<android.widget.TextView>(R.id.touchpadScrollGestureStepValue)
+        val touchpadScrollGestureStepSlider = findViewById<Slider>(R.id.sliderTouchpadScrollGestureStep)
+        val touchpadDragBoostValue = findViewById<android.widget.TextView>(R.id.touchpadDragBoostValue)
+        val touchpadDragBoostSlider = findViewById<Slider>(R.id.sliderTouchpadDragBoost)
         val touchpadScrollInvertSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadScrollInvert)
         val cursorHideOptions = findViewById<android.view.View>(R.id.cursorHideOptions)
         val cursorHideDelayValue = findViewById<android.widget.TextView>(R.id.cursorHideDelayValue)
@@ -181,6 +193,158 @@ class SettingsActivity : AppCompatActivity() {
                     touchpadScrollSpeedSlider.value = snapped
                 }
                 SettingsStore.setTouchpadScrollSpeed(this, snapped)
+            }
+        }
+
+        touchpadScrollDistanceSlider.valueFrom = 3.0f
+        touchpadScrollDistanceSlider.valueTo = 12.0f
+        touchpadScrollDistanceSlider.stepSize = 0.5f
+        touchpadScrollDistanceSlider.value = snapToStep(
+            SettingsStore.touchpadScrollStepDp.coerceIn(
+                touchpadScrollDistanceSlider.valueFrom,
+                touchpadScrollDistanceSlider.valueTo
+            ),
+            touchpadScrollDistanceSlider.valueFrom,
+            touchpadScrollDistanceSlider.stepSize
+        )
+        touchpadScrollDistanceValue.text = getString(
+            R.string.settings_touchpad_scroll_distance_value,
+            touchpadScrollDistanceSlider.value
+        )
+        touchpadScrollDistanceSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(
+                value,
+                touchpadScrollDistanceSlider.valueFrom,
+                touchpadScrollDistanceSlider.stepSize
+            )
+            touchpadScrollDistanceValue.text = getString(
+                R.string.settings_touchpad_scroll_distance_value,
+                snapped
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    touchpadScrollDistanceSlider.value = snapped
+                }
+                SettingsStore.setTouchpadScrollStepDp(this, snapped)
+            }
+        }
+
+        touchpadScrollGestureSwitch.isChecked = SettingsStore.touchpadDirectScrollGestureEnabled
+        val updateScrollModeUiState: (Boolean) -> Unit = { directEnabled ->
+            touchpadScrollGestureGainSlider.isEnabled = directEnabled
+            touchpadScrollGestureStepSlider.isEnabled = directEnabled
+            touchpadScrollGestureGainValue.alpha = if (directEnabled) 1f else 0.5f
+            touchpadScrollGestureStepValue.alpha = if (directEnabled) 1f else 0.5f
+
+            val classicEnabled = !directEnabled
+            touchpadScrollSpeedSlider.isEnabled = classicEnabled
+            touchpadScrollDistanceSlider.isEnabled = classicEnabled
+            touchpadScrollInvertSwitch.isEnabled = classicEnabled
+            touchpadScrollSpeedValue.alpha = if (classicEnabled) 1f else 0.5f
+            touchpadScrollDistanceValue.alpha = if (classicEnabled) 1f else 0.5f
+        }
+        updateScrollModeUiState(touchpadScrollGestureSwitch.isChecked)
+        touchpadScrollGestureSwitch.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setTouchpadDirectScrollGestureEnabled(this, isChecked)
+            updateScrollModeUiState(isChecked)
+        }
+
+        touchpadScrollGestureGainSlider.valueFrom = 0.5f
+        touchpadScrollGestureGainSlider.valueTo = 2.5f
+        touchpadScrollGestureGainSlider.stepSize = 0.1f
+        touchpadScrollGestureGainSlider.value = snapToStep(
+            SettingsStore.touchpadDirectScrollGain.coerceIn(
+                touchpadScrollGestureGainSlider.valueFrom,
+                touchpadScrollGestureGainSlider.valueTo
+            ),
+            touchpadScrollGestureGainSlider.valueFrom,
+            touchpadScrollGestureGainSlider.stepSize
+        )
+        touchpadScrollGestureGainValue.text = getString(
+            R.string.settings_touchpad_scroll_gesture_gain_value,
+            touchpadScrollGestureGainSlider.value
+        )
+        touchpadScrollGestureGainSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(
+                value,
+                touchpadScrollGestureGainSlider.valueFrom,
+                touchpadScrollGestureGainSlider.stepSize
+            )
+            touchpadScrollGestureGainValue.text = getString(
+                R.string.settings_touchpad_scroll_gesture_gain_value,
+                snapped
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    touchpadScrollGestureGainSlider.value = snapped
+                }
+                SettingsStore.setTouchpadDirectScrollGain(this, snapped)
+            }
+        }
+
+        touchpadScrollGestureStepSlider.valueFrom = 16.0f
+        touchpadScrollGestureStepSlider.valueTo = 80.0f
+        touchpadScrollGestureStepSlider.stepSize = 2.0f
+        touchpadScrollGestureStepSlider.value = snapToStep(
+            SettingsStore.touchpadDirectScrollStepDp.coerceIn(
+                touchpadScrollGestureStepSlider.valueFrom,
+                touchpadScrollGestureStepSlider.valueTo
+            ),
+            touchpadScrollGestureStepSlider.valueFrom,
+            touchpadScrollGestureStepSlider.stepSize
+        )
+        touchpadScrollGestureStepValue.text = getString(
+            R.string.settings_touchpad_scroll_gesture_step_value,
+            touchpadScrollGestureStepSlider.value
+        )
+        touchpadScrollGestureStepSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(
+                value,
+                touchpadScrollGestureStepSlider.valueFrom,
+                touchpadScrollGestureStepSlider.stepSize
+            )
+            touchpadScrollGestureStepValue.text = getString(
+                R.string.settings_touchpad_scroll_gesture_step_value,
+                snapped
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    touchpadScrollGestureStepSlider.value = snapped
+                }
+                SettingsStore.setTouchpadDirectScrollStepDp(this, snapped)
+            }
+        }
+
+        touchpadDragBoostSlider.valueFrom = 0.8f
+        touchpadDragBoostSlider.valueTo = 2.0f
+        touchpadDragBoostSlider.stepSize = 0.1f
+        touchpadDragBoostSlider.value = snapToStep(
+            TouchpadTuning.dragBoost.coerceIn(
+                touchpadDragBoostSlider.valueFrom,
+                touchpadDragBoostSlider.valueTo
+            ),
+            touchpadDragBoostSlider.valueFrom,
+            touchpadDragBoostSlider.stepSize
+        )
+        touchpadDragBoostValue.text = getString(
+            R.string.settings_touchpad_drag_boost_value,
+            touchpadDragBoostSlider.value
+        )
+        touchpadDragBoostSlider.addOnChangeListener { _, value, fromUser ->
+            val snapped = snapToStep(
+                value,
+                touchpadDragBoostSlider.valueFrom,
+                touchpadDragBoostSlider.stepSize
+            )
+            touchpadDragBoostValue.text = getString(
+                R.string.settings_touchpad_drag_boost_value,
+                snapped
+            )
+            if (fromUser) {
+                if (snapped != value) {
+                    touchpadDragBoostSlider.value = snapped
+                }
+                SettingsStore.setTouchpadDragBoost(this, snapped)
             }
         }
 
@@ -491,7 +655,8 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun snapToStep(value: Float, start: Float, step: Float): Float {
         val steps = kotlin.math.round((value - start) / step).toInt()
-        return start + steps * step
+        val snapped = start + steps * step
+        return (kotlin.math.round(snapped * 1000f) / 1000f)
     }
 
 

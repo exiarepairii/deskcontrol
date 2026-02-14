@@ -85,6 +85,7 @@
     <string name="touchpad_shizuku_intro_ok">Got it</string>
     <string name="touchpad_back_external_not_focused">External display not focused. Tap once to focus, then press Back.</string>
     <string name="touchpad_back_external_window_missing">Unable to get focus on the external display. Tap the window content, then press Back again.</string>
+    <string name="touchpad_back_dispatch_failed">Back action failed to dispatch. Try again.</string>
     <string name="touchpad_no_external_display">No external display session</string>
     <string name="touchpad_base_gain_value">Base gain: %1$.2f</string>
     <string name="touchpad_acceleration_value">Acceleration: %1$.2fx</string>
@@ -112,6 +113,7 @@
     <string name="touchpad_intro_back_behavior">Back: when the touchpad area is active, Back is forwarded to the external app.</string>
     <string name="touchpad_intro_exit_hint">Exit: tap the top-left back arrow, or tap outside the touchpad area and then press Back.</string>
     <string name="touchpad_intro_message">%1$s\n%2$s\n%3$s\n\n%4$s\n%5$s\n%6$s</string>
+    <string name="touchpad_blackout_unlock_hint">Swipe up to unlock</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_display_section">Display</string>
@@ -132,11 +134,31 @@
     <string name="settings_touchpad_dim_level">Minimum brightness</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>
-    <string name="settings_touchpad_scroll_speed">Two-finger scroll speed</string>
+    <string name="settings_touchpad_scroll_classic_section">Default two-finger scrolling</string>
+    <string name="settings_touchpad_scroll_speed">Scroll movement per step</string>
     <string name="settings_touchpad_scroll_speed_value">%1$.1fx</string>
     <string name="settings_touchpad_scroll_speed_default">1.0x</string>
-    <string name="settings_touchpad_scroll_invert">Natural scrolling</string>
-    <string name="settings_touchpad_scroll_invert_summary">Two-finger up scrolls up.</string>
+    <string name="settings_touchpad_scroll_speed_summary">Higher = each emitted scroll step moves farther.</string>
+    <string name="settings_touchpad_scroll_distance">Step trigger distance</string>
+    <string name="settings_touchpad_scroll_distance_value">%1$.1f dp</string>
+    <string name="settings_touchpad_scroll_distance_default">6.0 dp</string>
+    <string name="settings_touchpad_scroll_distance_summary">Lower = easier to trigger continuous scrolling. Higher = more stable and slower.</string>
+    <string name="settings_touchpad_scroll_invert">Natural direction</string>
+    <string name="settings_touchpad_scroll_invert_summary">On: two-finger up moves content up.</string>
+    <string name="settings_touchpad_drag_boost">Long-press drag acceleration</string>
+    <string name="settings_touchpad_drag_boost_value">%1$.1fx</string>
+    <string name="settings_touchpad_drag_boost_default">1.2x</string>
+    <string name="settings_touchpad_scroll_direct_section">Direct gesture mode (experimental)</string>
+    <string name="settings_touchpad_scroll_gesture">Enable direct gesture mode</string>
+    <string name="settings_touchpad_scroll_gesture_summary">Use two-finger midpoint delta to inject continuous gestures. When enabled, default two-finger settings are ignored.</string>
+    <string name="settings_touchpad_scroll_gesture_gain">Direct gesture gain</string>
+    <string name="settings_touchpad_scroll_gesture_gain_value">%1$.1fx</string>
+    <string name="settings_touchpad_scroll_gesture_gain_default">1.0x</string>
+    <string name="settings_touchpad_scroll_gesture_gain_summary">Higher = faster direct gestures. Start from 1.0x and increase gradually.</string>
+    <string name="settings_touchpad_scroll_gesture_step">Direct gesture step length</string>
+    <string name="settings_touchpad_scroll_gesture_step_value">%1$.0f dp</string>
+    <string name="settings_touchpad_scroll_gesture_step_default">32 dp</string>
+    <string name="settings_touchpad_scroll_gesture_step_summary">Higher = each injected segment is longer. If stutter appears, lower this value.</string>
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>
