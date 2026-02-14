@@ -810,41 +810,9 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun tryTaskFocus(displayId: Int): Boolean {
-        return try {
-            val cls = Class.forName("android.app.ActivityTaskManager")
-            val getService = cls.getDeclaredMethod("getService")
-            val service = getService.invoke(null) ?: return false
-            if (Build.VERSION.SDK_INT >= 34) {
-                val focusTopTask = service.javaClass.getMethod("focusTopTask", Int::class.java)
-                focusTopTask.invoke(service, displayId)
-                return true
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val getRoots = service.javaClass.getMethod(
-                    "getAllRootTaskInfosOnDisplay",
-                    Int::class.java
-                )
-                val roots = getRoots.invoke(service, displayId) as? List<*> ?: return false
-                val first = roots.firstOrNull() ?: return false
-                val idField = first.javaClass.getDeclaredField("taskId")
-                idField.isAccessible = true
-                val taskId = idField.getInt(first)
-                val setFocused = service.javaClass.getMethod("setFocusedRootTask", Int::class.java)
-                setFocused.invoke(service, taskId)
-                return true
-            }
-            val stackField = service.javaClass.declaredFields.firstOrNull { it.name.contains("stack") }
-            if (stackField != null) {
-                stackField.isAccessible = true
-                val stackId = (stackField.get(service) as? Int) ?: return false
-                val setFocused = service.javaClass.getMethod("setFocusedStack", Int::class.java)
-                setFocused.invoke(service, stackId)
-                return true
-            }
-            false
-        } catch (_: Throwable) {
-            false
-        }
+        // Non-SDK reflection for ActivityTaskManager is blocked by lint/targetSdk 35+.
+        // Keep task-focus path disabled and rely on accessibility focus fallback.
+        return false
     }
 
     private fun pickTopAppWindow(displayId: Int): AccessibilityWindowInfo? {
