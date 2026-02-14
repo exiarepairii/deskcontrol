@@ -61,6 +61,22 @@
 - When changing behavior, also update the related pitfalls/conventions here.
 - Link to exact files/paths for anything non-obvious to reduce onboarding time.
 
+## Practical engineering lessons (scroll/input)
+- Keep two-finger scroll implementations isolated: legacy step-based mode and direct gesture mode now use separate controllers (`LegacyScrollController`, `DirectScrollController`) and are orchestrated by `TouchpadActivity`; avoid mixing state between modes.
+- Anti-misfire for two-finger exit is handled in `TouchpadActivity` via `suppressSingleUntilUp`; when touching this logic, verify no click/cursor move can occur between `ACTION_POINTER_UP` and final `UP/CANCEL`.
+- Legacy mode tuning has two independent knobs:
+  - user knob: “Step trigger distance” (`touchpadScrollStepDp`) controls how much finger travel is needed per emitted step;
+  - injection knob: swipe distance/duration constants in `ControlAccessibilityService.performScrollStep` control per-step visual travel (used to satisfy pull-to-refresh thresholds).
+- Direct mode tuning has two independent knobs:
+  - “Direct gesture gain” controls mapped delta scaling;
+  - “Direct gesture step length” (`touchpadDirectScrollStepDp`) controls chunk length per injected segment.
+  Keep both exposed in Settings and clearly scoped to direct mode only.
+- For direct mode stability, never emit tiny or boundary-clamped gesture fragments; short fragments are frequently interpreted by target apps as taps.
+- Cursor hotspot alignment should be tuned by `CURSOR_TIP_FRACTION_X/Y` in `ControlAccessibilityService`; adjust in small increments and validate against small tap targets.
+- Any slider-backed setting must be clamped/snap-aligned in both `SettingsActivity` (UI snap) and `SettingsStore` (persist clamp) to prevent `Slider` crashes on reopen.
+- Keep Settings wording mode-specific and explicit (“default two-finger” vs “direct gesture experimental”) and disable irrelevant controls when the other mode is active.
+- `settings_preferences.xml` is not part of runtime settings flow; current settings are code-driven in `SettingsActivity` + `activity_settings.xml`.
+
 ## Recent changes (touchpad-blind-ops)
 ## Recent changes (1.1.4)
 - Accessibility: optional Shizuku flow to auto-enable service with manual fallback (Touchpad gate).

@@ -16,16 +16,20 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
+import java.util.ArrayDeque
 import kotlin.math.abs
 import kotlin.math.min
 
 class ControlAccessibilityService : AccessibilityService() {
+    enum class ScrollAxis { VERTICAL, HORIZONTAL }
+
 
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
@@ -41,6 +45,18 @@ class ControlAccessibilityService : AccessibilityService() {
         private const val SCROLL_SWIPE_MIN_DP_PRECISION = 8f
         private const val SCROLL_SWIPE_BASE_DP_PRECISION = 24f
         private const val SCROLL_SWIPE_MAX_DP_PRECISION = 36f
+        private const val SCROLL_PULL_MIN_DP_PRECISION = 14f
+        private const val SCROLL_PULL_BASE_DP_PRECISION = 52f
+        private const val SCROLL_PULL_MAX_DP_PRECISION = 96f
+        private const val SCROLL_PULL_DURATION_SCALE = 1.35f
+        private const val SCROLL_PULL_MIN_DURATION_MS = 48L
+        private const val SCROLL_PULL_MAX_DURATION_MS = 96L
+        private const val SCROLL_PUSH_MIN_DP_PRECISION = 10f
+        private const val SCROLL_PUSH_BASE_DP_PRECISION = 34f
+        private const val SCROLL_PUSH_MAX_DP_PRECISION = 52f
+        private const val SCROLL_PUSH_DURATION_SCALE = 1.15f
+        private const val SCROLL_PUSH_MIN_DURATION_MS = 40L
+        private const val SCROLL_PUSH_MAX_DURATION_MS = 84L
         private const val SCROLL_SWIPE_MIN_DP_MICRO = 6f
         private const val SCROLL_SWIPE_BASE_DP_MICRO = 18f
         private const val SCROLL_SWIPE_MAX_DP_MICRO = 28f
@@ -48,6 +64,13 @@ class ControlAccessibilityService : AccessibilityService() {
         private const val SCROLL_SWIPE_BASE_DURATION_MS = 45L
         private const val SCROLL_SWIPE_MIN_DURATION_MS = 35L
         private const val SCROLL_SWIPE_MAX_DURATION_MS = 60L
+        private const val MIN_SCROLL_DENSITY = 2.6f
+        private const val CURSOR_TIP_FRACTION_X = 1f / 48f
+        private const val CURSOR_TIP_FRACTION_Y = 1f / 48f
+        private const val DIRECT_SCROLL_DURATION_MS = 48L
+        private const val DIRECT_SCROLL_EDGE_EPSILON_PX = 2f
+        private const val DIRECT_SCROLL_MIN_PATH_PX = 12f
+        private const val DIRECT_SCROLL_MIN_PRIMARY_PX = 8f
         @Volatile
         private var instance: ControlAccessibilityService? = null
         @Volatile
@@ -114,6 +137,10 @@ class ControlAccessibilityService : AccessibilityService() {
     private var scrollStroke: GestureDescription.StrokeDescription? = null
     private var scrollPointX = 0f
     private var scrollPointY = 0f
+    private var pendingScrollEnd = false
+    private var pendingScrollEndX = 0f
+    private var pendingScrollEndY = 0f
+    private var lastScrollDiagMs = 0L
     private val dragStartDurationMs = 8L
     private val dragSegmentDurationMs = 16L
     @Volatile
@@ -239,6 +266,12 @@ class ControlAccessibilityService : AccessibilityService() {
         startScrollGestureAtPoint(info, anchor.first, anchor.second)
     }
 
+    fun startScrollGestureAtPoint(x: Float, y: Float) {
+        val info = displayInfo ?: return
+        val anchor = resolveScrollAnchor(info, x, y)
+        startScrollGestureAtPoint(info, anchor.first, anchor.second)
+    }
+
     private fun startScrollGestureAtPoint(
         info: DisplaySessionManager.ExternalDisplayInfo,
         x: Float,
@@ -256,7 +289,11 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun updateScrollGestureBy(dx: Float, dy: Float) {
         val info = displayInfo ?: return
-        val margin = 24f * resources.displayMetrics.density
+        if (gesturesInFlight > 0) {
+            maybeLogScroll("ScrollGesture: update skipped (busy)")
+            return
+        }
+        val margin = 24f * densityFor(info)
         val minX = margin
         val maxX = info.width - margin
         val minY = margin
@@ -273,7 +310,10 @@ class ControlAccessibilityService : AccessibilityService() {
         }
         scrollPointX = nextX
         scrollPointY = nextY
-        val activeStroke = scrollStroke ?: return
+        val activeStroke = scrollStroke ?: run {
+            maybeLogScroll("ScrollGesture: update skipped (no active stroke)")
+            return
+        }
         val mappedStart = CoordinateMapper.mapForRotation(prevX, prevY, info)
         val mappedEnd = CoordinateMapper.mapForRotation(scrollPointX, scrollPointY, info)
         if (abs(mappedEnd.x - mappedStart.x) < 0.5f && abs(mappedEnd.y - mappedStart.y) < 0.5f) return
@@ -287,10 +327,77 @@ class ControlAccessibilityService : AccessibilityService() {
         dispatchScrollStroke(stroke, info.displayId)
     }
 
+    fun performDirectScrollGesture(anchorX: Float, anchorY: Float, dx: Float, dy: Float): Boolean {
+        val info = displayInfo ?: return false
+        if (gesturesInFlight > 0) {
+            return false
+        }
+        val safeRect = computeSafeRect(info)
+        val startX = anchorX.coerceIn(safeRect.left, safeRect.right)
+        val startY = anchorY.coerceIn(safeRect.top, safeRect.bottom)
+        if ((dx < 0f && startX <= safeRect.left + DIRECT_SCROLL_EDGE_EPSILON_PX) ||
+            (dx > 0f && startX >= safeRect.right - DIRECT_SCROLL_EDGE_EPSILON_PX) ||
+            (dy < 0f && startY <= safeRect.top + DIRECT_SCROLL_EDGE_EPSILON_PX) ||
+            (dy > 0f && startY >= safeRect.bottom - DIRECT_SCROLL_EDGE_EPSILON_PX)
+        ) {
+            return false
+        }
+        val endX = (startX + dx).coerceIn(safeRect.left, safeRect.right)
+        val endY = (startY + dy).coerceIn(safeRect.top, safeRect.bottom)
+        val actualDx = endX - startX
+        val actualDy = endY - startY
+        val pathLen = kotlin.math.hypot(actualDx.toDouble(), actualDy.toDouble()).toFloat()
+        if (pathLen < DIRECT_SCROLL_MIN_PATH_PX) return false
+        val horizontalDominant = abs(dx) >= abs(dy)
+        if (horizontalDominant && abs(actualDx) < DIRECT_SCROLL_MIN_PRIMARY_PX) return false
+        if (!horizontalDominant && abs(actualDy) < DIRECT_SCROLL_MIN_PRIMARY_PX) return false
+        val start = CoordinateMapper.mapForRotation(startX, startY, info)
+        val end = CoordinateMapper.mapForRotation(endX, endY, info)
+        val path = Path().apply {
+            moveTo(start.x, start.y)
+            lineTo(end.x, end.y)
+        }
+        val builder = GestureDescription.Builder()
+        trySetDisplayId(builder, info.displayId)
+        builder.addStroke(GestureDescription.StrokeDescription(path, 0, DIRECT_SCROLL_DURATION_MS))
+        dispatchGestureTracked(
+            builder.build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    recordInjection(true, getString(R.string.injection_scroll_injected))
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    recordInjection(false, getString(R.string.injection_scroll_failed))
+                }
+            }
+        )
+        return true
+    }
+
     fun endScrollGesture() {
         val info = displayInfo ?: return
-        val activeStroke = scrollStroke ?: return
-        val mapped = CoordinateMapper.mapForRotation(scrollPointX, scrollPointY, info)
+        val activeStroke = scrollStroke ?: run {
+            maybeLogScroll("ScrollGesture: end skipped (no active stroke)")
+            return
+        }
+        if (gesturesInFlight > 0) {
+            pendingScrollEnd = true
+            pendingScrollEndX = scrollPointX
+            pendingScrollEndY = scrollPointY
+            maybeLogScroll("ScrollGesture: end queued (busy)")
+            return
+        }
+        endScrollGestureInternal(info, activeStroke, scrollPointX, scrollPointY)
+    }
+
+    private fun endScrollGestureInternal(
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        activeStroke: GestureDescription.StrokeDescription,
+        x: Float,
+        y: Float
+    ) {
+        val mapped = CoordinateMapper.mapForRotation(x, y, info)
         val path = Path().apply {
             moveTo(mapped.x, mapped.y)
             lineTo(mapped.x, mapped.y)
@@ -301,16 +408,28 @@ class ControlAccessibilityService : AccessibilityService() {
         dispatchScrollStroke(stroke, info.displayId)
     }
 
+    private fun maybeLogScroll(message: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastScrollDiagMs < 250L) return
+        lastScrollDiagMs = now
+        DiagnosticsLog.add(message)
+    }
+
     fun cancelScrollGesture() {
         scrollStroke = null
+        pendingScrollEnd = false
     }
+
+    fun hasActiveScrollGesture(): Boolean = scrollStroke != null
+
+    fun isGestureBusy(): Boolean = gesturesInFlight > 0
 
     private fun resolveScrollAnchor(
         info: DisplaySessionManager.ExternalDisplayInfo,
         x: Float,
         y: Float
     ): Pair<Float, Float> {
-        val margin = 24f * resources.displayMetrics.density
+        val margin = 24f * densityFor(info)
         val clampedX = x.coerceIn(margin, info.width - margin)
         val clampedY = y.coerceIn(margin, info.height - margin)
         if (clampedX.isNaN() || clampedY.isNaN()) {
@@ -348,7 +467,8 @@ class ControlAccessibilityService : AccessibilityService() {
         injectAnchorX: Float,
         injectAnchorY: Float,
         speedMultiplier: Float,
-        preferGesture: Boolean = false
+        preferGesture: Boolean = false,
+        axis: ScrollAxis = ScrollAxis.VERTICAL
     ): Boolean {
         val info = displayInfo ?: return false
         val mapped = CoordinateMapper.mapForRotation(injectAnchorX, injectAnchorY, info)
@@ -357,11 +477,16 @@ class ControlAccessibilityService : AccessibilityService() {
         } else {
             AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
         }
-        if (!preferGesture) {
+        if (!preferGesture && axis == ScrollAxis.VERTICAL) {
             val actionTarget = findScrollableTargetAtPoint(info, mapped.x, mapped.y)
             if (actionTarget != null) {
                 val success = actionTarget.performAction(action)
-                DiagnosticsLog.add("Scroll: action=${if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) "forward" else "back"} success=$success")
+                val actionName = if (action == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD) {
+                    "forward"
+                } else {
+                    "backward"
+                }
+                DiagnosticsLog.add("Scroll: action=$actionName axis=$axis success=$success")
                 if (success) return true
             } else {
                 DiagnosticsLog.add("Scroll: action target missing at (${mapped.x.toInt()},${mapped.y.toInt()})")
@@ -377,39 +502,86 @@ class ControlAccessibilityService : AccessibilityService() {
         val clampedX = injectAnchorX.coerceIn(safeRect.left, safeRect.right)
         val clampedY = injectAnchorY.coerceIn(safeRect.top, safeRect.bottom)
         val useMicro = preferGesture && speedMultiplier < SCROLL_SWIPE_MICRO_SPEED_MAX
+        val isPullDown = preferGesture && direction < 0 && axis == ScrollAxis.VERTICAL
+        val isPushUp = preferGesture && direction >= 0 && axis == ScrollAxis.VERTICAL
         val swipeDistance = computeSwipeDistancePx(
             speedMultiplier,
             safeRect,
-            minDpOverride = if (useMicro) SCROLL_SWIPE_MIN_DP_MICRO else if (preferGesture) {
+            axis = axis,
+            minDpOverride = if (isPullDown) {
+                SCROLL_PULL_MIN_DP_PRECISION
+            } else if (isPushUp) {
+                SCROLL_PUSH_MIN_DP_PRECISION
+            } else if (useMicro) {
+                SCROLL_SWIPE_MIN_DP_MICRO
+            } else if (preferGesture) {
                 SCROLL_SWIPE_MIN_DP_PRECISION
             } else {
                 null
             },
-            maxDpOverride = if (useMicro) SCROLL_SWIPE_MAX_DP_MICRO else if (preferGesture) {
+            maxDpOverride = if (isPullDown) {
+                SCROLL_PULL_MAX_DP_PRECISION
+            } else if (isPushUp) {
+                SCROLL_PUSH_MAX_DP_PRECISION
+            } else if (useMicro) {
+                SCROLL_SWIPE_MAX_DP_MICRO
+            } else if (preferGesture) {
                 SCROLL_SWIPE_MAX_DP_PRECISION
             } else {
                 null
             },
             minSpeedMultiplier = if (preferGesture) 0.2f else 0.6f,
-            baseDpOverride = if (useMicro) SCROLL_SWIPE_BASE_DP_MICRO else if (preferGesture) {
+            baseDpOverride = if (isPullDown) {
+                SCROLL_PULL_BASE_DP_PRECISION
+            } else if (isPushUp) {
+                SCROLL_PUSH_BASE_DP_PRECISION
+            } else if (useMicro) {
+                SCROLL_SWIPE_BASE_DP_MICRO
+            } else if (preferGesture) {
                 SCROLL_SWIPE_BASE_DP_PRECISION
             } else {
                 null
             }
         )
         val half = swipeDistance / 2f
+        val startX: Float
+        val endX: Float
         val startY: Float
         val endY: Float
-        if (direction >= 0) {
-            startY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
-            endY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
+        if (axis == ScrollAxis.HORIZONTAL) {
+            startY = clampedY
+            endY = clampedY
+            if (direction >= 0) {
+                startX = (clampedX + half).coerceIn(safeRect.left, safeRect.right)
+                endX = (clampedX - half).coerceIn(safeRect.left, safeRect.right)
+            } else {
+                startX = (clampedX - half).coerceIn(safeRect.left, safeRect.right)
+                endX = (clampedX + half).coerceIn(safeRect.left, safeRect.right)
+            }
         } else {
-            startY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
-            endY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
+            startX = clampedX
+            endX = clampedX
+            if (direction >= 0) {
+                startY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
+                endY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
+            } else {
+                startY = (clampedY - half).coerceIn(safeRect.top, safeRect.bottom)
+                endY = (clampedY + half).coerceIn(safeRect.top, safeRect.bottom)
+            }
         }
-        val start = CoordinateMapper.mapForRotation(clampedX, startY, info)
-        val end = CoordinateMapper.mapForRotation(clampedX, endY, info)
-        val duration = computeSwipeDurationMs(speedMultiplier)
+        val start = CoordinateMapper.mapForRotation(startX, startY, info)
+        val end = CoordinateMapper.mapForRotation(endX, endY, info)
+        val duration = if (isPullDown) {
+            (computeSwipeDurationMs(speedMultiplier) * SCROLL_PULL_DURATION_SCALE)
+                .toLong()
+                .coerceIn(SCROLL_PULL_MIN_DURATION_MS, SCROLL_PULL_MAX_DURATION_MS)
+        } else if (isPushUp) {
+            (computeSwipeDurationMs(speedMultiplier) * SCROLL_PUSH_DURATION_SCALE)
+                .toLong()
+                .coerceIn(SCROLL_PUSH_MIN_DURATION_MS, SCROLL_PUSH_MAX_DURATION_MS)
+        } else {
+            computeSwipeDurationMs(speedMultiplier)
+        }
         val path = Path().apply {
             moveTo(start.x, start.y)
             lineTo(end.x, end.y)
@@ -448,9 +620,17 @@ class ControlAccessibilityService : AccessibilityService() {
         }
         val snapshot = snapshotWindows()
         if (snapshot.none { it.displayId == info.displayId }) {
-            DiagnosticsLog.add("Back: no window for external displayId=${info.displayId}")
-            SessionStore.lastBackFailure = "external_window_missing"
-            return false
+            // Some OEM ROMs do not expose external-display windows via Accessibility APIs.
+            // Fall back to direct BACK dispatch instead of hard-failing on "no focus".
+            DiagnosticsLog.add(
+                "Back: no window for external displayId=${info.displayId}, " +
+                    "fallback to direct global back"
+            )
+            return executeBackWithLogging(
+                reason = "windowless fallback",
+                allowFocusRetry = false,
+                bypassExternalFocusCheck = true
+            )
         }
         val externalState = resolveExternalWindowState(info, snapshot)
         if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
@@ -471,7 +651,11 @@ class ControlAccessibilityService : AccessibilityService() {
         return executeBackWithLogging("immediate", allowFocusRetry = true)
     }
 
-    private fun executeBackWithLogging(reason: String, allowFocusRetry: Boolean): Boolean {
+    private fun executeBackWithLogging(
+        reason: String,
+        allowFocusRetry: Boolean,
+        bypassExternalFocusCheck: Boolean = false
+    ): Boolean {
         val now = SystemClock.uptimeMillis()
         DiagnosticsLog.add("Back: execute $reason t=$now")
         DiagnosticsLog.add(
@@ -486,7 +670,9 @@ class ControlAccessibilityService : AccessibilityService() {
         val snapshot = snapshotWindows()
         dumpWindows("Back: window", snapshot)
         val externalState = resolveExternalWindowState(info, snapshot)
-        if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
+        if (!bypassExternalFocusCheck &&
+            (externalState == null || (!externalState.isActive && !externalState.isFocused))
+        ) {
             DiagnosticsLog.add(
                 "Back: external display not focused at action " +
                     "active=${externalState?.isActive ?: false} " +
@@ -501,6 +687,9 @@ class ControlAccessibilityService : AccessibilityService() {
             SessionStore.lastBackFailure = "external_not_focused"
             DiagnosticsLog.add("Back: skipped (external display not focused)")
             return false
+        }
+        if (bypassExternalFocusCheck) {
+            DiagnosticsLog.add("Back: focus check bypassed (windowless external display fallback)")
         }
         val success = performGlobalAction(GLOBAL_ACTION_BACK)
         if (!success) {
@@ -571,32 +760,127 @@ class ControlAccessibilityService : AccessibilityService() {
     private fun dispatchFocusActivationGesture(
         info: DisplaySessionManager.ExternalDisplayInfo
     ): Boolean {
-        val clamped = clampToDisplay(cursorX, cursorY, info)
-        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
-        val targetWindow = windows
-            ?.filter { it.displayId == info.displayId }
-            ?.firstOrNull { it.isFocused || it.isActive }
+        if (tryTaskFocus(info.displayId)) {
+            DiagnosticsLog.add("Back: focus activation via task manager")
+            return true
+        }
+        val targetWindow = pickTopAppWindow(info.displayId)
             ?: windows?.firstOrNull { it.displayId == info.displayId }
         val root = targetWindow?.root ?: run {
             DiagnosticsLog.add("Back: focus activation skipped (no window root)")
             return false
         }
+        if (tryFocusAtCursor(root, info)) {
+            DiagnosticsLog.add("Back: focus activation via cursor hit")
+            return true
+        }
+        val candidates = collectFocusableNodes(root, maxCount = 3)
+        if (candidates.isEmpty()) {
+            DiagnosticsLog.add("Back: focus activation skipped (no focusable node)")
+            return false
+        }
+        for (node in candidates) {
+            val focused = node.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
+                node.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
+            if (focused) {
+                DiagnosticsLog.add("Back: focus activation via node success=true")
+                return true
+            }
+        }
+        val rootFocused = root.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
+            root.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
+        DiagnosticsLog.add("Back: focus activation via node success=$rootFocused")
+        return rootFocused
+    }
+
+    private fun tryFocusAtCursor(
+        root: AccessibilityNodeInfo,
+        info: DisplaySessionManager.ExternalDisplayInfo
+    ): Boolean {
+        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         val hitNode = findNodeAtPoint(root, mapped.x.toInt(), mapped.y.toInt())
         val focusTarget = when {
             hitNode == null -> if (root.isFocusable) root else findFocusableNode(root)
             hitNode.isFocusable -> hitNode
             else -> findFocusableAncestor(hitNode) ?: findFocusableNode(root)
-        }
-        if (focusTarget == null) {
-            DiagnosticsLog.add("Back: focus activation skipped (no focusable node)")
-            return false
-        }
-        val focused = focusTarget.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
+        } ?: return false
+        return focusTarget.performAction(AccessibilityNodeInfo.ACTION_FOCUS) ||
             focusTarget.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
-        DiagnosticsLog.add(
-            "Back: focus activation via node success=$focused at=(${mapped.x.toInt()},${mapped.y.toInt()})"
-        )
-        return focused
+    }
+
+    private fun tryTaskFocus(displayId: Int): Boolean {
+        return try {
+            val cls = Class.forName("android.app.ActivityTaskManager")
+            val getService = cls.getDeclaredMethod("getService")
+            val service = getService.invoke(null) ?: return false
+            if (Build.VERSION.SDK_INT >= 34) {
+                val focusTopTask = service.javaClass.getMethod("focusTopTask", Int::class.java)
+                focusTopTask.invoke(service, displayId)
+                return true
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val getRoots = service.javaClass.getMethod(
+                    "getAllRootTaskInfosOnDisplay",
+                    Int::class.java
+                )
+                val roots = getRoots.invoke(service, displayId) as? List<*> ?: return false
+                val first = roots.firstOrNull() ?: return false
+                val idField = first.javaClass.getDeclaredField("taskId")
+                idField.isAccessible = true
+                val taskId = idField.getInt(first)
+                val setFocused = service.javaClass.getMethod("setFocusedRootTask", Int::class.java)
+                setFocused.invoke(service, taskId)
+                return true
+            }
+            val stackField = service.javaClass.declaredFields.firstOrNull { it.name.contains("stack") }
+            if (stackField != null) {
+                stackField.isAccessible = true
+                val stackId = (stackField.get(service) as? Int) ?: return false
+                val setFocused = service.javaClass.getMethod("setFocusedStack", Int::class.java)
+                setFocused.invoke(service, stackId)
+                return true
+            }
+            false
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun pickTopAppWindow(displayId: Int): AccessibilityWindowInfo? {
+        val matches = windows?.filter { it.displayId == displayId }.orEmpty()
+        if (matches.isEmpty()) return null
+        val appWindows = matches.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+        val candidates = if (appWindows.isNotEmpty()) appWindows else matches
+        return candidates.maxByOrNull { it.layer }
+    }
+
+    private fun collectFocusableNodes(
+        root: AccessibilityNodeInfo,
+        maxCount: Int
+    ): List<AccessibilityNodeInfo> {
+        val results = ArrayList<AccessibilityNodeInfo>(maxCount)
+        if (root.isFocusable && root.isVisibleToUser) {
+            results.add(root)
+            if (results.size >= maxCount) return results
+        }
+        val queue: ArrayDeque<AccessibilityNodeInfo> = ArrayDeque()
+        queue.add(root)
+        var visited = 0
+        while (queue.isNotEmpty() && results.size < maxCount && visited < 200) {
+            val node = queue.removeFirst()
+            visited += 1
+            val count = node.childCount
+            for (i in 0 until count) {
+                val child = node.getChild(i) ?: continue
+                if (child.isFocusable && child.isVisibleToUser) {
+                    results.add(child)
+                    if (results.size >= maxCount) return results
+                }
+                queue.add(child)
+            }
+        }
+        return results
     }
 
     fun warmUpBackPipeline() {
@@ -745,8 +1029,9 @@ class ControlAccessibilityService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = (cursorX - (cursorSizePx / 2f)).toInt()
-        params.y = (cursorY - (cursorSizePx / 2f)).toInt()
+        val tipOffset = cursorTipOffsetPx()
+        params.x = (cursorX - tipOffset.x).toInt()
+        params.y = (cursorY - tipOffset.y).toInt()
         runCatching { wm.addView(view, params) }.onFailure {
             detachOverlay()
             if (allowRetry) {
@@ -852,12 +1137,19 @@ class ControlAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(0f, info.height.toFloat())
         return PointF(clampedX, clampedY)
     }
+
+    private fun cursorTipOffsetPx(): PointF {
+        val offsetX = cursorSizePx * CURSOR_TIP_FRACTION_X
+        val offsetY = cursorSizePx * CURSOR_TIP_FRACTION_Y
+        return PointF(offsetX, offsetY)
+    }
     private fun updateOverlayPosition() {
         val view = overlayView ?: return
         val wm = windowManager ?: return
         val params = view.layoutParams as WindowManager.LayoutParams
-        params.x = (cursorX - (cursorSizePx / 2f)).toInt()
-        params.y = (cursorY - (cursorSizePx / 2f)).toInt()
+        val tipOffset = cursorTipOffsetPx()
+        params.x = (cursorX - tipOffset.x).toInt()
+        params.y = (cursorY - tipOffset.y).toInt()
         wm.updateViewLayout(view, params)
     }
 
@@ -923,8 +1215,9 @@ class ControlAccessibilityService : AccessibilityService() {
             val params = view.layoutParams as WindowManager.LayoutParams
             params.width = cursorSizePx
             params.height = cursorSizePx
-            params.x = (cursorX - (cursorSizePx / 2f)).toInt()
-            params.y = (cursorY - (cursorSizePx / 2f)).toInt()
+            val tipOffset = cursorTipOffsetPx()
+            params.x = (cursorX - tipOffset.x).toInt()
+            params.y = (cursorY - tipOffset.y).toInt()
             wm.updateViewLayout(view, params)
         }
     }
@@ -1000,11 +1293,31 @@ class ControlAccessibilityService : AccessibilityService() {
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
+                    if (gesturesInFlight == 0 && pendingScrollEnd) {
+                        val info = displayInfo
+                        val stroke = scrollStroke
+                        if (info != null && stroke != null) {
+                            pendingScrollEnd = false
+                            endScrollGestureInternal(info, stroke, pendingScrollEndX, pendingScrollEndY)
+                        } else {
+                            pendingScrollEnd = false
+                        }
+                    }
                     callback.onCompleted(gestureDescription)
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
+                    if (gesturesInFlight == 0 && pendingScrollEnd) {
+                        val info = displayInfo
+                        val stroke = scrollStroke
+                        if (info != null && stroke != null) {
+                            pendingScrollEnd = false
+                            endScrollGestureInternal(info, stroke, pendingScrollEndX, pendingScrollEndY)
+                        } else {
+                            pendingScrollEnd = false
+                        }
+                    }
                     callback.onCancelled(gestureDescription)
                 }
             },
@@ -1023,7 +1336,7 @@ class ControlAccessibilityService : AccessibilityService() {
     ) {
         val absSteps = abs(steps)
         if (absSteps == 0) return
-        val density = resources.displayMetrics.density
+        val density = densityFor(info)
         val minDistance = 8f * density
         val distancePerStep = stepSizePx.coerceAtLeast(minDistance)
         val maxDistance = 320f * density
@@ -1083,7 +1396,7 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun computeSafeRect(info: DisplaySessionManager.ExternalDisplayInfo): SafeRect {
         val insets = resolveDisplayInsets()
-        val density = resources.displayMetrics.density
+        val density = densityFor(info)
         val left = insets.left + (SCROLL_SAFE_PAD_X_DP * density)
         val right = info.width - insets.right - (SCROLL_SAFE_PAD_X_DP * density)
         val top = insets.top + (SCROLL_SAFE_PAD_TOP_DP * density)
@@ -1133,6 +1446,7 @@ class ControlAccessibilityService : AccessibilityService() {
     private fun computeSwipeDistancePx(
         speedMultiplier: Float,
         safeRect: SafeRect,
+        axis: ScrollAxis = ScrollAxis.VERTICAL,
         minDpOverride: Float? = null,
         maxDpOverride: Float? = null,
         minSpeedMultiplier: Float = 0.6f,
@@ -1146,8 +1460,17 @@ class ControlAccessibilityService : AccessibilityService() {
         val maxDp = maxDpOverride ?: SCROLL_SWIPE_MAX_DP
         val max = maxDp * density
         val clamped = base.coerceIn(min, max)
-        val maxAllowed = (safeRect.bottom - safeRect.top) * 0.8f
+        val maxAllowed = if (axis == ScrollAxis.HORIZONTAL) {
+            (safeRect.right - safeRect.left) * 0.8f
+        } else {
+            (safeRect.bottom - safeRect.top) * 0.8f
+        }
         return clamped.coerceAtMost(maxAllowed)
+    }
+
+    private fun densityFor(info: DisplaySessionManager.ExternalDisplayInfo): Float {
+        val density = info.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT
+        return density.coerceIn(MIN_SCROLL_DENSITY, 4.0f)
     }
 
     private fun computeSwipeDurationMs(speedMultiplier: Float): Long {

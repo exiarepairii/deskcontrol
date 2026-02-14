@@ -36,10 +36,20 @@ object SettingsStore {
     private const val PREF_SCROLL_SPEED_LEGACY = "tp_scroll_speed"
     var touchpadScrollInverted = true
         private set
+    var touchpadScrollStepDp = 6.0f
+        private set
+    var touchpadDirectScrollGestureEnabled = false
+        private set
+    var touchpadDirectScrollGain = 1.0f
+        private set
+    var touchpadDirectScrollStepDp = 32.0f
+        private set
     var switchBarEnabled = true
         private set
     var switchBarScale = 1.0f
         private set
+    private const val DRAG_BOOST_MIN = 0.8f
+    private const val DRAG_BOOST_MAX = 2.0f
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -62,6 +72,20 @@ object SettingsStore {
             touchpadScrollSpeed
         }.coerceIn(0.5f, 3.0f)
         touchpadScrollInverted = prefs.getBoolean("tp_scroll_invert", touchpadScrollInverted)
+        touchpadDirectScrollGestureEnabled = prefs.getBoolean(
+            "tp_scroll_direct_gesture",
+            touchpadDirectScrollGestureEnabled
+        )
+        touchpadDirectScrollGain = prefs.getFloat(
+            "tp_scroll_direct_gain",
+            touchpadDirectScrollGain
+        ).coerceIn(0.5f, 2.5f)
+        touchpadDirectScrollStepDp = prefs.getFloat(
+            "tp_scroll_direct_step_dp",
+            touchpadDirectScrollStepDp
+        ).coerceIn(16.0f, 80.0f)
+        touchpadScrollStepDp = prefs.getFloat("tp_scroll_step_dp", touchpadScrollStepDp)
+            .coerceIn(3.0f, 12.0f)
         switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
         switchBarScale = prefs.getFloat("switch_bar_scale", switchBarScale)
             .coerceIn(0.7f, 1.3f)
@@ -73,6 +97,7 @@ object SettingsStore {
         TouchpadTuning.emaAlpha = prefs.getFloat("tp_smoothing", TouchpadTuning.emaAlpha)
         TouchpadTuning.scrollStepPx = prefs.getFloat("tp_scroll_step", TouchpadTuning.scrollStepPx)
         TouchpadTuning.dragBoost = prefs.getFloat("tp_drag_boost", TouchpadTuning.dragBoost)
+            .coerceIn(DRAG_BOOST_MIN, DRAG_BOOST_MAX)
     }
 
     fun setNightMode(context: Context, value: Int) {
@@ -138,6 +163,29 @@ object SettingsStore {
         persist(context) { putBoolean("tp_scroll_invert", inverted) }
     }
 
+    fun setTouchpadScrollStepDp(context: Context, value: Float) {
+        val clamped = value.coerceIn(3.0f, 12.0f)
+        touchpadScrollStepDp = clamped
+        persist(context) { putFloat("tp_scroll_step_dp", clamped) }
+    }
+
+    fun setTouchpadDirectScrollGestureEnabled(context: Context, enabled: Boolean) {
+        touchpadDirectScrollGestureEnabled = enabled
+        persist(context) { putBoolean("tp_scroll_direct_gesture", enabled) }
+    }
+
+    fun setTouchpadDirectScrollGain(context: Context, value: Float) {
+        val clamped = value.coerceIn(0.5f, 2.5f)
+        touchpadDirectScrollGain = clamped
+        persist(context) { putFloat("tp_scroll_direct_gain", clamped) }
+    }
+
+    fun setTouchpadDirectScrollStepDp(context: Context, value: Float) {
+        val clamped = value.coerceIn(16.0f, 80.0f)
+        touchpadDirectScrollStepDp = clamped
+        persist(context) { putFloat("tp_scroll_direct_step_dp", clamped) }
+    }
+
     fun setSwitchBarEnabled(context: Context, enabled: Boolean) {
         switchBarEnabled = enabled
         persist(context) { putBoolean("switch_bar_enabled", enabled) }
@@ -201,8 +249,9 @@ object SettingsStore {
     }
 
     fun setTouchpadDragBoost(context: Context, value: Float) {
-        TouchpadTuning.dragBoost = value
-        persist(context) { putFloat("tp_drag_boost", value) }
+        val clamped = value.coerceIn(DRAG_BOOST_MIN, DRAG_BOOST_MAX)
+        TouchpadTuning.dragBoost = clamped
+        persist(context) { putFloat("tp_drag_boost", clamped) }
     }
 
     private fun persist(context: Context, block: android.content.SharedPreferences.Editor.() -> Unit) {

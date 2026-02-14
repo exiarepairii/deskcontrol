@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.5
+- Scroll architecture: decouple legacy two-finger scrolling and direct gesture scrolling into separate controllers for easier maintenance.
+- Touchpad settings: reorganize scroll settings into clear mode-based sections (default two-finger vs direct gesture experimental), with clearer naming and tuning guidance.
+- Touchpad settings: add direct-gesture step-length slider to control per-segment injected travel independently from gain.
+- Scroll behavior: improve anti-misfire handling around two-finger exit and direct gesture injection edge cases.
+- Legacy scrolling: rebalance up/down travel and pull-to-refresh behavior for feed-style apps.
+- Cursor: refine tip hotspot alignment to better match perceived pointer tip and tap location.
+
 ## 1.1.4
 - Accessibility: optional Shizuku flow to auto-enable the service, with fallback to manual settings.
 - Touchpad: accessibility gate refreshed with a primary manual button and Shizuku info for advanced users.
