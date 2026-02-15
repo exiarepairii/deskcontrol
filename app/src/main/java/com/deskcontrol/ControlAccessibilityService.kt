@@ -33,7 +33,6 @@ class ControlAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
-        private const val BACK_FOCUS_DELAY_MS = 40L
         private const val ATTACH_RETRY_DELAY_MS = 250L
         private const val ATTACH_RETRY_MAX = 8
         private const val SCROLL_SAFE_PAD_X_DP = 24f
@@ -71,6 +70,8 @@ class ControlAccessibilityService : AccessibilityService() {
         private const val DIRECT_SCROLL_EDGE_EPSILON_PX = 2f
         private const val DIRECT_SCROLL_MIN_PATH_PX = 12f
         private const val DIRECT_SCROLL_MIN_PRIMARY_PX = 8f
+        private const val FOCUS_NUDGE_DISTANCE_DP = 8f
+        private const val FOCUS_NUDGE_DURATION_MS = 56L
         @Volatile
         private var instance: ControlAccessibilityService? = null
         @Volatile
@@ -117,6 +118,10 @@ class ControlAccessibilityService : AccessibilityService() {
         fun requestSwitchBarForceVisible(enabled: Boolean) {
             instance?.setSwitchBarForceVisible(enabled)
         }
+
+        fun requestExternalFocusWarmup(reason: String) {
+            instance?.warmUpExternalFocus(reason)
+        }
     }
 
     private var overlayView: CursorOverlayView? = null
@@ -147,6 +152,7 @@ class ControlAccessibilityService : AccessibilityService() {
     private var gesturesInFlight = 0
     private val handler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
+    private var deferredBackRunnable: Runnable? = null
     private var cursorVisible = true
     private var forceCursorVisible = false
     private var lastMoveTime = 0L
@@ -168,6 +174,8 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        deferredBackRunnable?.let { handler.removeCallbacks(it) }
+        deferredBackRunnable = null
         detachOverlay()
         instance = null
         DiagnosticsLog.add("Accessibility: destroyed")
@@ -619,20 +627,24 @@ class ControlAccessibilityService : AccessibilityService() {
             return false
         }
         val snapshot = snapshotWindows()
-        if (snapshot.none { it.displayId == info.displayId }) {
-            // Some OEM ROMs do not expose external-display windows via Accessibility APIs.
-            // Fall back to direct BACK dispatch instead of hard-failing on "no focus".
-            DiagnosticsLog.add(
-                "Back: no window for external displayId=${info.displayId}, " +
-                    "fallback to direct global back"
-            )
-            return executeBackWithLogging(
-                reason = "windowless fallback",
-                allowFocusRetry = false,
-                bypassExternalFocusCheck = true
-            )
-        }
         val externalState = resolveExternalWindowState(info, snapshot)
+        logBackFocusSnapshot("before", info, snapshot, externalState)
+        if (snapshot.none { it.displayId == info.displayId }) {
+            DiagnosticsLog.add(
+                "Back: no window for external displayId=${info.displayId}, skip back dispatch"
+            )
+            if (!SettingsStore.touchpadAutoFocusEnabled) {
+                SessionStore.lastBackFailure = "external_window_missing"
+                return false
+            }
+            val focused = dispatchFocusActivationGesture(info, allowFallback = true)
+            if (focused) {
+                scheduleDeferredBackAfterFocusProbe(info.displayId)
+                return true
+            }
+            SessionStore.lastBackFailure = "external_window_missing"
+            return false
+        }
         if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
             DiagnosticsLog.add(
                 "Back: external display not focused before back " +
@@ -641,11 +653,12 @@ class ControlAccessibilityService : AccessibilityService() {
             )
             cancelDrag()
             cancelScrollGesture()
-            if (dispatchFocusActivationGesture(info)) {
-                handler.postDelayed({
-                    executeBackWithLogging("after focus activation", allowFocusRetry = false)
-                }, BACK_FOCUS_DELAY_MS)
-                return true
+            if (SettingsStore.touchpadAutoFocusEnabled &&
+                dispatchFocusActivationGesture(info, allowFallback = true)
+            ) {
+                SessionStore.lastBackFailure = "external_not_focused"
+                DiagnosticsLog.add("Back: focus activation requested; require user retry")
+                return false
             }
         }
         return executeBackWithLogging("immediate", allowFocusRetry = true)
@@ -653,8 +666,7 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun executeBackWithLogging(
         reason: String,
-        allowFocusRetry: Boolean,
-        bypassExternalFocusCheck: Boolean = false
+        allowFocusRetry: Boolean
     ): Boolean {
         val now = SystemClock.uptimeMillis()
         DiagnosticsLog.add("Back: execute $reason t=$now")
@@ -668,28 +680,25 @@ class ControlAccessibilityService : AccessibilityService() {
             return false
         }
         val snapshot = snapshotWindows()
-        dumpWindows("Back: window", snapshot)
         val externalState = resolveExternalWindowState(info, snapshot)
-        if (!bypassExternalFocusCheck &&
-            (externalState == null || (!externalState.isActive && !externalState.isFocused))
-        ) {
+        logBackFocusSnapshot("action", info, snapshot, externalState)
+        if (externalState == null || (!externalState.isActive && !externalState.isFocused)) {
             DiagnosticsLog.add(
                 "Back: external display not focused at action " +
                     "active=${externalState?.isActive ?: false} " +
                     "focused=${externalState?.isFocused ?: false}"
             )
-            if (allowFocusRetry && dispatchFocusActivationGesture(info)) {
-                handler.postDelayed({
-                    executeBackWithLogging("after focus activation", allowFocusRetry = false)
-                }, BACK_FOCUS_DELAY_MS)
-                return true
+            if (allowFocusRetry &&
+                SettingsStore.touchpadAutoFocusEnabled &&
+                dispatchFocusActivationGesture(info, allowFallback = true)
+            ) {
+                SessionStore.lastBackFailure = "external_not_focused"
+                DiagnosticsLog.add("Back: focus activation requested; require user retry")
+                return false
             }
             SessionStore.lastBackFailure = "external_not_focused"
             DiagnosticsLog.add("Back: skipped (external display not focused)")
             return false
-        }
-        if (bypassExternalFocusCheck) {
-            DiagnosticsLog.add("Back: focus check bypassed (windowless external display fallback)")
         }
         val success = performGlobalAction(GLOBAL_ACTION_BACK)
         if (!success) {
@@ -758,9 +767,10 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun dispatchFocusActivationGesture(
-        info: DisplaySessionManager.ExternalDisplayInfo
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        allowFallback: Boolean = false
     ): Boolean {
-        if (tryTaskFocus(info.displayId)) {
+        if (tryTaskFocus()) {
             DiagnosticsLog.add("Back: focus activation via task manager")
             return true
         }
@@ -768,6 +778,11 @@ class ControlAccessibilityService : AccessibilityService() {
             ?: windows?.firstOrNull { it.displayId == info.displayId }
         val root = targetWindow?.root ?: run {
             DiagnosticsLog.add("Back: focus activation skipped (no window root)")
+            if (allowFallback) {
+                val nudged = dispatchFocusProbeNudge(info)
+                DiagnosticsLog.add("Back: focus activation via nudge fallback success=$nudged")
+                return nudged
+            }
             return false
         }
         if (tryFocusAtCursor(root, info)) {
@@ -809,10 +824,97 @@ class ControlAccessibilityService : AccessibilityService() {
             focusTarget.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
     }
 
-    private fun tryTaskFocus(displayId: Int): Boolean {
+    private fun tryTaskFocus(): Boolean {
         // Non-SDK reflection for ActivityTaskManager is blocked by lint/targetSdk 35+.
         // Keep task-focus path disabled and rely on accessibility focus fallback.
         return false
+    }
+
+    private fun warmUpExternalFocus(reason: String) {
+        if (!SettingsStore.touchpadAutoFocusEnabled) {
+            DiagnosticsLog.add("Back: focus warmup skipped reason=$reason feature_disabled=true")
+            return
+        }
+        val info = displayInfo ?: return
+        val snapshot = snapshotWindows()
+        val externalState = resolveExternalWindowState(info, snapshot)
+        if (externalState?.isFocused == true || externalState?.isActive == true) {
+            DiagnosticsLog.add("Back: focus warmup skipped reason=$reason already_focused=true")
+            return
+        }
+        val success = dispatchFocusActivationGesture(info)
+        DiagnosticsLog.add("Back: focus warmup reason=$reason success=$success")
+    }
+
+    private fun dispatchFocusProbeNudge(info: DisplaySessionManager.ExternalDisplayInfo): Boolean {
+        if (gesturesInFlight > 0) {
+            DiagnosticsLog.add("Back: focus probe nudge skipped (gesture busy)")
+            return false
+        }
+        val density = resources.displayMetrics.density
+        val nudgeDistance = FOCUS_NUDGE_DISTANCE_DP * density
+        val startX = (info.width * 0.52f).coerceIn(0f, info.width.toFloat())
+        val endX = (startX - nudgeDistance).coerceAtLeast(0f)
+        val y = (info.height * 0.68f).coerceIn(0f, info.height.toFloat())
+        val mappedStart = CoordinateMapper.mapForRotation(startX, y, info)
+        val mappedEnd = CoordinateMapper.mapForRotation(endX, y, info)
+        val path = Path().apply {
+            moveTo(mappedStart.x, mappedStart.y)
+            lineTo(mappedEnd.x, mappedEnd.y)
+        }
+        val builder = GestureDescription.Builder()
+        trySetDisplayId(builder, info.displayId)
+        builder.addStroke(GestureDescription.StrokeDescription(path, 0, FOCUS_NUDGE_DURATION_MS))
+        dispatchGestureTracked(
+            builder.build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    DiagnosticsLog.add(
+                        "Back: focus probe nudge injected start=(${startX.toInt()},${y.toInt()}) " +
+                            "end=(${endX.toInt()},${y.toInt()})"
+                    )
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    DiagnosticsLog.add("Back: focus probe nudge cancelled")
+                }
+            }
+        )
+        return true
+    }
+
+    private fun scheduleDeferredBackAfterFocusProbe(displayId: Int) {
+        deferredBackRunnable?.let { handler.removeCallbacks(it) }
+        val runnable = Runnable {
+            val current = displayInfo
+            if (current == null || current.displayId != displayId) {
+                DiagnosticsLog.add(
+                    "Back: deferred dispatch dropped displayId=$displayId session_changed=true"
+                )
+                return@Runnable
+            }
+            val success = performGlobalAction(GLOBAL_ACTION_BACK)
+            if (!success) {
+                SessionStore.lastBackFailure = "dispatch_failed"
+            }
+            DiagnosticsLog.add("Back: deferred dispatch after focus probe success=$success")
+        }
+        deferredBackRunnable = runnable
+        handler.postDelayed(runnable, 120L)
+    }
+
+    private fun logBackFocusSnapshot(
+        stage: String,
+        info: DisplaySessionManager.ExternalDisplayInfo,
+        windows: List<AccessibilityWindowInfo>,
+        externalState: ExternalWindowState?
+    ) {
+        val onDisplay = windows.count { it.displayId == info.displayId }
+        DiagnosticsLog.add(
+            "Back: focus snapshot stage=$stage displayId=${info.displayId} " +
+                "windowsOnDisplay=$onDisplay active=${externalState?.isActive ?: false} " +
+                "focused=${externalState?.isFocused ?: false} pkg=${externalState?.packageName ?: "none"}"
+        )
     }
 
     private fun pickTopAppWindow(displayId: Int): AccessibilityWindowInfo? {
@@ -1045,6 +1147,8 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun detachOverlay() {
+        deferredBackRunnable?.let { handler.removeCallbacks(it) }
+        deferredBackRunnable = null
         cancelAttachRetry()
         switchBarController?.teardown()
         switchBarController = null

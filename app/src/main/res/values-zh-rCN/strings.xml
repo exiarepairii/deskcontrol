@@ -129,6 +129,9 @@
     <string name="settings_logs_summary">查看并复制诊断日志，便于反馈。</string>
     <string name="settings_touchpad_auto_dim">使用触控板时自动调低亮度</string>
     <string name="settings_touchpad_auto_dim_summary">使用触控板 10 秒后自动调低亮度。</string>
+    <string name="settings_touchpad_back_section">返回转发</string>
+    <string name="settings_touchpad_auto_focus">自动获得焦点</string>
+    <string name="settings_touchpad_auto_focus_summary">当外屏应用未聚焦时，使用温和的边缘微滑尝试恢复焦点，再转发返回动作。</string>
     <string name="settings_touchpad_dim_level">最低亮度</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>

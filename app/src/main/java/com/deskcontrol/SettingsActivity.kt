@@ -80,6 +80,7 @@ class SettingsActivity : AppCompatActivity() {
         val cursorHideSwitch = findViewById<SwitchMaterial>(R.id.switchCursorHide)
         val keepScreenOnSwitch = findViewById<SwitchMaterial>(R.id.switchKeepScreenOn)
         val touchpadAutoDimSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadAutoDim)
+        val touchpadAutoFocusSwitch = findViewById<SwitchMaterial>(R.id.switchTouchpadAutoFocus)
         val touchpadDimLevelValue = findViewById<android.widget.TextView>(R.id.touchpadDimLevelValue)
         val touchpadDimLevelSlider = findViewById<Slider>(R.id.sliderTouchpadDimLevel)
         val touchpadScrollSpeedValue = findViewById<android.widget.TextView>(R.id.touchpadScrollSpeedValue)
@@ -140,6 +141,12 @@ class SettingsActivity : AppCompatActivity() {
         touchpadAutoDimSwitch.isChecked = SettingsStore.touchpadAutoDimEnabled
         touchpadAutoDimSwitch.setOnCheckedChangeListener { _, isChecked ->
             SettingsStore.setTouchpadAutoDimEnabled(this, isChecked)
+        }
+
+        touchpadAutoFocusSwitch.isChecked = SettingsStore.touchpadAutoFocusEnabled
+        touchpadAutoFocusSwitch.setOnCheckedChangeListener { _, isChecked ->
+            // Focus auto-recovery uses a gentle edge nudge before forwarding Back.
+            SettingsStore.setTouchpadAutoFocusEnabled(this, isChecked)
         }
 
         touchpadDimLevelSlider.valueFrom = 0.01f

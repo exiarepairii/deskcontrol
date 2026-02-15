@@ -310,6 +310,12 @@ class SwitchBarController(
         val result = AppLauncher.launchOnExternalDisplay(serviceContext, packageName)
         if (result.success) {
             DiagnosticsLog.add("SwitchBar: launch success package=$packageName")
+            if (SettingsStore.touchpadAutoFocusEnabled) {
+                handler.postDelayed(
+                    { ControlAccessibilityService.requestExternalFocusWarmup("app_launch") },
+                    120L
+                )
+            }
         } else {
             val message = AppLauncher.buildFailureMessage(windowContext, result)
             Toast.makeText(windowContext, message, Toast.LENGTH_LONG).show()

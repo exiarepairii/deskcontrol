@@ -44,6 +44,8 @@ object SettingsStore {
         private set
     var touchpadDirectScrollStepDp = 32.0f
         private set
+    var touchpadAutoFocusEnabled = false
+        private set
     var switchBarEnabled = true
         private set
     var switchBarScale = 1.0f
@@ -84,6 +86,10 @@ object SettingsStore {
             "tp_scroll_direct_step_dp",
             touchpadDirectScrollStepDp
         ).coerceIn(16.0f, 80.0f)
+        touchpadAutoFocusEnabled = prefs.getBoolean(
+            "tp_auto_focus",
+            touchpadAutoFocusEnabled
+        )
         touchpadScrollStepDp = prefs.getFloat("tp_scroll_step_dp", touchpadScrollStepDp)
             .coerceIn(3.0f, 12.0f)
         switchBarEnabled = prefs.getBoolean("switch_bar_enabled", switchBarEnabled)
@@ -184,6 +190,11 @@ object SettingsStore {
         val clamped = value.coerceIn(16.0f, 80.0f)
         touchpadDirectScrollStepDp = clamped
         persist(context) { putFloat("tp_scroll_direct_step_dp", clamped) }
+    }
+
+    fun setTouchpadAutoFocusEnabled(context: Context, enabled: Boolean) {
+        touchpadAutoFocusEnabled = enabled
+        persist(context) { putBoolean("tp_auto_focus", enabled) }
     }
 
     fun setSwitchBarEnabled(context: Context, enabled: Boolean) {

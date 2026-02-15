@@ -298,6 +298,9 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             stopAutoDimSession()
         }
         ControlAccessibilityService.current()?.warmUpBackPipeline()
+        if (SettingsStore.touchpadAutoFocusEnabled) {
+            ControlAccessibilityService.requestExternalFocusWarmup("touchpad_resume")
+        }
         DiagnosticsLog.add("Touchpad: resume")
     }
 
@@ -347,7 +350,13 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             val rect = android.graphics.Rect()
             binding.touchpadArea.getGlobalVisibleRect(rect)
-            setTouchpadActive(rect.contains(event.rawX.toInt(), event.rawY.toInt()))
+            val inTouchpad = rect.contains(event.rawX.toInt(), event.rawY.toInt())
+            setTouchpadActive(inTouchpad)
+            if (inTouchpad && SettingsStore.touchpadAutoFocusEnabled) {
+                // Proactively warm up external focus on first finger down to reduce
+                // "back no-op due to missing focus" right after returning to touchpad.
+                ControlAccessibilityService.requestExternalFocusWarmup("touch_down")
+            }
         }
         return super.dispatchTouchEvent(event)
     }

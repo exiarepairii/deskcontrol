@@ -131,6 +131,9 @@
     <string name="settings_logs_summary">View and copy diagnostics logs for support.</string>
     <string name="settings_touchpad_auto_dim">Auto-dim while using touchpad</string>
     <string name="settings_touchpad_auto_dim_summary">Lower brightness automatically after 10 seconds of touchpad use.</string>
+    <string name="settings_touchpad_back_section">Back forwarding</string>
+    <string name="settings_touchpad_auto_focus">Auto acquire focus</string>
+    <string name="settings_touchpad_auto_focus_summary">When external app focus is missing, use a gentle edge nudge to recover focus before forwarding Back.</string>
     <string name="settings_touchpad_dim_level">Minimum brightness</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_dim_level_default">18%</string>
