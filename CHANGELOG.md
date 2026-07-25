@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0
+- Motion Mouse: add sensor-driven cursor control with rotation-aware aiming, quick Volume Down calibration, haptic feedback, and dedicated tuning controls.
+- Control surfaces: unify Touch and Motion navigation, gesture handling, back forwarding, screen blackout, auto-dim, and keep-screen-on behavior.
+- Onboarding: add an accessible first-run mode chooser, activation guidance, replay action, and blocking interactive lessons on the external display.
+- Interactive lessons: practice cursor movement, clicking, long-pressing, dragging, scrolling, and Motion calibration without affecting the projected app.
+- Settings: reorganize preferences into focused overview pages for appearance, display, Dock, Touchpad, Motion Mouse, cursor, and developer tools.
+- Appearance: add alternate white and gold launcher icon previews and refreshed control/settings iconography.
+
 ## 1.1.5
 - Scroll architecture: decouple legacy two-finger scrolling and direct gesture scrolling into separate controllers for easier maintenance.
 - Touchpad settings: reorganize scroll settings into clear mode-based sections (default two-finger vs direct gesture experimental), with clearer naming and tuning guidance.
