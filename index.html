@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#090b0b">
+    <meta name="description" content="DeskControl 把 Android 手机变成有线外接屏的触控板与体感鼠标。">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DeskControl — 让外接屏真正可用">
+    <meta property="og:description" content="用手机上的触控板与体感鼠标，控制 Android 有线外接屏。">
+    <meta property="og:image" content="https://exiarepairii.github.io/deskcontrol/og.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>DeskControl — 让外接屏真正可用</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./script.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main" data-zh="跳到主要内容" data-en="Skip to content">跳到主要内容</a>
+
+    <header class="site-header" aria-label="主导航">
+        <a class="brand" href="#top" aria-label="DeskControl 首页">
+            <span class="brand-mark" aria-hidden="true">
+                <span></span><span></span>
+            </span>
+            <span>DeskControl</span>
+        </a>
+        <nav class="nav-links" aria-label="页面导航">
+            <a href="#modes" data-zh="控制方式" data-en="Controls">控制方式</a>
+            <a href="#how" data-zh="开始使用" data-en="Get started">开始使用</a>
+            <a href="https://github.com/exiarepairii/deskcontrol" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+        <button class="language-toggle" type="button" aria-label="Switch to English">
+            <span class="lang-current">中</span>
+            <span aria-hidden="true">/</span>
+            <span class="lang-other">EN</span>
+        </button>
+    </header>
+
+    <main id="main">
+        <section class="hero" id="top">
+            <div class="hero-glow" aria-hidden="true"></div>
+            <div class="hero-copy">
+                <div class="eyebrow">
+                    <span class="status-dot"></span>
+                    <span data-zh="为 Android 有线外接屏而生" data-en="Built for wired Android displays">为 Android 有线外接屏而生</span>
+                </div>
+                <h1 data-zh="手机接上大屏，<br><em>不该停在投影。</em>" data-en="A bigger screen<br>deserves <em>real control.</em>">手机接上大屏，<br><em>不该停在投影。</em></h1>
+                <p class="hero-lede" data-zh="外接屏给了你更多空间，却拿走了顺手的指针。DeskControl 把手机变成触控板或体感鼠标，让应用、光标和手势都回到掌控之中。" data-en="An external display gives you more room, but no natural pointer. DeskControl turns your phone into a touchpad or motion mouse—so apps, cursor and gestures stay under your control.">外接屏给了你更多空间，却拿走了顺手的指针。DeskControl 把手机变成触控板或体感鼠标，让应用、光标和手势都回到掌控之中。</p>
+                <div class="download-row">
+                    <a class="download-button primary" href="https://github.com/exiarepairii/deskcontrol/releases/latest" target="_blank" rel="noreferrer">
+                        <span class="github-icon" aria-hidden="true"></span>
+                        <span>
+                            <small data-zh="下载最新版" data-en="Download latest">下载最新版</small>
+                            <strong>GitHub Release</strong>
+                        </span>
+                        <span class="arrow" aria-hidden="true">↗</span>
+                    </a>
+                    <div class="download-button upcoming" aria-disabled="true" title="Coming soon">
+                        <span class="play-icon" aria-hidden="true"></span>
+                        <span>
+                            <small data-zh="即将上线" data-en="Coming soon">即将上线</small>
+                            <strong>Google Play</strong>
+                        </span>
+                    </div>
+                </div>
+                <p class="requirements" data-zh="需要 Android 11+ · 支持视频输出的 USB-C · 有线外接屏" data-en="Requires Android 11+ · video-capable USB-C · wired external display">需要 Android 11+ · 支持视频输出的 USB-C · 有线外接屏</p>
+            </div>
+
+            <div class="hero-demo" aria-label="DeskControl 效果演示">
+                <div class="ambient-ring ring-one" aria-hidden="true"></div>
+                <div class="ambient-ring ring-two" aria-hidden="true"></div>
+                <div class="monitor">
+                    <div class="monitor-camera"></div>
+                    <div class="monitor-screen">
+                        <div class="desktop-bar">
+                            <div class="window-dots"><i></i><i></i><i></i></div>
+                            <span>FOCUS / 01</span>
+                            <span class="desktop-time">09:41</span>
+                        </div>
+                        <div class="desktop-content">
+                            <p data-zh="今日空间" data-en="TODAY'S SPACE">今日空间</p>
+                            <h2 data-zh="把小屏的限制，<br>留在身后。" data-en="Leave the limits<br>of a small screen behind.">把小屏的限制，<br>留在身后。</h2>
+                            <div class="desktop-cards">
+                                <div><span>01</span><b data-zh="连接" data-en="Connect">连接</b></div>
+                                <div><span>02</span><b data-zh="选择" data-en="Choose">选择</b></div>
+                                <div><span>03</span><b data-zh="控制" data-en="Control">控制</b></div>
+                            </div>
+                        </div>
+                        <div class="demo-cursor" aria-hidden="true"></div>
+                    </div>
+                    <div class="monitor-stand"></div>
+                </div>
+                <div class="phone">
+                    <div class="phone-speaker"></div>
+                    <div class="phone-ui">
+                        <div class="phone-top">
+                            <span>‹</span>
+                            <b data-zh="触控板" data-en="Touchpad">触控板</b>
+                            <small data-zh="体感" data-en="Motion">体感</small>
+                        </div>
+                        <p data-zh="轻触区域以激活" data-en="Tap the area to activate">轻触区域以激活</p>
+                        <div class="touch-surface" tabindex="0" role="application" aria-label="互动触控板演示">
+                            <div class="finger-trace"></div>
+                            <div class="touch-copy">
+                                <span data-zh="当前模式：触控" data-en="CURRENT MODE: TOUCH">当前模式：触控</span>
+                                <small data-zh="滑动 · 点击 · 拖拽 · 双指滚动" data-en="SWIPE · CLICK · DRAG · SCROLL">滑动 · 点击 · 拖拽 · 双指滚动</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="demo-hint">
+                    <span class="hint-line"></span>
+                    <span data-zh="在触控板上移动试试" data-en="Try moving on the touchpad">在触控板上移动试试</span>
+                </p>
+            </div>
+        </section>
+
+        <section class="proof-strip" aria-label="产品特点">
+            <p data-zh="不是镜像。" data-en="Not mirroring.">不是镜像。</p>
+            <p data-zh="不是远程桌面。" data-en="Not remote desktop.">不是远程桌面。</p>
+            <p class="accent" data-zh="是原生的第二块屏幕。" data-en="A native second screen.">是原生的第二块屏幕。</p>
+        </section>
+
+        <section class="modes-section" id="modes">
+            <div class="section-heading">
+                <p class="section-kicker">01 / CONTROL</p>
+                <h2 data-zh="两种方式，<br>同一个光标。" data-en="Two ways to move.<br>One precise cursor.">两种方式，<br>同一个光标。</h2>
+                <p data-zh="坐在桌前，或者靠在沙发上。DeskControl 会适应你，而不是反过来。" data-en="At a desk or leaning back on the sofa. DeskControl adapts to you—not the other way around.">坐在桌前，或者靠在沙发上。DeskControl 会适应你，而不是反过来。</p>
+            </div>
+            <div class="mode-grid">
+                <article class="mode-card touch-card">
+                    <div class="card-index">01</div>
+                    <div class="card-visual touch-visual" aria-hidden="true">
+                        <div class="gesture-path"></div>
+                        <span class="gesture-dot"></span>
+                        <span class="gesture-dot second"></span>
+                    </div>
+                    <div class="card-copy">
+                        <span class="mode-pill" data-zh="精确" data-en="PRECISE">精确</span>
+                        <h3 data-zh="触控板" data-en="Touchpad">触控板</h3>
+                        <p data-zh="滑动移动、轻触点击、长按拖拽、双指滚动。熟悉的操作，不需要重新学习。" data-en="Swipe to move, tap to click, hold to drag and use two fingers to scroll. Familiar from the first touch.">滑动移动、轻触点击、长按拖拽、双指滚动。熟悉的操作，不需要重新学习。</p>
+                    </div>
+                </article>
+                <article class="mode-card motion-card">
+                    <div class="card-index">02</div>
+                    <div class="card-visual motion-visual" aria-hidden="true">
+                        <div class="motion-phone">
+                            <span></span>
+                        </div>
+                        <div class="orbit orbit-a"></div>
+                        <div class="orbit orbit-b"></div>
+                    </div>
+                    <div class="card-copy">
+                        <span class="mode-pill" data-zh="自由" data-en="FLUID">自由</span>
+                        <h3 data-zh="体感鼠标" data-en="Motion mouse">体感鼠标</h3>
+                        <p data-zh="轻转手机即可瞄准光标，触摸完成点击和手势。握住音量减键，随时快速校准。" data-en="Turn your phone gently to aim, then touch for clicks and gestures. Hold Volume Down to recalibrate anytime.">轻转手机即可瞄准光标，触摸完成点击和手势。握住音量减键，随时快速校准。</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="details-section">
+            <div class="detail-copy">
+                <p class="section-kicker">02 / DETAILS</p>
+                <h2 data-zh="为长时间使用，<br>做好了细节。" data-en="Details that make<br>long sessions feel easy.">为长时间使用，<br>做好了细节。</h2>
+            </div>
+            <div class="detail-list">
+                <article>
+                    <span>01</span>
+                    <div>
+                        <h3 data-zh="OLED 纯黑控制面" data-en="OLED-black control surface">OLED 纯黑控制面</h3>
+                        <p data-zh="进入控制后自动保持屏幕常亮，并在闲置 10 秒后温和调暗；离开时恢复原亮度。" data-en="Keeps the screen awake while in control, gently dims after 10 seconds, and restores brightness when you leave.">进入控制后自动保持屏幕常亮，并在闲置 10 秒后温和调暗；离开时恢复原亮度。</p>
+                    </div>
+                </article>
+                <article>
+                    <span>02</span>
+                    <div>
+                        <h3 data-zh="每块屏幕独立光标" data-en="A cursor for each display">每块屏幕独立光标</h3>
+                        <p data-zh="光标直接绘制在外接屏，可调大小、颜色、透明度与自动隐藏时间。" data-en="The cursor is rendered directly on the external display, with adjustable size, color, opacity and auto-hide.">光标直接绘制在外接屏，可调大小、颜色、透明度与自动隐藏时间。</p>
+                    </div>
+                </article>
+                <article>
+                    <span>03</span>
+                    <div>
+                        <h3 data-zh="只在设备上处理" data-en="Processed on your device">只在设备上处理</h3>
+                        <p data-zh="控制与无障碍数据只在本机处理，不上传给我们或第三方。" data-en="Control and accessibility data stays on your device. It is never sent to us or a third party.">控制与无障碍数据只在本机处理，不上传给我们或第三方。</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="steps-section" id="how">
+            <div class="steps-header">
+                <p class="section-kicker">03 / START</p>
+                <h2 data-zh="一根线，三步开始。" data-en="One cable. Three steps.">一根线，三步开始。</h2>
+            </div>
+            <ol class="steps">
+                <li>
+                    <span class="step-number">01</span>
+                    <div class="step-icon cable-icon" aria-hidden="true"><i></i></div>
+                    <h3 data-zh="连接屏幕" data-en="Connect a display">连接屏幕</h3>
+                    <p data-zh="通过支持视频输出的 USB-C 线连接显示器或扩展坞。" data-en="Connect a monitor or dock using a video-capable USB-C cable.">通过支持视频输出的 USB-C 线连接显示器或扩展坞。</p>
+                </li>
+                <li>
+                    <span class="step-number">02</span>
+                    <div class="step-icon app-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                    <h3 data-zh="选择应用" data-en="Choose an app">选择应用</h3>
+                    <p data-zh="在 DeskControl 中选择应用，把它直接启动到外接屏。" data-en="Pick an app in DeskControl and launch it directly on the external display.">在 DeskControl 中选择应用，把它直接启动到外接屏。</p>
+                </li>
+                <li>
+                    <span class="step-number">03</span>
+                    <div class="step-icon control-icon" aria-hidden="true"><i></i><b></b></div>
+                    <h3 data-zh="开始控制" data-en="Take control">开始控制</h3>
+                    <p data-zh="开启无障碍服务，选择触控或体感，让手机成为你的控制器。" data-en="Enable Accessibility, choose Touch or Motion, and use your phone as the controller.">开启无障碍服务，选择触控或体感，让手机成为你的控制器。</p>
+                </li>
+            </ol>
+        </section>
+
+        <section class="final-cta">
+            <div class="cta-orbit" aria-hidden="true"></div>
+            <p class="section-kicker">DESKCONTROL / ANDROID</p>
+            <h2 data-zh="让外接屏，<br>不止是更大。" data-en="Make your second screen<br>more than bigger.">让外接屏，<br>不止是更大。</h2>
+            <a class="download-button primary cta-button" href="https://github.com/exiarepairii/deskcontrol/releases/latest" target="_blank" rel="noreferrer">
+                <span class="github-icon" aria-hidden="true"></span>
+                <span>
+                    <small data-zh="免费下载" data-en="Free download">免费下载</small>
+                    <strong>GitHub Release</strong>
+                </span>
+                <span class="arrow" aria-hidden="true">↗</span>
+            </a>
+        </section>
+    </main>
+
+    <footer>
+        <a class="brand footer-brand" href="#top">
+            <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
+            <span>DeskControl</span>
+        </a>
+        <p data-zh="为 Android 外接屏而做。" data-en="Made for Android external displays.">为 Android 外接屏而做。</p>
+        <div class="footer-links">
+            <a href="https://github.com/exiarepairii/deskcontrol" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="https://github.com/exiarepairii/deskcontrol/blob/main/docs/privacy-policy.md" target="_blank" rel="noreferrer" data-zh="隐私政策" data-en="Privacy">隐私政策</a>
+            <span>© <span id="year">2026</span></span>
+        </div>
+    </footer>
+</body>
+</html>
