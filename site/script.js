@@ -13,8 +13,8 @@ function setLanguage(language) {
     document.querySelector(".lang-other").textContent = isChinese ? "EN" : "中";
     toggle.setAttribute("aria-label", isChinese ? "Switch to English" : "切换到中文");
     document.title = isChinese
-        ? "DeskControl — 让外接屏真正可用"
-        : "DeskControl — Real control for your second screen";
+        ? "DeskControl — 把 App 戴在眼前"
+        : "DeskControl — Put the app in your view";
     localStorage.setItem("deskcontrol-language", language);
 }
 

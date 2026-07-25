@@ -370,124 +370,246 @@ h1 em {
     height: 330px;
 }
 
-.monitor {
+.ar-glasses {
     position: absolute;
-    top: 24px;
-    right: 1%;
-    width: min(92%, 650px);
-    transform: rotateY(-5deg) rotateX(1deg);
+    z-index: 3;
+    top: 28px;
+    right: -1%;
+    width: min(100%, 670px);
+    height: 300px;
+    transform: rotateY(-4deg) rotateX(2deg);
     transform-style: preserve-3d;
 }
 
-.monitor-screen {
-    position: relative;
-    height: 385px;
+.glasses-lens {
+    position: absolute;
+    z-index: 1;
+    top: 27px;
+    width: 48.5%;
+    height: 206px;
     overflow: hidden;
-    border: 7px solid #252c2b;
-    border-radius: 13px;
+    border: 6px solid #29312f;
     background:
-        radial-gradient(circle at 82% 22%, rgba(127, 183, 174, 0.18), transparent 35%),
-        linear-gradient(145deg, #16211f, #0c1110 64%);
-    box-shadow: 0 35px 70px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        linear-gradient(155deg, rgba(127, 183, 174, 0.12), transparent 48%),
+        rgba(8, 14, 13, 0.86);
+    box-shadow:
+        0 34px 75px rgba(0, 0, 0, 0.52),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+        inset 0 -30px 80px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(4px);
 }
 
-.monitor-camera {
+.lens-left {
+    left: 0;
+    border-radius: 72px 34px 86px 58px / 42px 30px 72px 68px;
+    transform: rotate(1.5deg);
+}
+
+.lens-right {
+    right: 0;
+    border-radius: 34px 72px 58px 86px / 30px 42px 68px 72px;
+    transform: rotate(-1.5deg);
+}
+
+.glasses-bridge {
     position: absolute;
-    z-index: 3;
-    top: 3px;
+    z-index: 5;
+    top: 47px;
     left: 50%;
-    width: 4px;
-    height: 4px;
+    width: 64px;
+    height: 34px;
+    border-top: 7px solid #313a38;
     border-radius: 50%;
-    background: #050606;
     transform: translateX(-50%);
 }
 
-.desktop-bar {
+.glasses-arm {
+    position: absolute;
+    z-index: 0;
+    top: 39px;
+    width: 126px;
+    height: 16px;
+    border: 1px solid #404a48;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #303836, #171c1b);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38);
+}
+
+.arm-left {
+    left: -92px;
+    transform: rotate(8deg);
+}
+
+.arm-right {
+    right: -92px;
+    transform: rotate(-8deg);
+}
+
+.ar-app-screen {
+    position: absolute;
+    z-index: 2;
+    top: 50px;
+    left: 12%;
+    width: 76%;
+    height: 218px;
+    overflow: hidden;
+    border: 1px solid rgba(167, 213, 205, 0.34);
+    border-radius: 10px;
+    background:
+        radial-gradient(circle at 84% 20%, rgba(127, 183, 174, 0.21), transparent 34%),
+        linear-gradient(145deg, rgba(22, 35, 32, 0.95), rgba(8, 14, 13, 0.96) 65%);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.58),
+        0 22px 55px rgba(0, 0, 0, 0.45),
+        0 0 42px rgba(127, 183, 174, 0.08);
+    transform: translateZ(20px);
+}
+
+.ar-app-bar {
     display: flex;
-    height: 42px;
-    padding: 0 15px;
+    height: 32px;
+    padding: 0 12px;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    color: #70807d;
-    font-size: 8px;
-    letter-spacing: 0.16em;
+    color: #879491;
+    font-size: 7px;
+    letter-spacing: 0.12em;
 }
 
-.window-dots {
-    display: flex;
-    gap: 5px;
-}
-
-.window-dots i {
-    width: 5px;
-    height: 5px;
+.app-brand-dot {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: #45504e;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(127, 183, 174, 0.65);
 }
 
-.desktop-content {
-    padding: 54px 48px;
+.ar-app-status {
+    margin-left: auto;
+    color: #5f6e6a;
 }
 
-.desktop-content > p {
-    margin-bottom: 14px;
+.ar-app-content {
+    display: grid;
+    height: calc(100% - 32px);
+    grid-template-columns: 43px 1fr;
+}
+
+.ar-app-sidebar {
+    display: flex;
+    padding-top: 18px;
+    align-items: center;
+    flex-direction: column;
+    gap: 11px;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ar-app-sidebar i {
+    width: 13px;
+    height: 3px;
+    border-radius: 3px;
+    background: #3c4845;
+}
+
+.ar-app-sidebar i.active {
+    width: 18px;
+    background: var(--accent);
+}
+
+.ar-app-main {
+    padding: 24px 27px 20px;
+}
+
+.ar-app-main > p {
+    margin-bottom: 10px;
     color: var(--accent);
-    font-size: 8px;
+    font-size: 6px;
     font-weight: 700;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
 }
 
-.desktop-content h2 {
-    margin-bottom: 42px;
-    font-size: clamp(24px, 3vw, 40px);
+.ar-app-main h2 {
+    margin-bottom: 22px;
+    font-size: clamp(18px, 2.2vw, 27px);
     font-weight: 500;
     line-height: 1.15;
     letter-spacing: -0.05em;
 }
 
-.desktop-cards {
+.ar-app-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 9px;
+    grid-template-columns: 1.35fr 0.65fr;
+    gap: 7px;
 }
 
-.desktop-cards div {
+.ar-app-cards div {
     display: flex;
-    height: 60px;
-    padding: 10px 12px;
+    height: 43px;
+    padding: 7px 9px;
     flex-direction: column;
     justify-content: space-between;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 7px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.025);
 }
 
-.desktop-cards span {
+.ar-app-cards span {
     color: var(--faint);
-    font-size: 7px;
+    font-size: 5px;
 }
 
-.desktop-cards b {
-    font-size: 9px;
+.ar-app-cards b {
+    font-size: 7px;
     font-weight: 600;
 }
 
-.monitor-stand {
-    position: relative;
-    width: 160px;
-    height: 55px;
-    margin: 0 auto;
-    background: linear-gradient(90deg, transparent 31%, #1c2221 31%, #343b3a 50%, #1c2221 69%, transparent 69%);
-    clip-path: polygon(37% 0, 63% 0, 68% 82%, 94% 88%, 100% 100%, 0 100%, 6% 88%, 32% 82%);
+.view-label {
+    position: absolute;
+    z-index: 6;
+    bottom: 6px;
+    left: 50%;
+    display: flex;
+    height: 24px;
+    padding: 0 11px;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid rgba(127, 183, 174, 0.22);
+    border-radius: 13px;
+    background: rgba(8, 14, 13, 0.86);
+    color: var(--accent-bright);
+    font-size: 6px;
+    letter-spacing: 0.13em;
+    transform: translateX(-50%);
+}
+
+.view-label-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.connection-cable {
+    position: absolute;
+    z-index: 1;
+    top: 214px;
+    right: 5%;
+    width: 184px;
+    height: 205px;
+    border-right: 3px solid #252d2b;
+    border-bottom: 3px solid #252d2b;
+    border-radius: 0 0 78px;
+    transform: rotate(8deg);
 }
 
 .phone {
     position: absolute;
     z-index: 5;
-    right: 8%;
-    bottom: 16px;
+    right: 9%;
+    bottom: 5px;
     width: 178px;
     height: 352px;
     padding: 7px;
@@ -497,6 +619,29 @@ h1 em {
     background: #141817;
     box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
     transform: rotateY(-8deg) rotateZ(2deg);
+}
+
+.gyro-orbit {
+    position: absolute;
+    z-index: 2;
+    right: 2%;
+    bottom: 64px;
+    border: 1px solid rgba(127, 183, 174, 0.2);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: rotate(-16deg);
+}
+
+.gyro-one {
+    width: 280px;
+    height: 112px;
+}
+
+.gyro-two {
+    right: -6%;
+    bottom: 25px;
+    width: 390px;
+    height: 190px;
 }
 
 .phone-speaker {
@@ -737,7 +882,8 @@ h1 em {
     border-bottom: 1px solid var(--stroke);
 }
 
-.touch-visual {
+.ar-card-visual {
+    overflow: hidden;
     background:
         linear-gradient(rgba(127, 183, 174, 0.045) 1px, transparent 1px),
         linear-gradient(90deg, rgba(127, 183, 174, 0.045) 1px, transparent 1px),
@@ -746,36 +892,94 @@ h1 em {
     background-size: 42px 42px, 42px 42px, auto, auto;
 }
 
-.gesture-path {
+.mini-glasses {
     position: absolute;
-    top: 28%;
-    left: 26%;
-    width: 48%;
-    height: 44%;
-    border: 1px solid rgba(167, 213, 205, 0.45);
-    border-left-color: transparent;
-    border-bottom-color: transparent;
-    border-radius: 50%;
-    transform: rotate(22deg);
+    top: 92px;
+    left: 50%;
+    display: flex;
+    width: 370px;
+    height: 178px;
+    gap: 10px;
+    transform: translateX(-50%);
 }
 
-.gesture-dot {
-    position: absolute;
-    top: 46%;
-    left: 35%;
-    width: 54px;
-    height: 54px;
-    border: 1px solid rgba(167, 213, 205, 0.6);
-    border-radius: 50%;
-    background: rgba(127, 183, 174, 0.08);
-    box-shadow: 0 0 0 12px rgba(127, 183, 174, 0.025);
+.mini-lens {
+    width: calc(50% - 5px);
+    height: 120px;
+    border: 4px solid #44504d;
+    border-radius: 40px 28px 52px 46px;
+    background: rgba(12, 21, 19, 0.88);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
-.gesture-dot.second {
-    top: 31%;
-    left: 61%;
-    width: 31px;
-    height: 31px;
+.mini-lens:nth-child(2) {
+    border-radius: 28px 40px 46px 52px;
+}
+
+.mini-bridge {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: 34px;
+    height: 19px;
+    border-top: 5px solid #4c5855;
+    border-radius: 50%;
+    transform: translateX(-50%);
+}
+
+.mini-app {
+    position: absolute;
+    top: 31px;
+    left: 50%;
+    display: grid;
+    width: 240px;
+    height: 112px;
+    padding: 21px 20px;
+    grid-template-columns: 34px 1fr;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 8px 12px;
+    border: 1px solid rgba(167, 213, 205, 0.5);
+    border-radius: 7px;
+    background: linear-gradient(145deg, #182724, #09100f);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5), 0 0 28px rgba(127, 183, 174, 0.09);
+    transform: translateX(-50%);
+}
+
+.mini-app i {
+    grid-row: 1 / 4;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mini-app span {
+    height: 7px;
+    align-self: center;
+    border-radius: 5px;
+    background: #354440;
+}
+
+.mini-app span:nth-of-type(1) {
+    width: 82%;
+    background: var(--accent);
+}
+
+.mini-app span:nth-of-type(2) {
+    width: 63%;
+}
+
+.mini-app span:nth-of-type(3) {
+    width: 72%;
+}
+
+.separate-tag {
+    position: absolute;
+    right: 25px;
+    bottom: 24px;
+    padding: 7px 10px;
+    border: 1px solid rgba(127, 183, 174, 0.22);
+    border-radius: 12px;
+    color: var(--accent-bright);
+    font-size: 7px;
+    letter-spacing: 0.13em;
 }
 
 .motion-visual {
@@ -1168,26 +1372,28 @@ footer p {
         margin-top: 10px;
     }
 
-    .monitor {
-        top: 30px;
-        right: -15%;
-        width: 112%;
+    .ar-glasses {
+        top: 26px;
+        right: -22%;
+        width: 135%;
+        transform: scale(0.88);
     }
 
-    .monitor-screen {
-        height: 305px;
+    .glasses-arm {
+        display: none;
     }
 
-    .desktop-content {
-        padding: 36px 29px;
+    .ar-app-main {
+        padding: 22px 22px 18px;
     }
 
-    .desktop-content h2 {
-        margin-bottom: 28px;
+    .ar-app-main h2 {
+        margin-bottom: 18px;
+        font-size: 21px;
     }
 
     .phone {
-        right: 3%;
+        right: 1%;
         bottom: 5px;
         width: 141px;
         height: 282px;
@@ -1200,6 +1406,19 @@ footer p {
 
     .touch-surface {
         height: 211px;
+    }
+
+    .connection-cable {
+        right: 1%;
+    }
+
+    .gyro-one {
+        right: -9%;
+        width: 220px;
+    }
+
+    .gyro-two {
+        display: none;
     }
 
     .demo-hint {
