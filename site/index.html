@@ -25,7 +25,8 @@
             <span>DeskControl</span>
         </a>
         <nav class="nav-links" aria-label="页面导航">
-            <a href="#modes" data-zh="控制方式" data-en="Controls">控制方式</a>
+            <a href="#modes" data-zh="核心功能" data-en="Features">核心功能</a>
+            <a href="#dock">Dock</a>
             <a href="#how" data-zh="开始使用" data-en="Get started">开始使用</a>
             <a href="https://github.com/exiarepairii/deskcontrol" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
@@ -69,39 +70,53 @@
             <div class="hero-demo ar-hero-demo" aria-label="AR 眼镜中的独立应用与手机盲操演示">
                 <div class="ambient-ring ring-one" aria-hidden="true"></div>
                 <div class="ambient-ring ring-two" aria-hidden="true"></div>
-                <div class="ar-glasses" aria-hidden="true">
-                    <div class="glasses-arm arm-left"></div>
-                    <div class="glasses-arm arm-right"></div>
-                    <div class="glasses-lens lens-left"></div>
-                    <div class="glasses-lens lens-right"></div>
-                    <div class="glasses-bridge"></div>
-                    <div class="ar-app-screen">
-                        <div class="ar-app-bar">
-                            <div class="app-brand-dot"></div>
-                            <span data-zh="专注空间" data-en="FOCUS SPACE">专注空间</span>
-                            <span class="ar-app-status">AR · 09:41</span>
+                <div class="floating-display" aria-hidden="true">
+                    <div class="ar-app-bar">
+                        <div class="app-brand-dot"></div>
+                        <span data-zh="专注空间" data-en="FOCUS SPACE">专注空间</span>
+                        <span class="ar-app-status">AR · 09:41</span>
+                    </div>
+                    <div class="ar-app-content">
+                        <div class="ar-app-sidebar">
+                            <i class="active"></i><i></i><i></i><i></i>
                         </div>
-                        <div class="ar-app-content">
-                            <div class="ar-app-sidebar">
-                                <i class="active"></i><i></i><i></i><i></i>
-                            </div>
-                            <div class="ar-app-main">
-                                <p data-zh="眼镜里的独立 App" data-en="ONE APP. ONLY IN YOUR VIEW.">眼镜里的独立 App</p>
-                                <h2 data-zh="大屏在眼前，<br>手机仍是手机。" data-en="A large view ahead.<br>Your phone stays yours.">大屏在眼前，<br>手机仍是手机。</h2>
-                                <div class="ar-app-cards">
-                                    <div class="wide-card"><span>01</span><b data-zh="当前任务" data-en="CURRENT TASK">当前任务</b></div>
-                                    <div><span>02</span><b data-zh="稍后" data-en="LATER">稍后</b></div>
-                                </div>
+                        <div class="ar-app-main">
+                            <p data-zh="眼镜里的独立 App" data-en="ONE APP. ONLY IN YOUR VIEW.">眼镜里的独立 App</p>
+                            <h2 data-zh="大屏悬浮在前方，<br>手机仍是控制器。" data-en="A large view floats ahead.<br>Your phone stays the controller.">大屏悬浮在前方，<br>手机仍是控制器。</h2>
+                            <div class="ar-app-cards">
+                                <div class="wide-card"><span>01</span><b data-zh="当前任务" data-en="CURRENT TASK">当前任务</b></div>
+                                <div><span>02</span><b data-zh="稍后" data-en="LATER">稍后</b></div>
                             </div>
                         </div>
-                        <div class="demo-cursor" aria-hidden="true"></div>
                     </div>
-                    <div class="view-label">
-                        <span class="view-label-dot"></span>
-                        <span data-zh="AR 视野 · 独立应用" data-en="AR VIEW · ONE APP">AR 视野 · 独立应用</span>
+                    <div class="app-dock hero-dock">
+                        <i class="dock-app dock-app-one"></i>
+                        <i class="dock-app dock-app-two"></i>
+                        <i class="dock-app dock-app-three"></i>
+                        <span class="dock-divider"></span>
+                        <i class="dock-app dock-all-apps"></i>
                     </div>
+                    <div class="demo-cursor" aria-hidden="true"></div>
                 </div>
-                <div class="connection-cable" aria-hidden="true"></div>
+                <div class="view-label">
+                    <span class="view-label-dot"></span>
+                    <span data-zh="前方视野 · 16:9 独立应用" data-en="FORWARD VIEW · 16:9 APP">前方视野 · 16:9 独立应用</span>
+                </div>
+                <div class="table-plane" aria-hidden="true"></div>
+                <div class="folded-glasses" aria-hidden="true">
+                    <div class="folded-lens folded-lens-left"></div>
+                    <div class="folded-lens folded-lens-right"></div>
+                    <div class="folded-bridge"></div>
+                    <div class="folded-arm folded-arm-left"></div>
+                    <div class="folded-arm folded-arm-right"></div>
+                    <div class="glasses-port"></div>
+                </div>
+                <div class="typec-cable" aria-hidden="true">
+                    <span class="cable-segment cable-from-glasses"></span>
+                    <span class="cable-segment cable-to-phone"></span>
+                    <i class="typec-plug glasses-plug"></i>
+                    <i class="typec-plug phone-plug"></i>
+                </div>
                 <div class="phone">
                     <div class="phone-speaker"></div>
                     <div class="phone-ui">
@@ -120,8 +135,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="gyro-orbit gyro-one" aria-hidden="true"></div>
-                <div class="gyro-orbit gyro-two" aria-hidden="true"></div>
                 <p class="demo-hint">
                     <span class="hint-line"></span>
                     <span data-zh="移动触控板，看看眼镜里的光标" data-en="Move on the touchpad to control the AR cursor">移动触控板，看看眼镜里的光标</span>
@@ -179,9 +192,53 @@
             </div>
         </section>
 
+        <section class="dock-section" id="dock">
+            <div class="dock-copy">
+                <p class="section-kicker">02 / DOCK</p>
+                <h2 data-zh="应用切换，<br>也留在眼前。" data-en="Switch apps<br>without leaving the view.">应用切换，<br>也留在眼前。</h2>
+                <p data-zh="把光标移到眼镜画面的底边，Dock 就会自然浮现。常驻应用、全部应用和最近使用都在这里，点一下直接切换，不用退出当前的外接显示体验。" data-en="Move the cursor to the bottom edge of the glasses view and the Dock rises into place. Pinned apps, All Apps and recents are ready for direct switching—without breaking the external-display experience.">把光标移到眼镜画面的底边，Dock 就会自然浮现。常驻应用、全部应用和最近使用都在这里，点一下直接切换，不用退出当前的外接显示体验。</p>
+                <div class="dock-facts">
+                    <span data-zh="常驻应用" data-en="PINNED">常驻应用</span>
+                    <span data-zh="最近使用" data-en="RECENTS">最近使用</span>
+                    <span data-zh="大小可调" data-en="SCALABLE">大小可调</span>
+                </div>
+            </div>
+            <div class="dock-demo" aria-label="外接屏 Dock 栏演示">
+                <div class="dock-window-bar">
+                    <span class="dock-window-dot"></span>
+                    <span data-zh="眼镜中的工作空间" data-en="WORKSPACE IN VIEW">眼镜中的工作空间</span>
+                    <span>DESKCONTROL</span>
+                </div>
+                <div class="dock-window-content">
+                    <div class="dock-document">
+                        <span class="doc-kicker">PROJECT / 04</span>
+                        <strong data-zh="把下一项任务<br>留在视野里。" data-en="Keep the next task<br>inside your view.">把下一项任务<br>留在视野里。</strong>
+                        <i></i><i></i><i></i>
+                    </div>
+                    <div class="dock-side-panel">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="dock-reveal-zone"></div>
+                <div class="app-dock feature-dock">
+                    <i class="dock-app dock-app-one"><b></b></i>
+                    <i class="dock-app dock-app-two"><b></b></i>
+                    <i class="dock-app dock-app-three"><b></b></i>
+                    <i class="dock-app dock-app-four"><b></b></i>
+                    <span class="dock-divider"></span>
+                    <i class="dock-app dock-all-apps"><b></b></i>
+                    <span class="dock-divider recent-divider"></span>
+                    <i class="dock-app dock-recent-one"><b></b></i>
+                    <i class="dock-app dock-recent-two"><b></b></i>
+                </div>
+                <div class="dock-demo-cursor"></div>
+                <p class="dock-edge-hint" data-zh="光标到底边 · Dock 自动浮现" data-en="CURSOR TO BOTTOM EDGE · DOCK REVEALS">光标到底边 · Dock 自动浮现</p>
+            </div>
+        </section>
+
         <section class="details-section">
             <div class="detail-copy">
-                <p class="section-kicker">02 / EYES-FREE</p>
+                <p class="section-kicker">03 / EYES-FREE</p>
                 <h2 data-zh="为盲操而设计，<br>不只是能控制。" data-en="Designed for eyes-free use,<br>not merely control.">为盲操而设计，<br>不只是能控制。</h2>
             </div>
             <div class="detail-list">
@@ -211,7 +268,7 @@
 
         <section class="steps-section" id="how">
             <div class="steps-header">
-                <p class="section-kicker">03 / START</p>
+                <p class="section-kicker">04 / START</p>
                 <h2 data-zh="戴上眼镜，三步开始。" data-en="Put on the glasses. Three steps.">戴上眼镜，三步开始。</h2>
             </div>
             <ol class="steps">
