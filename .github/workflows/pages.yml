@@ -43,9 +43,3 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "publish website"
           git push origin HEAD:gh-pages
-        with:
-          path: site
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
