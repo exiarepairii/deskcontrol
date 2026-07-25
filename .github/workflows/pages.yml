@@ -1,4 +1,4 @@
-name: Deploy website to GitHub Pages
+name: Publish website
 
 on:
   push:
@@ -10,29 +10,39 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: publish-website
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v4
+      - name: Publish to gh-pages
+        env:
+          PAGES_WORKTREE: ${{ runner.temp }}/deskcontrol-gh-pages
+        run: |
+          git fetch origin gh-pages
+          git worktree add -B gh-pages "$PAGES_WORKTREE" origin/gh-pages
+          rsync -a --delete --exclude ".git" site/ "$PAGES_WORKTREE"/
+          touch "$PAGES_WORKTREE/.nojekyll"
+          cd "$PAGES_WORKTREE"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "Website is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "publish website"
+          git push origin HEAD:gh-pages
         with:
           path: site
 
