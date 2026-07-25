@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_control_surface_tuning"
+        android:checkable="true"
+        android:title="@string/ray_mouse_tuning_title" />
+    <item
+        android:id="@+id/action_replay_control_tutorial"
+        android:title="@string/control_mode_intro_replay" />
+</menu>

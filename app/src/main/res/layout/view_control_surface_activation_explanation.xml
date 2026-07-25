@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true">
+
+    <com.deskcontrol.TutorialSpotlightView
+        android:id="@+id/controlModeActiveSpotlight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/controlModeActiveExplanation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginHorizontal="40dp"
+        android:background="@drawable/control_mode_callout_bg"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/control_mode_intro_active_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/controlModeIntroText"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/control_mode_intro_active_explanation"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/controlModeIntroText" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/control_mode_intro_dismiss_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/controlModeIntroSecondaryText" />
+    </LinearLayout>
+</FrameLayout>

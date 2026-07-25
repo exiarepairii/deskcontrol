@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/controlModeIntroScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/controlModeIntroScrim" />
+
+    <LinearLayout
+        android:id="@+id/controlModeIntroContent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/control_mode_intro_question"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="@color/controlModeIntroText"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnIntroTouch"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:checkable="true"
+                android:gravity="center"
+                android:text="@string/control_mode_intro_touch"
+                android:textColor="@color/controlModeIntroText"
+                app:backgroundTint="@color/control_mode_intro_button"
+                app:cornerRadius="18dp"
+                app:icon="@drawable/ic_intro_touch"
+                app:iconGravity="textTop"
+                app:iconPadding="12dp"
+                app:iconSize="42dp"
+                app:iconTint="@color/controlModeIntroText"
+                app:strokeColor="@color/control_mode_intro_button_stroke"
+                app:strokeWidth="2dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnIntroMotion"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:layout_marginStart="20dp"
+                android:checkable="true"
+                android:gravity="center"
+                android:text="@string/control_mode_intro_motion"
+                android:textColor="@color/controlModeIntroText"
+                app:backgroundTint="@color/control_mode_intro_button"
+                app:cornerRadius="18dp"
+                app:icon="@drawable/ic_intro_motion"
+                app:iconGravity="textTop"
+                app:iconPadding="12dp"
+                app:iconSize="42dp"
+                app:iconTint="@color/controlModeIntroText"
+                app:strokeColor="@color/control_mode_intro_button_stroke"
+                app:strokeWidth="2dp" />
+        </LinearLayout>
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/controlModeTutorial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:maxWidth="400dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/controlModeIntroText"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnIntroConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:maxWidth="320dp"
+            android:text="@string/control_mode_intro_confirm"
+            android:textColor="@color/controlModeIntroConfirmText"
+            android:visibility="gone"
+            app:backgroundTint="?attr/colorPrimary"
+            app:cornerRadius="16dp" />
+    </LinearLayout>
+</FrameLayout>

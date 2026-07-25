@@ -26,7 +26,7 @@
             android:contentDescription="@string/app_drawer_close"
             android:scaleType="center"
             android:src="@drawable/ic_back"
-            android:tint="@color/textPrimary" />
+            app:tint="@color/textPrimary" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/app_drawer_title"

@@ -168,7 +168,15 @@ class SwitchBarOverlayView @JvmOverloads constructor(
                 rightMargin = margin
             }
             setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            background = androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                context,
+                R.drawable.switch_bar_item_background
+            )
             foreground = resolveSelectableItemBackground()
+            stateListAnimator = android.animation.AnimatorInflater.loadStateListAnimator(
+                context,
+                R.animator.switch_bar_item_elevation
+            )
             isClickable = true
             isFocusable = false
             contentDescription = item.label

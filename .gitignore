@@ -45,6 +45,11 @@ cxx/
 .cxx/
 !gradle/wrapper/gradle-wrapper.jar
 
+# Local UI review artifacts
+/*-settings-updated.png
+/motion-mouse-global-rename.png
+/settings-overview.png
+
 # IntelliJ/Android Studio
 .idea/
 .idea/**

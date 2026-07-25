@@ -100,7 +100,7 @@ object DisplaySessionManager {
         }.map { buildInfo(it) }
         externalDisplays = displays
 
-        val previousDisplayId = displayInfo?.displayId
+        val previousInfo = displayInfo
         if (externalDisplays.isEmpty()) {
             DiagnosticsLog.add("DisplaySelect: no external displays")
             displayInfo = null
@@ -122,10 +122,10 @@ object DisplaySessionManager {
             displayInfo = externalDisplays.first { it.displayId == selectedDisplayId }
         }
         val newInfo = displayInfo
-        if (previousDisplayId != null && newInfo == null) {
+        if (previousInfo != null && newInfo == null) {
             stopSession()
         }
-        if (previousDisplayId != newInfo?.displayId ||
+        if (previousInfo != newInfo ||
             (newInfo != null && ControlAccessibilityService.current()?.hasExternalDisplaySession() == false)
         ) {
             ControlAccessibilityService.requestAttachToDisplay(newInfo)

@@ -12,4 +12,15 @@
     <color name="touchpadHintActive">@color/textSecondary</color>
     <color name="touchpadHintInactive">@color/textPrimary</color>
     <color name="touchpadToolbarText">@color/textSecondary</color>
+    <color name="touchpadAreaBorderActive">#E6E8EA</color>
+    <color name="switchBarItemPressed">#18000000</color>
+    <color name="controlModeIntroScrim">#EB282A2C</color>
+    <color name="controlModeCoachmarkScrim">#F21B1D1F</color>
+    <color name="controlModeIntroText">#FFF7F8F8</color>
+    <color name="controlModeIntroSecondaryText">#CCF7F8F8</color>
+    <color name="controlModeIntroConfirmText">#FF17201F</color>
+    <color name="controlModeIntroButton">#2632383B</color>
+    <color name="controlModeIntroButtonSelected">#5232383B</color>
+    <color name="controlModeIntroButtonStroke">#70FFFFFF</color>
+    <color name="controlModeIntroSelectedStroke">#FFFFFFFF</color>
 </resources>

@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
         <intent>
@@ -25,6 +26,10 @@
 
         <activity
             android:name=".TouchpadActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".RayMouseActivity"
             android:exported="false" />
 
         <activity

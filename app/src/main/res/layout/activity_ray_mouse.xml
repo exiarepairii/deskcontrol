@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rayMouseRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/touchpadBackground"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/rayMouseToolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/touchpadBackground"
+            android:gravity="center_vertical"
+            android:minHeight="48dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="6dp">
+
+            <ImageButton
+                android:id="@+id/rayMouseBack"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/touchpad_back_button"
+                android:scaleType="center"
+                android:src="@drawable/ic_back"
+                app:tint="@color/touchpadToolbarText" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical|start"
+                android:text="@string/touchpad_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@color/touchpadToolbarText" />
+
+            <LinearLayout
+                android:id="@+id/btnRaySwitchToTouch"
+                android:layout_width="104dp"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/control_surface_switch_action_to_touch"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_swap_horiz"
+                    app:tint="@color/touchpadToolbarText" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:text="@string/control_surface_switch_to_touch"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/touchpadToolbarText" />
+            </LinearLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/btnRayBlackout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/touchpad_blackout"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/touchpadToolbarText" />
+
+            <ImageButton
+                android:id="@+id/btnRayMore"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/touchpad_more_options"
+                android:scaleType="center"
+                android:src="@drawable/ic_more_vert"
+                app:tint="@color/touchpadToolbarText" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:id="@+id/rayMouseContent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingHorizontal="24dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="24dp">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:gravity="start"
+                    android:text="@string/control_surface_activation_hint"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/touchpadHintInactive" />
+
+                <FrameLayout
+                    android:id="@+id/rayMouseArea"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/touchpad_area_bg"
+                    android:clickable="true"
+                    android:contentDescription="@string/ray_mouse_tap_hint"
+                    android:focusable="true">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/rayMouseHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_margin="32dp"
+                        android:gravity="center"
+                        android:text="@string/ray_mouse_tap_hint"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textColor="@color/touchpadHintInactive" />
+                </FrameLayout>
+
+                <androidx.core.widget.NestedScrollView
+                    android:id="@+id/rayTuningContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="280dp"
+                    android:layout_marginTop="16dp"
+                    android:fillViewport="true"
+                    android:overScrollMode="ifContentScrolls"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingBottom="12dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_tuning_horizontal_range"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/rayHorizontalRangeValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ray_mouse_tuning_horizontal_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderRayHorizontalRange"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_tuning_vertical_range"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/rayVerticalRangeValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ray_mouse_tuning_vertical_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderRayVerticalRange"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_tuning_smoothing"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/raySmoothingValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ray_mouse_tuning_decimal_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderRaySmoothing"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_tuning_emit_interval"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/rayEmitIntervalValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ray_mouse_tuning_ms_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderRayEmitInterval"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_tuning_emit_distance"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/rayEmitDistanceValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ray_mouse_tuning_px_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderRayEmitDistance"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/ray_mouse_haptic_feedback"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchRayHapticFeedback"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/ray_mouse_haptic_feedback_summary"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+                </androidx.core.widget.NestedScrollView>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/rayAccessibilityGate"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/touchpadBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="16dp"
+                    android:contentDescription="@string/touchpad_accessibility_content_description"
+                    android:src="@drawable/ic_accessibility"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/touchpad_accessibility_required"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="@string/touchpad_accessibility_hint"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRayOpenAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/touchpad_open_accessibility_settings" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRayEnableAccessibilityShizuku"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/touchpad_enable_accessibility_shizuku" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/rayBlackoutOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/rayBlackoutHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="56dp"
+            android:alpha="0"
+            android:gravity="center"
+            android:text="@string/touchpad_blackout_unlock_hint"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="#CCFFFFFF"
+            android:visibility="invisible" />
+    </FrameLayout>
+</FrameLayout>

@@ -27,7 +27,9 @@ class SwitchBarController(
     private val view = SwitchBarOverlayView(windowContext)
     private val interpolator = FastOutSlowInInterpolator()
     private val density = windowContext.resources.displayMetrics.density
-    private val showThresholdPx = 0
+    // Motion Mouse is smoothed and converges on the edge instead of overshooting it.
+    // Keep a small reveal band so every control surface can reach the Dock.
+    private val showThresholdPx = (8f * density).toInt()
     private val hideThresholdPx = (28f * density).toInt()
     private val showDelayMs = 160L
     private val hideDelayMs = 260L
@@ -71,15 +73,15 @@ class SwitchBarController(
         }
     }
 
-    fun onCursorMoved(x: Float, y: Float, cursorSizePx: Int) {
+    fun onCursorMoved(x: Float, y: Float) {
         if (forceVisible) {
             scheduleShow("force")
             cancelHide()
             return
         }
         val height = displayInfo.height.toFloat()
-        val triggerY = height + (cursorSizePx * 0.25f)
-        val inShowZone = y >= triggerY - showThresholdPx
+        val triggerY = height - showThresholdPx
+        val inShowZone = y >= triggerY
         val barHeight = if (currentBarHeightPx > 0) currentBarHeightPx else baseBarHeightPx
         val inHideZone = y >= height - maxOf(hideThresholdPx, barHeight + view.bottomInsetPx)
         val bounds = view.getContainerBoundsInView()

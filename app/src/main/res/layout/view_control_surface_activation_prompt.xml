@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true">
+
+    <com.deskcontrol.TutorialSpotlightView
+        android:id="@+id/controlModeActivationSpotlight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/controlModeActivationPrompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginHorizontal="28dp"
+        android:gravity="center"
+        android:text="@string/control_mode_intro_tap_control_area"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textColor="@color/controlModeIntroText"
+        android:textStyle="bold" />
+</FrameLayout>

@@ -32,6 +32,20 @@ android {
     }
 
     buildTypes {
+        create("whiteIconPreview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview.white"
+            versionNameSuffix = "-white-icon-preview"
+            matchingFallbacks = ["debug"]
+        }
+
+        create("goldIconPreview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview.gold"
+            versionNameSuffix = "-gold-icon-preview"
+            matchingFallbacks = ["debug"]
+        }
+
         release {
             minifyEnabled = false
             signingConfig = signingConfigs.getByName("release")

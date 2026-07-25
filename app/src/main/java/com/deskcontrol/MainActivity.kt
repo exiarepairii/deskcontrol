@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             startActivity(Intent(this, AppPickerActivity::class.java))
         }
         binding.btnTouchpad.setOnClickListener {
-            startActivity(Intent(this, TouchpadActivity::class.java))
+            startActivity(lastControlSurfaceIntent())
         }
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))

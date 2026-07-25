@@ -49,7 +49,9 @@ class AppPickerActivity : AppCompatActivity() {
                         getString(R.string.app_launched_toast, entry.label),
                         Toast.LENGTH_SHORT
                     ).show()
-                    startActivity(android.content.Intent(this, TouchpadActivity::class.java))
+                    if (!intent.getBooleanExtra(EXTRA_RETURN_TO_CALLER, false)) {
+                        startActivity(lastControlSurfaceIntent())
+                    }
                     finish()
                 } else {
                     val message = AppLauncher.buildFailureMessage(this, result)
@@ -159,5 +161,6 @@ class AppPickerActivity : AppCompatActivity() {
         const val EXTRA_PICK_PACKAGE = "extra_pick_package"
         const val EXTRA_PICK_LABEL = "extra_pick_label"
         const val EXTRA_PICK_SLOT = "extra_pick_slot"
+        const val EXTRA_RETURN_TO_CALLER = "extra_return_to_caller"
     }
 }

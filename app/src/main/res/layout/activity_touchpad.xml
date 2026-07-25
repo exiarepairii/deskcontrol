@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/touchpadRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -28,7 +29,7 @@
                 android:contentDescription="@string/touchpad_back_button"
                 android:scaleType="center"
                 android:src="@drawable/ic_back"
-                android:tint="@color/touchpadToolbarText" />
+                app:tint="@color/touchpadToolbarText" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/touchpadTitle"
@@ -39,6 +40,35 @@
                 android:text="@string/touchpad_title"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="@color/touchpadToolbarText" />
+
+            <LinearLayout
+                android:id="@+id/touchpadSwitchToRay"
+                android:layout_width="104dp"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/control_surface_switch_action_to_motion"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_swap_horiz"
+                    app:tint="@color/touchpadToolbarText" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:text="@string/control_surface_switch_to_motion"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/touchpadToolbarText" />
+            </LinearLayout>
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/touchpadBlackout"
@@ -52,6 +82,16 @@
                 android:text="@string/touchpad_blackout"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="@color/touchpadToolbarText" />
+
+            <ImageButton
+                android:id="@+id/touchpadMore"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/touchpad_more_options"
+                android:scaleType="center"
+                android:src="@drawable/ic_more_vert"
+                app:tint="@color/touchpadToolbarText" />
         </LinearLayout>
 
         <FrameLayout
@@ -64,118 +104,308 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:paddingHorizontal="24dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="24dp">
 
                 <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/touchpadHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/touchpad_hint"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:layout_marginBottom="12dp"
+                    android:gravity="start"
+                    android:text="@string/control_surface_activation_hint"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="@color/touchpadHintInactive" />
 
                 <FrameLayout
                     android:id="@+id/touchpadArea"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_marginTop="16dp"
                     android:layout_weight="1"
-                    android:background="@drawable/touchpad_area_bg" />
+                    android:background="@drawable/touchpad_area_bg"
+                    android:clickable="true"
+                    android:contentDescription="@string/touchpad_hint"
+                    android:focusable="true">
 
-                <LinearLayout
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/touchpadHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_margin="32dp"
+                        android:gravity="center"
+                        android:text="@string/touchpad_hint"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:textColor="@color/touchpadHintInactive" />
+                </FrameLayout>
+
+                <androidx.core.widget.NestedScrollView
                     android:id="@+id/tuningPanel"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="280dp"
                     android:layout_marginTop="16dp"
-                    android:orientation="vertical"
+                    android:fillViewport="true"
+                    android:overScrollMode="ifContentScrolls"
                     android:visibility="gone">
 
-                    <TextView
-                        android:id="@+id/tuningHeader"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/touchpad_tuning"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:paddingBottom="12dp">
 
-                    <TextView
-                        android:id="@+id/labelBaseGain"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_base_gain" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
 
-                    <SeekBar
-                        android:id="@+id/sliderBaseGain"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_cursor_speed"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
 
-                    <TextView
-                        android:id="@+id/labelAccel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_acceleration" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadBaseGainValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_cursor_speed_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
 
-                    <SeekBar
-                        android:id="@+id/sliderAccel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderBaseGain"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
 
-                    <TextView
-                        android:id="@+id/labelSpeed"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_speed_for_max_accel" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
 
-                    <SeekBar
-                        android:id="@+id/sliderSpeed"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/touchpad_acceleration"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
 
-                    <TextView
-                        android:id="@+id/labelJitter"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_jitter_threshold" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadAccelerationValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_text"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
 
-                    <SeekBar
-                        android:id="@+id/sliderJitter"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderAccel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
 
-                    <TextView
-                        android:id="@+id/labelSmoothing"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_smoothing" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
 
-                    <SeekBar
-                        android:id="@+id/sliderSmoothing"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/touchpad_speed_for_max_accel"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
 
-                    <TextView
-                        android:id="@+id/labelScroll"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/touchpad_scroll_step" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadMaxAccelSpeedValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_text"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
 
-                    <SeekBar
-                        android:id="@+id/sliderScroll"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-                </LinearLayout>
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderSpeed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/touchpad_jitter_threshold"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadJitterValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_text"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderJitter"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/touchpad_smoothing"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadSmoothingValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/empty_text"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderSmoothing"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_touchpad_drag_boost"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadDragBoostInlineValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_touchpad_drag_boost_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderTouchpadDragBoostInline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_touchpad_scroll_invert"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/switchTouchpadScrollInvertInline"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_touchpad_scroll_speed"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadScrollSpeedInlineValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_touchpad_scroll_speed_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderTouchpadScrollSpeedInline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_touchpad_scroll_distance"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/touchpadScrollDistanceInlineValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_touchpad_scroll_distance_default"
+                                android:textAppearance="?attr/textAppearanceBodySmall"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderTouchpadScrollDistanceInline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </androidx.core.widget.NestedScrollView>
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/accessibilityGate"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#B0000000"
+                android:background="@color/touchpadBackground"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:padding="24dp"
@@ -189,7 +419,7 @@
                     android:layout_marginBottom="16dp"
                     android:contentDescription="@string/touchpad_accessibility_content_description"
                     android:src="@drawable/ic_accessibility"
-                    android:tint="?attr/colorOnSurfaceVariant" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.textview.MaterialTextView
                     android:layout_width="match_parent"

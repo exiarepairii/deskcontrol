@@ -64,7 +64,9 @@ class CursorOverlayView @JvmOverloads constructor(
 
     fun onCursorMoved(dx: Float, dy: Float, dtMs: Long) {
         if (dtMs <= 0L) return
+        if (!dx.isFinite() || !dy.isFinite()) return
         val speed = hypot(dx.toDouble(), dy.toDouble()).toFloat() / (dtMs / 1000f)
+        if (!speed.isFinite()) return
         speedEma = speedEma + SPEED_EMA_ALPHA * (speed - speedEma)
         lastMovementTime = SystemClock.uptimeMillis()
         val now = SystemClock.uptimeMillis()
@@ -119,6 +121,7 @@ class CursorOverlayView @JvmOverloads constructor(
     }
 
     private fun animateScaleTo(value: Float) {
+        if (!value.isFinite()) return
         val clamped = value.coerceIn(1f, MAX_SCALE)
         if (clamped == targetScale) return
         targetScale = clamped

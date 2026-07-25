@@ -16,6 +16,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:background="@drawable/switch_bar_background"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="8dp"
@@ -27,6 +29,8 @@
             android:id="@+id/switch_bar_items"
             android:layout_width="wrap_content"
             android:layout_height="72dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:gravity="center_vertical"
             android:orientation="horizontal" />
     </LinearLayout>
