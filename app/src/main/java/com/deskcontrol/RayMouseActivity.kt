@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import com.deskcontrol.databinding.ActivityRayMouseBinding
 import com.google.android.material.slider.Slider
 
@@ -55,7 +56,13 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         binding = ActivityRayMouseBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsStore.setLastControlSurface(this, ControlSurfaceMode.RAY_MOUSE)
-        windowPolicy = ControlSurfaceWindowPolicy(this, "MotionMouse")
+        windowPolicy = ControlSurfaceWindowPolicy(
+            activity = this,
+            logName = "MotionMouse",
+            onDimmedChanged = { dimmed ->
+                binding.rayMouseHint.isInvisible = dimmed
+            }
+        )
         gestureController = ControlSurfaceGestureController(
             context = this,
             handler = handler,
@@ -65,6 +72,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             },
             serviceProvider = { ControlAccessibilityService.current() },
             singlePointerMode = ControlSurfaceGestureController.SinglePointerMode.GESTURE_ONLY,
+            twoFingerScrollEnabled = false,
             onServiceUnavailable = {
                 Toast.makeText(
                     this,
@@ -94,6 +102,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             root = binding.rayMouseRoot,
             currentMode = ControlSurfaceMode.RAY_MOUSE,
             switchTarget = binding.btnRaySwitchToTouch,
+            blackoutTarget = binding.btnRayBlackout,
             controlArea = binding.rayMouseArea,
             onActivationRequested = {
                 setRayMouseActive(true)
@@ -120,7 +129,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             controlArea = binding.rayMouseArea,
             tuningPanel = binding.rayTuningContent,
             openSettingsButton = binding.btnRayOpenAccessibility,
-            enableWithShizukuButton = binding.btnRayEnableAccessibilityShizuku,
+            advancedEnableButton = binding.btnRayEnableAccessibilityAdvanced,
             onEnabledChanged = { enabled ->
                 setRayMouseActive(false)
                 if (enabled && !introDialogVisible) {
@@ -164,7 +173,8 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             switchControlSurface(TouchpadActivity::class.java)
         }
         binding.btnRayBlackout.setOnClickListener {
-            setRayMouseActive(true)
+            gestureController.finishActiveGesture()
+            setRayMouseActive(false)
             blackoutController.show()
         }
         binding.rayMouseArea.setOnTouchListener { _, event ->
@@ -624,7 +634,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun showExternalControlTutorial() {
         if (ControlAccessibilityService.requestControlTutorial(ControlSurfaceMode.RAY_MOUSE)) {
             binding.root.announceForAccessibility(
-                getString(R.string.external_tutorial_move_to_circle)
+                getString(R.string.external_tutorial_calibrate)
             )
         }
     }
@@ -636,7 +646,9 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     }
 
     private fun setRayMouseActive(active: Boolean) {
-        val resolvedActive = active && isControlSurfaceAvailable()
+        val blackoutVisible =
+            ::blackoutController.isInitialized && blackoutController.isVisible
+        val resolvedActive = active && isControlSurfaceAvailable() && !blackoutVisible
         val wasActive = rayMouseActive
         rayMouseActive = resolvedActive
         binding.rayMouseArea.isActivated = resolvedActive

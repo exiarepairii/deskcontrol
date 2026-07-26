@@ -1,6 +1,6 @@
 # DeskControl
 
-DeskControl 让手机变成外接显示器应用的触控板与键盘。它面向 Android 11+，
+DeskControl 让手机变成外接显示器应用的触控板与体感鼠标。它面向 Android 11+，
 通过无障碍服务渲染光标并注入输入。
 
 [English](README.md)
@@ -21,7 +21,7 @@ DeskControl 让手机变成外接显示器应用的触控板与键盘。它面�
 ## 快速开始
 
 1. 连接有线外接显示器。
-2. 打开 DeskControl，并按提示启用无障碍服务。
+2. 打开触控板页面，阅读无障碍服务披露，并启用 DeskControl 无障碍服务。
 3. 选择一个应用启动到外接显示器。
 4. 打开触控板页面进行控制。
 
@@ -29,21 +29,28 @@ DeskControl 让手机变成外接显示器应用的触控板与键盘。它面�
 
 - 移动：在触控板区域单指滑动。
 - 点击：在触控板区域单击。
-- 滑动与拖拽：双击后滑动（震动提示）。
+- 拖拽：长按后滑动（震动提示）。
 - 自动调暗：在触控板区域内停留 10 秒后降低亮度，点触控板区域外或离开本页会恢复。
 - 返回：触控板区域激活时会把返回键转发给外接应用。
 - 退出：点左上角返回箭头，或先点触控板区域外再按返回键。
 
 ## 构建
 
+同一套源码维护两个分发风味：
+
+- `play`：包名 `com.suspace.deskcontrol`，包含 Google Play Billing 和支持者图标，不包含 Shizuku。
+- `direct`：包名 `com.deskcontrol`，保留可选 Shizuku，不包含 Billing 和备用图标资源。
+
 ```bash
-./gradlew assembleDebug
+./gradlew assemblePlayDebug
+./gradlew assembleDirectDebug
 ```
 
 安装 APK：
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/play/debug/app-play-debug.apk
+adb install -r app/build/outputs/apk/direct/debug/app-direct-debug.apk
 ```
 
 ## 设置项
@@ -58,15 +65,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - `DisplaySessionManager`：外接显示器检测与选择。
 - `AppLauncher`：应用启动与失败原因处理。
 - `TouchpadActivity`：触控板界面与输入逻辑。
-- `ControlAccessibilityService`：光标覆盖与手势/文本注入。
+- `ControlAccessibilityService`：光标覆盖、用户主动触发的手势注入、外接窗口聚焦与返回转发。
 - `CursorOverlayView`：光标渲染与动画。
 - `DiagnosticsActivity`：状态与近期失败信息。
 
 ## 权限与说明
 
-- 使用无障碍服务进行手势注入和 `ACTION_SET_TEXT`。
+- 使用无障碍服务执行用户主动触发的手势注入、外接窗口聚焦、返回转发和体感鼠标校准按键。
 - 光标覆盖层为 `TYPE_ACCESSIBILITY_OVERLAY` 且不可触摸。
 - 覆盖层通过 `createWindowContext` 挂载到外接显示器。
+- Google Play 申报清单见 `docs/google-play-release.md`。
 
 ## 限制
 

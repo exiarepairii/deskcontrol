@@ -1,0 +1,10 @@
+<resources>
+    <string name="touchpad_enable_accessibility_advanced">使用 Shizuku 启用</string>
+    <string name="touchpad_shizuku_permission_denied">Shizuku 权限被拒绝</string>
+    <string name="touchpad_shizuku_permission_rationale">授予 Shizuku 权限以启用无障碍。</string>
+    <string name="touchpad_shizuku_enable_success">已启用无障碍</string>
+    <string name="touchpad_shizuku_enable_failed">通过 Shizuku 启用无障碍失败</string>
+    <string name="touchpad_shizuku_intro_title">什么是 Shizuku？</string>
+    <string name="touchpad_shizuku_intro_message">Shizuku 让高级用户通过一次性授权获得系统级能力。\n\n当 Shizuku 在运行时，DeskControl 可自动启用无障碍，省去每次手动开启的步骤。</string>
+    <string name="touchpad_shizuku_intro_ok">知道了</string>
+</resources>

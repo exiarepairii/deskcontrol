@@ -55,11 +55,6 @@ internal class ExternalControlTutorialView(
     )
 
     private val steps = buildList {
-        add(Step(StepKind.MOVE_TO_CIRCLE, R.string.external_tutorial_move_to_circle))
-        add(Step(StepKind.CLICK_BUTTON, R.string.external_tutorial_click))
-        add(Step(StepKind.LONG_PRESS_BUTTON, R.string.external_tutorial_long_press))
-        add(Step(StepKind.DRAG_CARD, R.string.external_tutorial_drag))
-        add(Step(StepKind.SCROLL_PAGE, R.string.external_tutorial_scroll))
         if (mode == ControlSurfaceMode.RAY_MOUSE) {
             add(
                 Step(
@@ -69,6 +64,22 @@ internal class ExternalControlTutorialView(
                 )
             )
         }
+        add(Step(StepKind.MOVE_TO_CIRCLE, R.string.external_tutorial_move_to_circle))
+        add(Step(StepKind.CLICK_BUTTON, R.string.external_tutorial_click))
+        add(Step(StepKind.LONG_PRESS_BUTTON, R.string.external_tutorial_long_press))
+        if (mode == ControlSurfaceMode.TOUCHPAD) {
+            add(Step(StepKind.DRAG_CARD, R.string.external_tutorial_drag))
+        }
+        add(
+            Step(
+                StepKind.SCROLL_PAGE,
+                if (mode == ControlSurfaceMode.TOUCHPAD) {
+                    R.string.external_tutorial_scroll_touch
+                } else {
+                    R.string.external_tutorial_scroll_motion
+                }
+            )
+        )
     }
 
     private val density = resources.displayMetrics.density
@@ -539,8 +550,12 @@ internal class ExternalControlTutorialView(
                     completeLongPressFill()
                     true
                 }
-                actionButton.setOnTouchListener { _, event ->
-                    handleLongPressButtonTouch(event)
+                actionButton.setOnTouchListener { view, event ->
+                    val handled = handleLongPressButtonTouch(event)
+                    if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        view.performClick()
+                    }
+                    handled
                 }
             }
             StepKind.DRAG_CARD -> resetDragCard()
@@ -633,8 +648,8 @@ internal class ExternalControlTutorialView(
     }
 
     private fun dragTargetRect(): RectF {
-        val halfWidth = min(width * 0.15f, 116f * density)
-        val halfHeight = 52f * density
+        val halfWidth = min(width * 0.22f, 168f * density)
+        val halfHeight = 78f * density
         val centerX = width * 0.72f
         val centerY = height * 0.55f
         return RectF(
@@ -737,6 +752,11 @@ internal class ExternalControlTutorialView(
             fillColor = BUTTON_LONG_PRESS_FILL
             fillFraction = 0f
             setTextColor(0xFF17201F.toInt())
+        }
+
+        override fun performClick(): Boolean {
+            super.performClick()
+            return true
         }
 
         override fun onDraw(canvas: Canvas) {

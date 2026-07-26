@@ -25,6 +25,7 @@ class ControlSurfaceGestureController(
     private val touchpadSizeProvider: () -> Pair<Int, Int>,
     private val serviceProvider: () -> ControlAccessibilityService?,
     private val singlePointerMode: SinglePointerMode,
+    private val twoFingerScrollEnabled: Boolean = true,
     private val onServiceUnavailable: () -> Unit = {},
     private val onTap: () -> Unit = {},
     private val onDirectGestureStarted: () -> Unit = {},
@@ -108,7 +109,13 @@ class ControlSurfaceGestureController(
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> beginTouch(service, event)
-            MotionEvent.ACTION_POINTER_DOWN -> beginScroll(service, event)
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (twoFingerScrollEnabled) {
+                    beginScroll(service, event)
+                } else {
+                    rejectMultiPointerGesture(service)
+                }
+            }
             MotionEvent.ACTION_MOVE -> updateTouch(service, event)
             MotionEvent.ACTION_POINTER_UP -> {
                 if (touchState == TouchState.SCROLL_MODE && event.pointerCount <= 2) {
@@ -187,6 +194,21 @@ class ControlSurfaceGestureController(
             legacyScrollController.enter(service, event)
             ActiveScrollController.LEGACY
         }
+    }
+
+    private fun rejectMultiPointerGesture(service: ControlAccessibilityService) {
+        cancelDirectTouchStart()
+        cancelLongPress()
+        when (touchState) {
+            TouchState.DRAGGING -> service.cancelDrag()
+            TouchState.DIRECT_GESTURE -> service.cancelContinuousGesture()
+            TouchState.SCROLL_MODE -> exitScrollMode()
+            else -> Unit
+        }
+        touchState = TouchState.IDLE
+        suppressSingleUntilUp = true
+        setTouchActive(false)
+        service.reportControlTutorialAction(ControlTutorialAction.GESTURE_END)
     }
 
     private fun updateTouch(service: ControlAccessibilityService, event: MotionEvent) {

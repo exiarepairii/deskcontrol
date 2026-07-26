@@ -15,6 +15,7 @@ import com.google.android.material.textview.MaterialTextView
 class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     private lateinit var binding: ActivityMainBinding
+    private var displayStatusNudge: ObjectAnimator? = null
     private var externalDisplayConnected = false
     private var availableDisplays: List<DisplaySessionManager.ExternalDisplayInfo> = emptyList()
     private var selectedDisplayId: Int? = null
@@ -29,7 +30,16 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         applyEdgeToEdgePadding(binding.root)
 
         binding.btnPickApp.setOnClickListener {
-            startActivity(Intent(this, AppPickerActivity::class.java))
+            if (externalDisplayConnected) {
+                startActivity(Intent(this, AppPickerActivity::class.java))
+            } else {
+                nudgeDisconnectedDisplayStatus()
+                android.widget.Toast.makeText(
+                    this,
+                    R.string.choose_app_connect_display_first,
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
         binding.btnTouchpad.setOnClickListener {
             startActivity(lastControlSurfaceIntent())
@@ -48,6 +58,11 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     override fun onStop() {
         super.onStop()
         DisplaySessionManager.removeListener(this)
+    }
+
+    override fun onDestroy() {
+        displayStatusNudge?.cancel()
+        super.onDestroy()
     }
 
     override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
@@ -81,6 +96,26 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun updateSecondaryActions() {
         binding.btnTouchpad.isEnabled = true
         binding.btnTouchpad.alpha = 1f
+    }
+
+    private fun nudgeDisconnectedDisplayStatus() {
+        displayStatusNudge?.cancel()
+        binding.statusDisplaySection.translationX = 0f
+        val offset = dpToPx(7).toFloat()
+        displayStatusNudge = ObjectAnimator.ofFloat(
+            binding.statusDisplaySection,
+            android.view.View.TRANSLATION_X,
+            0f,
+            -offset,
+            offset,
+            -offset * 0.65f,
+            offset * 0.65f,
+            0f
+        ).apply {
+            duration = 420L
+            interpolator = FastOutSlowInInterpolator()
+            start()
+        }
     }
 
     private fun updateDisplaySelector() {

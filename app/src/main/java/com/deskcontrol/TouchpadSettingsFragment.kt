@@ -101,12 +101,12 @@ internal class TouchpadSettingsFragment :
         }
         pageLayout.addGroup(
             R.string.settings_touchpad_scrolling_group,
-            directMode.row,
             naturalDirection.row,
             classicSpeed.row,
             classicDistance.row,
             directGain.row,
-            directStep.row
+            directStep.row,
+            directMode.row
         )
 
         val dragBoost = context.sliderSetting(R.string.settings_touchpad_drag_boost)

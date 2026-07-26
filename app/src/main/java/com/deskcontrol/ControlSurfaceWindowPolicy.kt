@@ -17,7 +17,8 @@ import android.view.WindowManager
  */
 class ControlSurfaceWindowPolicy(
     private val activity: Activity,
-    private val logName: String
+    private val logName: String,
+    private val onDimmedChanged: (Boolean) -> Unit = {}
 ) {
     private val handler = Handler(Looper.getMainLooper())
 
@@ -34,6 +35,7 @@ class ControlSurfaceWindowPolicy(
     private var originalSystemBrightness = 1f
     private var hasOriginalWindowBrightness = false
     private var dimmedThisSession = false
+    private var dimmedStateDispatched = false
 
     fun onResume() {
         resumed = true
@@ -138,6 +140,7 @@ class ControlSurfaceWindowPolicy(
         cancelDimTimer()
         cancelDimAnimator()
         restoreOriginalBrightness()
+        dispatchDimmedState(false)
         if (hadSession) {
             DiagnosticsLog.add("$logName: dim session stopped reason=$reason")
         }
@@ -169,6 +172,7 @@ class ControlSurfaceWindowPolicy(
         if (start <= target) {
             applyWindowBrightness(target)
             dimmedThisSession = true
+            dispatchDimmedState(true)
             DiagnosticsLog.add("$logName: dimmed target=$target")
             return
         }
@@ -180,7 +184,14 @@ class ControlSurfaceWindowPolicy(
             start()
         }
         dimmedThisSession = true
+        dispatchDimmedState(true)
         DiagnosticsLog.add("$logName: dimmed target=$target")
+    }
+
+    private fun dispatchDimmedState(dimmed: Boolean) {
+        if (dimmedStateDispatched == dimmed) return
+        dimmedStateDispatched = dimmed
+        onDimmedChanged(dimmed)
     }
 
     private fun applyWindowBrightness(value: Float) {

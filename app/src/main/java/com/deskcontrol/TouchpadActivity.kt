@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import com.deskcontrol.databinding.ActivityTouchpadBinding
 import com.google.android.material.slider.Slider
 
@@ -32,7 +33,13 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         binding = ActivityTouchpadBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsStore.setLastControlSurface(this, ControlSurfaceMode.TOUCHPAD)
-        windowPolicy = ControlSurfaceWindowPolicy(this, "Touchpad")
+        windowPolicy = ControlSurfaceWindowPolicy(
+            activity = this,
+            logName = "Touchpad",
+            onDimmedChanged = { dimmed ->
+                binding.touchpadHint.isInvisible = dimmed
+            }
+        )
         DiagnosticsLog.add("Touchpad: create displayId=${display?.displayId ?: -1}")
         configureOledControlSurfaceWindow(binding.root, binding.touchpadToolbar)
         tuningPanelController = ControlSurfaceTuningPanelController(
@@ -61,6 +68,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             root = binding.touchpadRoot,
             currentMode = ControlSurfaceMode.TOUCHPAD,
             switchTarget = binding.touchpadSwitchToRay,
+            blackoutTarget = binding.touchpadBlackout,
             controlArea = binding.touchpadArea,
             onActivationRequested = {
                 setTouchpadActive(true)
@@ -87,7 +95,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             controlArea = binding.touchpadArea,
             tuningPanel = binding.tuningPanel,
             openSettingsButton = binding.btnOpenAccessibility,
-            enableWithShizukuButton = binding.btnEnableAccessibilityShizuku,
+            advancedEnableButton = binding.btnEnableAccessibilityAdvanced,
             onEnabledChanged = { enabled ->
                 setTouchpadActive(false)
                 if (enabled) {

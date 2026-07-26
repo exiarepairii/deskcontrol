@@ -18,6 +18,7 @@ class ControlSurfaceModeIntroController(
     private val root: ViewGroup,
     private val currentMode: ControlSurfaceMode,
     private val switchTarget: View,
+    private val blackoutTarget: View,
     private val controlArea: View,
     private val onActivationRequested: () -> Unit,
     private val onVisibilityChanged: (Boolean) -> Unit,
@@ -99,7 +100,7 @@ class ControlSurfaceModeIntroController(
         overlay = coachmark
         root.addView(coachmark)
         coachmark.setOnClickListener {
-            replaceOverlay(coachmark, ::showActivationPrompt)
+            replaceOverlay(coachmark, ::showBlackoutCoachmark)
         }
         coachmark.post {
             val spotlight = coachmark.findViewById<TutorialSpotlightView>(
@@ -117,10 +118,64 @@ class ControlSurfaceModeIntroController(
             layoutParams.topMargin =
                 targetRect.bottom - coachmarkRect.top + activity.dp(8)
             callout.layoutParams = layoutParams
-            callout.x = (desiredCenter - callout.width / 2f).coerceIn(
-                activity.dp(16).toFloat(),
-                (root.width - callout.width - activity.dp(16)).toFloat()
+            val horizontalMargin = activity.dp(16).toFloat()
+            val maxCalloutX =
+                (root.width - callout.width - horizontalMargin).coerceAtLeast(0f)
+            val minCalloutX = minOf(horizontalMargin, maxCalloutX)
+            callout.x = (desiredCenter - callout.width / 2f)
+                .coerceIn(minCalloutX, maxCalloutX)
+            callout.alpha = 0f
+            callout.animate().alpha(1f).setDuration(220L).start()
+        }
+    }
+
+    private fun showBlackoutCoachmark() {
+        val coachmark = LayoutInflater.from(activity).inflate(
+            R.layout.view_control_surface_blackout_coachmark,
+            root,
+            false
+        )
+        overlay = coachmark
+        root.addView(coachmark)
+        coachmark.isClickable = false
+        coachmark.postDelayed({
+            if (overlay === coachmark) {
+                coachmark.isClickable = true
+                coachmark.setOnClickListener {
+                    replaceOverlay(coachmark, ::showActivationPrompt)
+                }
+            }
+        }, COACHMARK_INPUT_DELAY_MS)
+        coachmark.post {
+            val spotlight = coachmark.findViewById<TutorialSpotlightView>(
+                R.id.controlSurfaceBlackoutSpotlight
             )
+            spotlight.setSpotlight(
+                localRect(blackoutTarget, coachmark, activity.dp(6)),
+                activity.dp(14).toFloat()
+            )
+
+            val targetRect = Rect()
+            blackoutTarget.getGlobalVisibleRect(targetRect)
+            val coachmarkRect = Rect()
+            coachmark.getGlobalVisibleRect(coachmarkRect)
+            val callout = coachmark.findViewById<View>(R.id.controlSurfaceBlackoutCallout)
+            val desiredCenter = targetRect.centerX() - coachmarkRect.left
+            val layoutParams = callout.layoutParams as FrameLayout.LayoutParams
+            layoutParams.topMargin =
+                targetRect.bottom - coachmarkRect.top + activity.dp(8)
+            callout.layoutParams = layoutParams
+            val horizontalMargin = activity.dp(16).toFloat()
+            val maxCalloutX =
+                (root.width - callout.width - horizontalMargin).coerceAtLeast(0f)
+            val minCalloutX = minOf(horizontalMargin, maxCalloutX)
+            callout.x = (desiredCenter - callout.width / 2f)
+                .coerceIn(minCalloutX, maxCalloutX)
+            val arrow = coachmark.findViewById<View>(R.id.controlSurfaceBlackoutArrow)
+            val arrowCenterWithoutTranslation =
+                callout.x + arrow.left + arrow.width / 2f
+            arrow.translationX =
+                desiredCenter - arrowCenterWithoutTranslation
             callout.alpha = 0f
             callout.animate().alpha(1f).setDuration(220L).start()
         }
@@ -315,6 +370,7 @@ class ControlSurfaceModeIntroController(
 
     companion object {
         const val EXTRA_SHOW_SWITCH_COACHMARK = "show_control_surface_switch_coachmark"
+        private const val COACHMARK_INPUT_DELAY_MS = 800L
         private const val EXPLANATION_INPUT_DELAY_MS = 250L
     }
 }

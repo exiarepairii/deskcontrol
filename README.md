@@ -1,6 +1,6 @@
 # DeskControl
 
-DeskControl turns your phone into a touchpad and keyboard for a single app
+DeskControl turns your phone into a touchpad and motion mouse for a single app
 running on a wired external display. It targets Android 11+ and uses an
 AccessibilityService to render the cursor and inject input.
 
@@ -22,7 +22,8 @@ AccessibilityService to render the cursor and inject input.
 ## Quick Start
 
 1. Connect the wired external display.
-2. Launch DeskControl and enable the accessibility service if prompted.
+2. Open Touchpad, review the accessibility disclosure, and enable the
+   DeskControl accessibility service.
 3. Pick an app to launch on the external display.
 4. Open Touchpad and control the external app.
 
@@ -30,7 +31,7 @@ AccessibilityService to render the cursor and inject input.
 
 - Move: slide one finger in the touchpad area.
 - Click: tap once in the touchpad area.
-- Slide & drag: double-tap, then slide (vibration confirms).
+- Drag: touch and hold, then slide (vibration confirms).
 - Auto-dim: after 10s inside the touchpad area, the screen dims. It restores
   when you tap outside the touchpad area or leave the screen.
 - Back: when the touchpad area is active, Back is forwarded to the external app.
@@ -38,14 +39,23 @@ AccessibilityService to render the cursor and inject input.
 
 ## Build
 
+Two distribution flavors are maintained from the same source tree:
+
+- `play`: package `com.suspace.deskcontrol`, Google Play Billing, supporter icons,
+  no Shizuku.
+- `direct`: package `com.deskcontrol`, optional Shizuku enablement, no Billing or
+  alternate icon assets.
+
 ```bash
-./gradlew assembleDebug
+./gradlew assemblePlayDebug
+./gradlew assembleDirectDebug
 ```
 
 Install the APK:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/play/debug/app-play-debug.apk
+adb install -r app/build/outputs/apk/direct/debug/app-direct-debug.apk
 ```
 
 ## Settings
@@ -60,15 +70,18 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - `DisplaySessionManager`: external display tracking and selection.
 - `AppLauncher`: launch routing and failure diagnostics.
 - `TouchpadActivity`: touchpad UI and input logic.
-- `ControlAccessibilityService`: cursor overlay and gesture/text injection.
+- `ControlAccessibilityService`: cursor overlay, user-directed gesture injection,
+  external-window focus, and Back forwarding.
 - `CursorOverlayView`: cursor rendering and animation.
 - `DiagnosticsActivity`: status and recent failure history.
 
 ## Permissions and Notes
 
-- Uses `AccessibilityService` for gesture injection and `ACTION_SET_TEXT`.
+- Uses `AccessibilityService` for user-directed gesture injection, external-window
+  focus, Back forwarding, and the Motion Mouse calibration key.
 - Cursor overlay uses `TYPE_ACCESSIBILITY_OVERLAY` and is non-touchable.
 - The overlay is attached to the external display via `createWindowContext`.
+- See `docs/google-play-release.md` for the Play Console declaration checklist.
 
 ## Limitations
 

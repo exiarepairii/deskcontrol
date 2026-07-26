@@ -12,7 +12,6 @@ import android.graphics.PointF
 import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Build
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -196,7 +195,6 @@ class ControlAccessibilityService : AccessibilityService() {
         if (currentInfo != null) {
             currentInfo.flags = currentInfo.flags or
                 AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
                 AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
             serviceInfo = currentInfo
             DiagnosticsLog.add("Accessibility: flags=${currentInfo.flags}")
@@ -1126,61 +1124,6 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun hasExternalDisplaySession(): Boolean = displayInfo != null
 
-    fun setTextOnFocused(text: String): Boolean {
-        val info = displayInfo ?: return recordInjection(
-            false,
-            getString(R.string.injection_no_external_display)
-        )
-        val targetWindows = windows?.filter { it.displayId == info.displayId }.orEmpty()
-        val roots = if (targetWindows.isNotEmpty()) {
-            targetWindows.mapNotNull { it.root }
-        } else {
-            listOfNotNull(rootInActiveWindow)
-        }
-        for (root in roots) {
-            val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            val target = focused ?: findEditableNode(root)
-            if (target != null) {
-                if (target.isFocusable && !target.isFocused) {
-                    target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                }
-                if (!target.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }) {
-                    return recordInjection(
-                        false,
-                        getString(R.string.injection_action_set_text_not_supported)
-                    )
-                }
-                val args = Bundle()
-                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-                val success = target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                return recordInjection(
-                    success,
-                    if (success) {
-                        getString(R.string.injection_action_set_text_success)
-                    } else {
-                        getString(R.string.injection_action_set_text_failed)
-                    }
-                )
-            }
-        }
-        return recordInjection(false, getString(R.string.injection_no_editable_field))
-    }
-
-    private fun findEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isEditable) {
-                return node
-            }
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { queue.add(it) }
-            }
-        }
-        return null
-    }
-
     private fun attachToDisplay(
         info: DisplaySessionManager.ExternalDisplayInfo?,
         allowRetry: Boolean = true
@@ -1759,18 +1702,8 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun resolveDisplayInsets(): Insets {
         val windowInsets = overlayView?.rootWindowInsets ?: return Insets(0, 0, 0, 0)
-        return if (Build.VERSION.SDK_INT >= 30) {
-            val sys = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
-            Insets(sys.left, sys.top, sys.right, sys.bottom)
-        } else {
-            @Suppress("DEPRECATION")
-            Insets(
-                windowInsets.systemWindowInsetLeft,
-                windowInsets.systemWindowInsetTop,
-                windowInsets.systemWindowInsetRight,
-                windowInsets.systemWindowInsetBottom
-            )
-        }
+        val sys = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+        return Insets(sys.left, sys.top, sys.right, sys.bottom)
     }
 
     private fun computeSwipeDistancePx(
