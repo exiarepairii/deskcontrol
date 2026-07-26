@@ -1,7 +1,7 @@
 # DeskControl
 
-DeskControl 让手机变成外接显示器应用的触控板与体感鼠标。它面向 Android 11+，
-通过无障碍服务渲染光标并注入输入。
+DeskControl 让手机变成外接显示器应用的触控板与体感鼠标。它支持 Android 11+，
+并以 Android 16（API 36）为目标版本，通过无障碍服务渲染光标并注入输入。
 
 [English](README.md)
 
@@ -15,6 +15,7 @@ DeskControl 让手机变成外接显示器应用的触控板与体感鼠标。�
 ## 运行要求
 
 - Android 11+（minSdk 30）。
+- 目标版本为 Android 16（API 36）。
 - 有线 Type-C 外接显示器。
 - 开启无障碍服务（光标与输入注入必需）。
 

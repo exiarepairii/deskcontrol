@@ -4,6 +4,7 @@
 
 - Flavor: `play`
 - Application ID: `com.suspace.deskcontrol`
+- Target SDK: Android 16 (API 36)
 - Bundle command: `./gradlew bundlePlayRelease`
 - One-time product ID: `supporter_icon_pack`
 - Product type: non-consumable one-time product
@@ -79,8 +80,12 @@ Replace the final placeholder with a stable, reviewer-accessible video URL.
 - Data deletion: users clear app storage or uninstall; there is no server-side
   account or data.
 
-The privacy-policy text is in `docs/privacy-policy.md`. Publish it at a stable
-public HTTPS URL before completing the Play Console privacy-policy field.
+The privacy-policy text is in `docs/privacy-policy.md`. The public Play Console
+URL is:
+
+`https://exiarepairii.github.io/deskcontrol/privacy.html`
+
+Confirm that the URL is reachable after the website workflow publishes `main`.
 
 ## Billing setup and testing
 

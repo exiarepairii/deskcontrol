@@ -8,6 +8,7 @@
 - Cursor size/opacity/speed are now inline sliders; keep values snapped to slider step size to avoid crashes.
 - All user-visible text must live in string resources (English default + zh-rCN).
 - Distribution behavior is split by the `play` and `direct` product flavors. Keep Play Billing, supporter icons, and reviewer tooling in `app/src/play`; keep Shizuku and its strings/provider in `app/src/direct`.
+- Google Play builds compile against and target Android 16 (API 36); do not lower either SDK level for release builds.
 - Play Billing must serialize connection attempts, keep purchase disabled until a valid one-time offer is loaded, show branch-specific one-shot errors, and record response codes/debug messages/unfetched-product statuses in `DiagnosticsLog`.
 - Launcher icon choices use `activity-alias` components and only affect launcher surfaces. Android accessibility settings use the fixed application/service component icon; do not create color-specific accessibility services to mimic launcher selection because each service is a distinct permission component and would require the user to grant access again.
 - The Play supporter page shows all three launcher icons in one row. The active icon uses a 2dp primary-color outline, inactive icons use a 1dp neutral outline, and locked supporter icons remain fully visible; tapping one keeps the selection unchanged and gently nudges the purchase button instead of showing a payment-denial toast.
@@ -82,7 +83,7 @@
 
 ## Common pitfalls
 - Material Slider will crash if a stored value is not aligned to `valueFrom + n * stepSize`.
-- Target SDK 35 activities are edge-to-edge by default; every regular page with a toolbar must apply system-bar/display-cutout padding to its root and use the shared 64dp toolbar geometry.
+- Target SDK 35+ activities are edge-to-edge by default; every regular page with a toolbar must apply system-bar/display-cutout padding to its root and use the shared 64dp toolbar geometry.
 - Display selection must stay 1-based in UI; never expose system displayId directly.
 - Do not reintroduce diagnostics/details onto the main screen without confirmation.
 - Touchpad background colors are overridden by day/night drawables; use `drawable-night/touchpad_area_bg.xml` for OLED mode.

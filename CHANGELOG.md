@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.3.3
+- Android compatibility: target Android 16 (API 36) for the August 2026 Google Play requirement.
 - Google Play Billing: keep the last confirmed supporter entitlement while offline, and restore the Default launcher icon only after Google Play successfully confirms that the entitlement is no longer owned.
 - Google Play review access: unlock all launcher icons without changing or hiding the real purchase state and purchase action.
 - Accessibility: restore standard click semantics for interactive tutorial buttons without changing the touchpad gesture surface.

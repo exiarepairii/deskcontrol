@@ -1,8 +1,9 @@
 # DeskControl
 
 DeskControl turns your phone into a touchpad and motion mouse for a single app
-running on a wired external display. It targets Android 11+ and uses an
-AccessibilityService to render the cursor and inject input.
+running on a wired external display. It supports Android 11+ and targets
+Android 16 (API 36). It uses an AccessibilityService to render the cursor and
+inject input.
 
 [中文说明](README_zh.md)
 
@@ -16,6 +17,7 @@ AccessibilityService to render the cursor and inject input.
 ## Requirements
 
 - Android 11+ (minSdk 30).
+- Android 16 target SDK (API 36).
 - Wired Type-C external display.
 - Accessibility service enabled (required for cursor and input injection).
 

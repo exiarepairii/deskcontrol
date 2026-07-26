@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.deskcontrol"
-    compileSdk = 35
+    compileSdk = 36
 
     flavorDimensions += "distribution"
 
@@ -27,7 +27,7 @@ android {
 
     defaultConfig {
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 23
         versionName = "1.3.3"
     }
