@@ -1,12 +1,14 @@
 # Changelog
 
-## 1.3.2
-- Google Play Billing: prevent duplicate connection attempts, wait for a usable product offer before enabling purchase, and add branch-specific error messages and diagnostics.
+## 1.3.3
 - Google Play Billing: keep the last confirmed supporter entitlement while offline, and restore the Default launcher icon only after Google Play successfully confirms that the entitlement is no longer owned.
 - Google Play review access: unlock all launcher icons without changing or hiding the real purchase state and purchase action.
-- Accessibility: clarify that control-page activation may automatically focus the external window and send a short focus-probe gesture.
 - Accessibility: restore standard click semantics for interactive tutorial buttons without changing the touchpad gesture surface.
 - Control surfaces: hide the centered gesture instructions after auto-dim and show them again when brightness is restored.
+
+## 1.3.2
+- Google Play Billing: prevent duplicate connection attempts, wait for a usable product offer before enabling purchase, and add branch-specific error messages and diagnostics.
+- Accessibility: clarify that control-page activation may automatically focus the external window and send a short focus-probe gesture.
 - UI: align the Supporter Icons and Privacy Policy toolbars with the rest of the app and correctly handle edge-to-edge system insets.
 
 ## 1.3.1
