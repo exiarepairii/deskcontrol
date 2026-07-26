@@ -4,6 +4,8 @@
 
 - Flavor: `play`
 - Application ID: `com.suspace.deskcontrol`
+- Version code: `24`
+- Version name: `1.3.4`
 - Target SDK: Android 16 (API 36)
 - Bundle command: `./gradlew bundlePlayRelease`
 - One-time product ID: `supporter_icon_pack`

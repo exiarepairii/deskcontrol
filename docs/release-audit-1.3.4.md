@@ -1,18 +1,18 @@
-# DeskControl 1.3.3 release audit
+# DeskControl 1.3.4 release audit
 
 Date: July 26, 2026
 
 ## Release identity
 
 - Google Play application ID: `com.suspace.deskcontrol`
-- Version code: `23`
-- Version name: `1.3.3`
+- Version code: `24`
+- Version name: `1.3.4`
 - Minimum SDK: Android 11 (API 30)
 - Compile and target SDK: Android 16 (API 36)
 - Upload artifact:
   `app/build/outputs/bundle/playRelease/app-play-release.aab`
 - SHA-256:
-  `955bfbd20be05b0b9621008fa395455e5cd0f2fc7c2f05651e5546a5ad48556d`
+  `0df67418c54d8f3847abc1c3009adfbc01b9d01494b67d690d2c80b8d6f26f33`
 
 Do not upload the older
 `deskcontrol-1.3.2-play-release.aab` file that remains in the generated build
@@ -86,4 +86,3 @@ display.
 5. The project has no automated unit or instrumentation test sources. This
    audit therefore combines build, Lint, package inspection, and manual device
    regression rather than claiming automated coverage.
-
