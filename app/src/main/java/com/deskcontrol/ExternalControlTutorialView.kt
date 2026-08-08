@@ -29,7 +29,9 @@ enum class ControlTutorialAction {
     LONG_PRESS,
     DRAG,
     SCROLL,
-    CALIBRATE,
+    VOLUME_DOWN_HOLD,
+    BLACKOUT_LOCK,
+    BLACKOUT_UNLOCK,
     GESTURE_END
 }
 
@@ -45,7 +47,9 @@ internal class ExternalControlTutorialView(
         LONG_PRESS_BUTTON,
         DRAG_CARD,
         SCROLL_PAGE,
-        CALIBRATE
+        HOLD_VOLUME_DOWN,
+        HOLD_VOLUME_UP_LOCK,
+        HOLD_VOLUME_UP_UNLOCK
     }
 
     private data class Step(
@@ -55,15 +59,21 @@ internal class ExternalControlTutorialView(
     )
 
     private val steps = buildList {
-        if (mode == ControlSurfaceMode.RAY_MOUSE) {
-            add(
-                Step(
-                    StepKind.CALIBRATE,
-                    R.string.external_tutorial_calibrate,
+        add(
+            Step(
+                StepKind.HOLD_VOLUME_DOWN,
+                if (mode == ControlSurfaceMode.TOUCHPAD) {
+                    R.string.external_tutorial_center_cursor
+                } else {
+                    R.string.external_tutorial_calibrate
+                },
+                if (mode == ControlSurfaceMode.TOUCHPAD) {
+                    R.string.external_tutorial_center_cursor_hint
+                } else {
                     R.string.external_tutorial_calibrate_posture
-                )
+                }
             )
-        }
+        )
         add(Step(StepKind.MOVE_TO_CIRCLE, R.string.external_tutorial_move_to_circle))
         add(Step(StepKind.CLICK_BUTTON, R.string.external_tutorial_click))
         add(Step(StepKind.LONG_PRESS_BUTTON, R.string.external_tutorial_long_press))
@@ -78,6 +88,20 @@ internal class ExternalControlTutorialView(
                 } else {
                     R.string.external_tutorial_scroll_motion
                 }
+            )
+        )
+        add(
+            Step(
+                StepKind.HOLD_VOLUME_UP_LOCK,
+                R.string.external_tutorial_blackout_lock,
+                R.string.external_tutorial_blackout_lock_hint
+            )
+        )
+        add(
+            Step(
+                StepKind.HOLD_VOLUME_UP_UNLOCK,
+                R.string.external_tutorial_blackout_unlock,
+                R.string.external_tutorial_blackout_unlock_hint
             )
         )
     }
@@ -191,8 +215,16 @@ internal class ExternalControlTutorialView(
                 waitingForGestureEnd = false
                 advanceStep()
             }
-            action == ControlTutorialAction.CALIBRATE &&
-                currentStep()?.kind == StepKind.CALIBRATE -> {
+            action == ControlTutorialAction.VOLUME_DOWN_HOLD &&
+                currentStep()?.kind == StepKind.HOLD_VOLUME_DOWN -> {
+                requestAdvance(waitForGestureEnd = false)
+            }
+            action == ControlTutorialAction.BLACKOUT_LOCK &&
+                currentStep()?.kind == StepKind.HOLD_VOLUME_UP_LOCK -> {
+                requestAdvance(waitForGestureEnd = false)
+            }
+            action == ControlTutorialAction.BLACKOUT_UNLOCK &&
+                currentStep()?.kind == StepKind.HOLD_VOLUME_UP_UNLOCK -> {
                 requestAdvance(waitForGestureEnd = false)
             }
         }
@@ -292,7 +324,10 @@ internal class ExternalControlTutorialView(
             StepKind.LONG_PRESS_BUTTON -> Unit
             StepKind.DRAG_CARD -> drawDragTask(canvas, alpha)
             StepKind.SCROLL_PAGE -> drawScrollTask(canvas, alpha)
-            StepKind.CALIBRATE -> drawCalibrationTask(canvas, now, alpha)
+            StepKind.HOLD_VOLUME_DOWN -> drawVolumeKeyTask(canvas, now, alpha, isUp = false)
+            StepKind.HOLD_VOLUME_UP_LOCK,
+            StepKind.HOLD_VOLUME_UP_UNLOCK ->
+                drawVolumeKeyTask(canvas, now, alpha, isUp = true)
         }
 
         step.subtitleRes?.let {
@@ -389,7 +424,12 @@ internal class ExternalControlTutorialView(
         canvas.restore()
     }
 
-    private fun drawCalibrationTask(canvas: Canvas, now: Long, alpha: Float) {
+    private fun drawVolumeKeyTask(
+        canvas: Canvas,
+        now: Long,
+        alpha: Float,
+        isUp: Boolean
+    ) {
         val scale = min(width, height) / 720f
         val centerX = width / 2f
         val centerY = height * 0.48f
@@ -412,24 +452,35 @@ internal class ExternalControlTutorialView(
             whitePaint
         )
         val pulse = (sin(now / 230.0).toFloat() + 1f) / 2f
+        val keyCenterY = centerY + (if (isUp) -36f else 36f) * scale
         val keyX = phone.left - (9f + pulse * 5f) * scale
         accentPaint.style = Paint.Style.STROKE
         accentPaint.strokeWidth = (4f + pulse * 2f) * scale
         accentPaint.alpha = (255 * alpha).toInt()
         canvas.drawLine(
             keyX,
-            centerY - 30f * scale,
+            keyCenterY - 22f * scale,
             keyX,
-            centerY + 30f * scale,
+            keyCenterY + 22f * scale,
             accentPaint
         )
+        val symbolX = phone.left - 42f * scale
         canvas.drawLine(
-            keyX - 10f * scale,
-            centerY,
-            keyX + 10f * scale,
-            centerY,
+            symbolX - 10f * scale,
+            keyCenterY,
+            symbolX + 10f * scale,
+            keyCenterY,
             accentPaint
         )
+        if (isUp) {
+            canvas.drawLine(
+                symbolX,
+                keyCenterY - 10f * scale,
+                symbolX,
+                keyCenterY + 10f * scale,
+                accentPaint
+            )
+        }
     }
 
     private fun handleCardDrag(event: MotionEvent): Boolean {

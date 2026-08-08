@@ -1,6 +1,6 @@
 # DeskControl Privacy Policy
 
-Last updated: July 25, 2026
+Last updated: August 8, 2026
 
 DeskControl does not transmit app usage or accessibility data to the developer
 or third parties. The app has no analytics, advertising, crash-reporting,
@@ -20,9 +20,9 @@ features:
   density, rotation, name, and state;
 - motion sensor readings while Motion Mouse is active;
 - accessibility window metadata, active app identifiers, focusable UI
-  structure, user-initiated gestures, Back actions, and calibration key input
-  needed to control the connected external display;
-- app preferences and an in-memory diagnostic log of up to 200 lines.
+  structure, user-initiated gestures, Back actions, and calibration or screen-off
+  key input needed to control the connected external display;
+- app preferences and a persistent on-device diagnostic log of recent events.
 
 This information remains on the device. Diagnostic logs leave the app only
 when the user explicitly copies them to the clipboard and chooses to share
@@ -33,7 +33,8 @@ them.
 DeskControl uses Android Accessibility Service to draw a cursor on a connected
 external display and send only actions initiated by the user through the
 touchpad or Motion Mouse. It also identifies and focuses the active window on
-that display and forwards user-initiated Back and calibration key actions.
+that display and forwards user-initiated Back, calibration, and screen-off key
+actions.
 DeskControl does not use accessibility access to make autonomous decisions,
 read passwords, bypass security controls, or transmit screen or accessibility
 data.

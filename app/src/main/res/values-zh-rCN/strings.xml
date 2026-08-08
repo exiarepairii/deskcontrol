@@ -1,7 +1,7 @@
 <resources>
     <string name="accessibility_service_description">启用后将在外接显示器上显示光标并注入触控/键盘输入。</string>
     <string name="accessibility_disclosure_title">无障碍服务使用说明</string>
-    <string name="accessibility_disclosure_message">DeskControl 使用无障碍服务控制连接到外接屏幕的应用。启用后，它可以识别外接屏幕上当前活动的应用和窗口结构。当你打开或激活控制页面时，它可能会自动聚焦目标窗口，并在必要时发送一次短距离的聚焦探测手势。随后，它会发送由你主动发起的触控板或体感手势、返回操作和校准按键输入。\n\n活动应用标识可能暂时出现在本机诊断日志中。无障碍数据仅在你的设备上处理，不会发送给我们或第三方。</string>
+    <string name="accessibility_disclosure_message">DeskControl 使用无障碍服务控制连接到外接屏幕的应用。启用后，它可以识别外接屏幕上当前活动的应用和窗口结构。当你打开或激活控制页面时，它可能会自动聚焦目标窗口，并在必要时发送一次短距离的聚焦探测手势。随后，它会发送由你主动发起的触控板或体感手势、返回操作，以及校准或熄屏按键输入。\n\n活动应用标识可能出现在本机持久化诊断日志中。无障碍数据仅在你的设备上处理，不会发送给我们或第三方。</string>
     <string name="accessibility_disclosure_decline">暂不使用</string>
     <string name="accessibility_disclosure_accept">同意并继续</string>
 
@@ -70,7 +70,7 @@
     <string name="touchpad_back_button">返回</string>
     <string name="touchpad_more_options">更多选项</string>
     <string name="control_surface_activation_hint">轻触控制区域即可激活；激活后，返回操作会转发到外接屏幕。</string>
-    <string name="touchpad_hint">当前模式: 触摸\n\n滑动: 移动光标\n轻触: 点击\n长按滑动: 拖拽\n双指: 滚动</string>
+    <string name="touchpad_hint">当前模式: 触摸\n\n滑动: 移动光标\n轻触: 点击\n长按滑动: 拖拽\n双指: 滚动\n长按音量减键: 光标居中\n长按音量加键: 熄屏或解锁</string>
     <string name="touchpad_acceleration">加速度</string>
     <string name="touchpad_speed_for_max_accel">最大加速速度</string>
     <string name="touchpad_jitter_threshold">抖动阈值</string>
@@ -93,7 +93,7 @@
     <string name="touchpad_tuning_speed_value">%1$.1f px/ms</string>
     <string name="touchpad_tuning_px_value">%1$.1f px</string>
 
-    <string name="ray_mouse_tap_hint">当前模式: 体感\n\n转动手机: 移动光标\n轻触: 在光标处点击\n长按: 在光标处长按\n滑动: 从光标处滑动\n长按音量减键: 校准</string>
+    <string name="ray_mouse_tap_hint">当前模式: 体感\n\n转动手机: 移动光标\n轻触: 在光标处点击\n长按: 在光标处长按\n滑动: 从光标处滑动\n长按音量减键: 校准\n长按音量加键: 熄屏或解锁</string>
     <string name="ray_mouse_quick_calibrate_unavailable">暂时无法执行快捷校准。</string>
     <string name="ray_mouse_intro_title">体感鼠标提示</string>
     <string name="ray_mouse_intro_aim">移动光标：校准时的手机平面是零点；平面内左右转动控制水平，前后俯仰控制垂直。</string>
@@ -133,9 +133,9 @@
     <string name="control_mode_intro_question">你喜欢怎样操作光标？</string>
     <string name="control_mode_intro_touch">触摸</string>
     <string name="control_mode_intro_motion">体感</string>
-    <string name="control_mode_intro_touch_tutorial">单指滑动：移动光标\n轻触：点击\n长按后滑动：拖拽\n双指滑动：滚动页面</string>
+    <string name="control_mode_intro_touch_tutorial">单指滑动：移动光标\n轻触：点击\n长按后滑动：拖拽\n双指滑动：滚动页面\n长按音量减键：光标居中</string>
     <string name="control_mode_intro_motion_tutorial">转动手机：移动光标\n轻触：在光标处点击\n长按：在光标处长按\n单指滑动：从光标处滑动</string>
-    <string name="control_mode_intro_blackout">可暂时熄灭手机画面，避免误触；熄屏后向上滑动解锁</string>
+    <string name="control_mode_intro_blackout">可暂时熄灭手机画面，避免误触；长按音量加键可熄屏或解锁，也可在熄屏后向上滑动解锁</string>
     <string name="control_mode_intro_confirm">确认</string>
     <string name="control_mode_intro_change_anytime">你随时可以更改</string>
     <string name="control_mode_intro_dismiss_hint">轻触任意位置继续</string>
@@ -152,6 +152,12 @@
     <string name="external_tutorial_scroll_card_body">继续滚动即可完成这一步</string>
     <string name="external_tutorial_calibrate">先长按音量减键进行校准</string>
     <string name="external_tutorial_calibrate_posture">随时都可以这样校准，让光标回到中心</string>
+    <string name="external_tutorial_center_cursor">先长按音量减键，让光标回到中心</string>
+    <string name="external_tutorial_center_cursor_hint">随时都可以这样快速找到光标</string>
+    <string name="external_tutorial_blackout_lock">长按音量加键，熄灭手机画面</string>
+    <string name="external_tutorial_blackout_lock_hint">手机锁定后，投屏画面仍会保持显示</string>
+    <string name="external_tutorial_blackout_unlock">再次长按音量加键解锁</string>
+    <string name="external_tutorial_blackout_unlock_hint">解锁后会回到手机控制画面</string>
     <string name="external_tutorial_complete">教学完成</string>
     <string name="external_tutorial_progress">%1$d / %2$d</string>
     <string name="control_mode_intro_tap_control_area">现在请点击触控板区域</string>
@@ -238,7 +244,7 @@
     <string name="settings_overview_support">支持</string>
     <string name="privacy_policy_title">隐私政策</string>
     <string name="privacy_policy_summary">了解 DeskControl 如何在本机处理数据</string>
-    <string name="privacy_policy_body">最后更新：2026 年 7 月 25 日\n\nDeskControl 不会把应用使用数据或无障碍数据传输给开发者或第三方。应用不含分析、广告、崩溃上报、账号或开发者运营的远程服务器 SDK。Google Play 版本仅会与 Google Play 通信，以显示、处理、恢复和确认可选的“支持者图标包”购买。\n\n本机处理的数据\n\nDeskControl 会在本机处理可启动应用列表和标识、应用启动历史与固定选择、外接屏幕属性、体感鼠标传感器读数、应用设置以及内存诊断日志。无障碍权限用于识别和聚焦外接屏幕上的活动窗口，并且只发送由你主动发起的手势、返回操作和校准按键输入。\n\n活动应用标识可能出现在诊断日志中。只有当你明确复制日志并主动分享时，日志才会离开应用。\n\n无障碍服务\n\nDeskControl 不会使用无障碍权限自主决策、读取密码、绕过安全控制或传输屏幕及无障碍数据。\n\n购买\n\nGoogle Play 版本提供由 Google Play 处理的可选一次性“支持者图标包”。Google Play 外版本不包含购买功能。\n\n存储与删除\n\n本地数据不会参与云端备份或设备迁移。清除 DeskControl 存储空间或卸载应用即可删除这些数据。</string>
+    <string name="privacy_policy_body">最后更新：2026 年 8 月 8 日\n\nDeskControl 不会把应用使用数据或无障碍数据传输给开发者或第三方。应用不含分析、广告、崩溃上报、账号或开发者运营的远程服务器 SDK。Google Play 版本仅会与 Google Play 通信，以显示、处理、恢复和确认可选的“支持者图标包”购买。\n\n本机处理的数据\n\nDeskControl 会在本机处理可启动应用列表和标识、应用启动历史与固定选择、外接屏幕属性、体感鼠标传感器读数、应用设置，以及记录近期事件的本机持久化诊断日志。无障碍权限用于识别和聚焦外接屏幕上的活动窗口，并且只发送由你主动发起的手势、返回操作，以及校准或熄屏按键输入。\n\n活动应用标识可能出现在诊断日志中。只有当你明确复制日志并主动分享时，日志才会离开应用。\n\n无障碍服务\n\nDeskControl 不会使用无障碍权限自主决策、读取密码、绕过安全控制或传输屏幕及无障碍数据。\n\n购买\n\nGoogle Play 版本提供由 Google Play 处理的可选一次性“支持者图标包”。Google Play 外版本不包含购买功能。\n\n存储与删除\n\n本地数据不会参与云端备份或设备迁移。清除 DeskControl 存储空间或卸载应用即可删除这些数据。</string>
     <string name="settings_overview_appearance_summary">%1$s · %2$s</string>
     <string name="settings_overview_display_summary">屏幕常亮：%1$s · 自动调暗：%2$s</string>
     <plurals name="settings_overview_dock_summary">

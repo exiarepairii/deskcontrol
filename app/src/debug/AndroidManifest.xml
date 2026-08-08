@@ -1,0 +1,18 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".GestureContinuationTestActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
+        <service
+            android:name=".ControlAccessibilityService"
+            android:process=":accessibility" />
+
+        <receiver
+            android:name=".GestureTestCommandReceiver"
+            android:exported="true"
+            android:process=":accessibility" />
+    </application>
+</manifest>

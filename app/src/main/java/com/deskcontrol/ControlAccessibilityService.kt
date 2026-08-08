@@ -76,6 +76,7 @@ class ControlAccessibilityService : AccessibilityService() {
         private const val DIRECT_SCROLL_EDGE_EPSILON_PX = 2f
         private const val DIRECT_SCROLL_MIN_PATH_PX = 12f
         private const val DIRECT_SCROLL_MIN_PRIMARY_PX = 8f
+        private const val CONTINUOUS_GESTURE_KEEP_ALIVE_MS = 100L
         private const val FOCUS_NUDGE_DISTANCE_DP = 8f
         private const val FOCUS_NUDGE_DURATION_MS = 56L
         @Volatile
@@ -83,7 +84,7 @@ class ControlAccessibilityService : AccessibilityService() {
         @Volatile
         private var pendingDisplayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
         @Volatile
-        private var rayMouseKeyHandler: ((KeyEvent) -> Boolean)? = null
+        private var controlSurfaceKeyHandler: ((KeyEvent) -> Boolean)? = null
 
         fun current(): ControlAccessibilityService? = instance
 
@@ -119,6 +120,10 @@ class ControlAccessibilityService : AccessibilityService() {
             instance?.setCursorForceVisible(enabled)
         }
 
+        fun requestCursorForceHidden(enabled: Boolean) {
+            instance?.setCursorForceHidden(enabled)
+        }
+
         fun requestSwitchBarRefresh() {
             instance?.refreshSwitchBarSettings()
         }
@@ -142,12 +147,33 @@ class ControlAccessibilityService : AccessibilityService() {
             instance?.removeControlTutorial()
         }
 
-        fun setRayMouseKeyHandler(handler: ((KeyEvent) -> Boolean)?) {
-            rayMouseKeyHandler = handler
+        fun setControlSurfaceKeyHandler(handler: ((KeyEvent) -> Boolean)?) {
+            controlSurfaceKeyHandler = handler
+        }
+
+        fun showExternalVolumeHud(level: Int, maxLevel: Int) {
+            instance?.showVolumeHud(level, maxLevel)
+        }
+
+        fun beginExternalHoldHud(
+            action: ExternalControlHudView.HoldAction,
+            durationMs: Long,
+            elapsedMs: Long
+        ) {
+            instance?.beginHoldHud(action, durationMs, elapsedMs)
+        }
+
+        fun cancelExternalHoldHud() {
+            instance?.controlHudView?.cancelHold()
+        }
+
+        fun completeExternalHoldHud(success: Boolean) {
+            instance?.controlHudView?.completeHold(success)
         }
     }
 
     private var overlayView: CursorOverlayView? = null
+    private var controlHudView: ExternalControlHudView? = null
     private var controlTutorialView: ExternalControlTutorialView? = null
     private var tutorialPreviousCursorForceVisible: Boolean? = null
     private var switchBarController: SwitchBarController? = null
@@ -170,9 +196,15 @@ class ControlAccessibilityService : AccessibilityService() {
     private var continuousGestureStroke: GestureDescription.StrokeDescription? = null
     private var continuousGesturePointX = 0f
     private var continuousGesturePointY = 0f
+    private var continuousGestureConfirmedPointX = 0f
+    private var continuousGestureConfirmedPointY = 0f
     private var continuousGesturePendingPoint: PointF? = null
     private var continuousGestureDispatchInFlight = false
     private var continuousGestureEndRequested = false
+    private var continuousGestureGeneration = 0L
+    private var continuousGestureCancellationCallback: ((PointF) -> Unit)? = null
+    private var continuousGestureKeepAliveRunnable: Runnable? = null
+    private val continuousGestureIdleCallbacks = ContinuousGestureIdleCallbacks()
     private var pendingScrollEnd = false
     private var pendingScrollEndX = 0f
     private var pendingScrollEndY = 0f
@@ -186,6 +218,7 @@ class ControlAccessibilityService : AccessibilityService() {
     private var deferredBackRunnable: Runnable? = null
     private var cursorVisible = true
     private var forceCursorVisible = false
+    private var forceCursorHidden = false
     private var lastMoveTime = 0L
 
     override fun onServiceConnected() {
@@ -218,9 +251,9 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        val handled = runCatching { rayMouseKeyHandler?.invoke(event) == true }
+        val handled = runCatching { controlSurfaceKeyHandler?.invoke(event) == true }
             .onFailure {
-                DiagnosticsLog.add("MotionMouse: accessibility key forwarding failed")
+                DiagnosticsLog.add("ControlSurface: accessibility key forwarding failed")
             }
             .getOrDefault(false)
         return handled || super.onKeyEvent(event)
@@ -231,6 +264,12 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     fun getCursorPosition(): PointF = PointF(cursorX, cursorY)
+
+    fun centerCursorOnExternalDisplay() {
+        val info = displayInfo ?: return
+        moveCursorTo(info.width / 2f, info.height / 2f)
+        windowManager?.let(::bringCursorOverlayToFront)
+    }
 
     fun moveCursorBy(dx: Float, dy: Float) {
         if (displayInfo == null) return
@@ -482,33 +521,67 @@ class ControlAccessibilityService : AccessibilityService() {
         pendingScrollEnd = false
     }
 
-    fun startContinuousGestureAtCursor(): Boolean {
+    fun startContinuousGestureAtCursor(
+        onCancelled: ((PointF) -> Unit)? = null
+    ): Boolean = startContinuousGestureAt(cursorX, cursorY, onCancelled)
+
+    fun startContinuousGestureAt(
+        x: Float,
+        y: Float,
+        onCancelled: ((PointF) -> Unit)? = null
+    ): Boolean {
         val info = displayInfo ?: return false
         if (continuousGestureStroke != null || continuousGestureDispatchInFlight) return false
-        val clamped = clampToDisplay(cursorX, cursorY, info)
+        val clamped = clampToDisplay(x, y, info)
+        continuousGestureGeneration += 1L
+        val generation = continuousGestureGeneration
         continuousGesturePointX = clamped.x
         continuousGesturePointY = clamped.y
+        continuousGestureConfirmedPointX = clamped.x
+        continuousGestureConfirmedPointY = clamped.y
         val mapped = CoordinateMapper.mapForRotation(clamped.x, clamped.y, info)
         val path = Path().apply { moveTo(mapped.x, mapped.y) }
         val stroke = GestureDescription.StrokeDescription(path, 0, dragStartDurationMs, true)
         continuousGestureStroke = stroke
         continuousGesturePendingPoint = null
         continuousGestureEndRequested = false
+        continuousGestureCancellationCallback = onCancelled
+        cancelContinuousGestureKeepAlive()
         notifyCursorActivity()
-        return dispatchContinuousGestureStrokeTracked(stroke, info.displayId)
+        return dispatchContinuousGestureStrokeTracked(
+            stroke,
+            info.displayId,
+            generation,
+            clamped
+        )
     }
 
-    fun updateContinuousGestureTo(x: Float, y: Float) {
-        val info = displayInfo ?: return
-        if (continuousGestureStroke == null) return
-        if (!x.isFinite() || !y.isFinite()) return
+    fun isContinuousGestureBusy(): Boolean {
+        return continuousGestureStroke != null || continuousGestureDispatchInFlight
+    }
+
+    fun whenContinuousGestureIdle(callback: () -> Unit) {
+        if (!isContinuousGestureBusy()) {
+            callback()
+            return
+        }
+        continuousGestureIdleCallbacks.add(callback)
+    }
+
+    fun updateContinuousGestureTo(x: Float, y: Float): Boolean {
+        val info = displayInfo ?: return false
+        if (continuousGestureStroke == null) return false
+        if (!x.isFinite() || !y.isFinite()) return false
+        cancelContinuousGestureKeepAlive()
         val next = clampToDisplay(x, y, info)
         continuousGesturePendingPoint = next
         dispatchPendingContinuousGesture()
+        return true
     }
 
     fun endContinuousGesture() {
         if (continuousGestureStroke == null) return
+        cancelContinuousGestureKeepAlive()
         continuousGestureEndRequested = true
         dispatchPendingContinuousGesture()
     }
@@ -552,7 +625,12 @@ class ControlAccessibilityService : AccessibilityService() {
                 continuousGestureStroke = if (willContinue) stroke else null
                 if (!willContinue) continuousGestureEndRequested = false
                 notifyCursorActivity()
-                dispatchContinuousGestureStrokeTracked(stroke, info.displayId)
+                dispatchContinuousGestureStrokeTracked(
+                    stroke,
+                    info.displayId,
+                    continuousGestureGeneration,
+                    PointF(pending.x, pending.y)
+                )
                 return
             }
         }
@@ -570,14 +648,101 @@ class ControlAccessibilityService : AccessibilityService() {
         continuousGestureStroke = null
         continuousGestureEndRequested = false
         notifyCursorActivity()
-        dispatchContinuousGestureStrokeTracked(stroke, info.displayId)
+        dispatchContinuousGestureStrokeTracked(
+            stroke,
+            info.displayId,
+            continuousGestureGeneration,
+            PointF(continuousGesturePointX, continuousGesturePointY)
+        )
     }
 
-    private fun abandonContinuousGesture() {
+    private fun abandonContinuousGesture(
+        expectedGeneration: Long? = null,
+        notifyCancellation: Boolean = false
+    ) {
+        if (expectedGeneration != null && expectedGeneration != continuousGestureGeneration) {
+            return
+        }
+        val cancellationCallback = continuousGestureCancellationCallback
+        val lastPoint = PointF(
+            continuousGestureConfirmedPointX,
+            continuousGestureConfirmedPointY
+        )
+        cancelContinuousGestureKeepAlive()
+        continuousGestureGeneration += 1L
         continuousGestureStroke = null
         continuousGesturePendingPoint = null
         continuousGestureDispatchInFlight = false
         continuousGestureEndRequested = false
+        continuousGestureCancellationCallback = null
+        if (notifyCancellation) {
+            cancellationCallback?.invoke(lastPoint)
+        }
+        notifyContinuousGestureIdle()
+    }
+
+    private fun scheduleContinuousGestureKeepAlive(generation: Long) {
+        cancelContinuousGestureKeepAlive()
+        if (!shouldScheduleContinuousGestureKeepAlive(
+                callbackGeneration = generation,
+                currentGeneration = continuousGestureGeneration,
+                hasActiveStroke = continuousGestureStroke != null,
+                dispatchInFlight = continuousGestureDispatchInFlight,
+                endRequested = continuousGestureEndRequested,
+                hasPendingPoint = continuousGesturePendingPoint != null
+            )
+        ) {
+            return
+        }
+        continuousGestureKeepAliveRunnable = Runnable {
+            continuousGestureKeepAliveRunnable = null
+            dispatchContinuousGestureKeepAlive(generation)
+        }.also {
+            handler.postDelayed(it, CONTINUOUS_GESTURE_KEEP_ALIVE_MS)
+        }
+    }
+
+    private fun dispatchContinuousGestureKeepAlive(generation: Long) {
+        if (generation != continuousGestureGeneration ||
+            continuousGestureDispatchInFlight ||
+            continuousGestureEndRequested ||
+            continuousGesturePendingPoint != null
+        ) {
+            return
+        }
+        val info = displayInfo ?: run {
+            abandonContinuousGesture(generation, notifyCancellation = true)
+            return
+        }
+        val activeStroke = continuousGestureStroke ?: return
+        val mapped = CoordinateMapper.mapForRotation(
+            continuousGesturePointX,
+            continuousGesturePointY,
+            info
+        )
+        val path = Path().apply {
+            moveTo(mapped.x, mapped.y)
+            lineTo(mapped.x, mapped.y)
+        }
+        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, true)
+        continuousGestureStroke = stroke
+        dispatchContinuousGestureStrokeTracked(
+            stroke,
+            info.displayId,
+            generation,
+            PointF(continuousGesturePointX, continuousGesturePointY)
+        )
+    }
+
+    private fun cancelContinuousGestureKeepAlive() {
+        continuousGestureKeepAliveRunnable?.let { handler.removeCallbacks(it) }
+        continuousGestureKeepAliveRunnable = null
+    }
+
+    private fun notifyContinuousGestureIdle() {
+        if (!isContinuousGestureBusy()) {
+            continuousGestureIdleCallbacks.dispatch()
+        }
     }
 
     fun hasActiveScrollGesture(): Boolean = scrollStroke != null
@@ -1180,8 +1345,8 @@ class ControlAccessibilityService : AccessibilityService() {
 
         val view = CursorOverlayView(windowContext)
         overlayView = view
-        cursorVisible = true
-        view.alpha = SettingsStore.cursorAlpha
+        cursorVisible = !forceCursorHidden
+        view.alpha = if (cursorVisible) SettingsStore.cursorAlpha else 0f
         view.setBaseSizePx(cursorBaseSizePx)
         view.setArrowColor(SettingsStore.cursorColor)
 
@@ -1254,6 +1419,10 @@ class ControlAccessibilityService : AccessibilityService() {
         }
         controlTutorialView = null
         tutorialPreviousCursorForceVisible = null
+        controlHudView?.let { view ->
+            runCatching { windowManager?.removeView(view) }
+        }
+        controlHudView = null
         overlayView?.let { view ->
             runCatching { windowManager?.removeView(view) }
         }
@@ -1265,6 +1434,44 @@ class ControlAccessibilityService : AccessibilityService() {
         abandonContinuousGesture()
         cancelCursorHide()
         DiagnosticsLog.add("Accessibility: overlay detached")
+    }
+
+    private fun showVolumeHud(level: Int, maxLevel: Int) {
+        ensureControlHudView()?.showVolume(level, maxLevel)
+    }
+
+    private fun beginHoldHud(
+        action: ExternalControlHudView.HoldAction,
+        durationMs: Long,
+        elapsedMs: Long
+    ) {
+        ensureControlHudView()?.beginHold(action, durationMs, elapsedMs)
+    }
+
+    private fun ensureControlHudView(): ExternalControlHudView? {
+        controlHudView?.let { return it }
+        val wm = windowManager ?: return null
+        val context = overlayWindowContext ?: return null
+        if (displayInfo == null) return null
+        val view = ExternalControlHudView(context)
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+        return runCatching {
+            wm.addView(view, params)
+            controlHudView = view
+            view
+        }.getOrElse {
+            DiagnosticsLog.add("External HUD: overlay unavailable")
+            null
+        }
     }
 
     fun reportControlTutorialAction(action: ControlTutorialAction) {
@@ -1302,6 +1509,7 @@ class ControlAccessibilityService : AccessibilityService() {
             wm.addView(tutorial, params)
             controlTutorialView = tutorial
             bringCursorOverlayToFront(wm)
+            bringControlHudOverlayToFront(wm)
             tutorialPreviousCursorForceVisible = forceCursorVisible
             setCursorForceVisible(true)
             tutorial.start()
@@ -1310,6 +1518,17 @@ class ControlAccessibilityService : AccessibilityService() {
         }.getOrElse {
             DiagnosticsLog.add("Control tutorial: external overlay unavailable mode=$mode")
             false
+        }
+    }
+
+    private fun bringControlHudOverlayToFront(wm: WindowManager) {
+        val hud = controlHudView ?: return
+        val params = hud.layoutParams as? WindowManager.LayoutParams ?: return
+        runCatching {
+            wm.removeView(hud)
+            wm.addView(hud, params)
+        }.onFailure {
+            DiagnosticsLog.add("Control tutorial: could not raise HUD overlay")
         }
     }
 
@@ -1411,6 +1630,10 @@ class ControlAccessibilityService : AccessibilityService() {
     private fun scheduleCursorHide() {
         val delay = SettingsStore.cursorHideDelayMs
         cancelCursorHide()
+        if (forceCursorHidden) {
+            hideCursor()
+            return
+        }
         if (forceCursorVisible) return
         if (delay <= 0L) return
         hideRunnable = Runnable { hideCursor() }
@@ -1423,6 +1646,7 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun showCursor() {
+        if (forceCursorHidden) return
         val view = overlayView ?: return
         if (!cursorVisible) {
             cursorVisible = true
@@ -1438,10 +1662,26 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun setCursorForceVisible(enabled: Boolean) {
         forceCursorVisible = enabled
-        if (enabled) {
+        if (enabled && !forceCursorHidden) {
             cancelCursorHide()
             showCursor()
         } else {
+            scheduleCursorHide()
+        }
+    }
+
+    private fun setCursorForceHidden(enabled: Boolean) {
+        if (forceCursorHidden == enabled) return
+        forceCursorHidden = enabled
+        DiagnosticsLog.add("Accessibility: cursor blackout hidden=$enabled")
+        if (enabled) {
+            cancelCursorHide()
+            hideCursor()
+        } else if (forceCursorVisible) {
+            cancelCursorHide()
+            showCursor()
+        } else {
+            showCursor()
             scheduleCursorHide()
         }
     }
@@ -1528,7 +1768,9 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun dispatchContinuousGestureStrokeTracked(
         stroke: GestureDescription.StrokeDescription,
-        displayId: Int
+        displayId: Int,
+        generation: Long,
+        endPoint: PointF
     ): Boolean {
         continuousGestureDispatchInFlight = true
         val builder = GestureDescription.Builder()
@@ -1539,19 +1781,33 @@ class ControlAccessibilityService : AccessibilityService() {
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     recordInjection(true, getString(R.string.injection_drag_injected))
+                    if (generation != continuousGestureGeneration) return
+                    continuousGestureConfirmedPointX = endPoint.x
+                    continuousGestureConfirmedPointY = endPoint.y
                     continuousGestureDispatchInFlight = false
                     dispatchPendingContinuousGesture()
+                    if (!isContinuousGestureBusy()) {
+                        continuousGestureCancellationCallback = null
+                        continuousGestureGeneration += 1L
+                        notifyContinuousGestureIdle()
+                    } else {
+                        scheduleContinuousGestureKeepAlive(generation)
+                    }
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     recordInjection(false, getString(R.string.injection_drag_cancelled))
-                    abandonContinuousGesture()
+                    DiagnosticsLog.add(
+                        "DirectGesture: cancelled generation=$generation " +
+                            "confirmed=(${continuousGestureConfirmedPointX.toInt()}," +
+                            "${continuousGestureConfirmedPointY.toInt()}) " +
+                            "attempted=(${continuousGesturePointX.toInt()}," +
+                            "${continuousGesturePointY.toInt()})"
+                    )
+                    abandonContinuousGesture(generation, notifyCancellation = true)
                 }
             }
         )
-        if (!accepted) {
-            abandonContinuousGesture()
-        }
         return accepted
     }
 
@@ -1845,4 +2101,19 @@ class ControlAccessibilityService : AccessibilityService() {
             // Not supported on this API level.
         }
     }
+}
+
+internal fun shouldScheduleContinuousGestureKeepAlive(
+    callbackGeneration: Long,
+    currentGeneration: Long,
+    hasActiveStroke: Boolean,
+    dispatchInFlight: Boolean,
+    endRequested: Boolean,
+    hasPendingPoint: Boolean
+): Boolean {
+    return callbackGeneration == currentGeneration &&
+        hasActiveStroke &&
+        !dispatchInFlight &&
+        !endRequested &&
+        !hasPendingPoint
 }

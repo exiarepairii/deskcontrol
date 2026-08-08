@@ -31,5 +31,5 @@ object AccessibilityDisclosure {
 
     private const val PREFS = "accessibility_disclosure"
     private const val KEY_ACCEPTED_VERSION = "accepted_version"
-    private const val CURRENT_VERSION = 2
+    private const val CURRENT_VERSION = 3
 }

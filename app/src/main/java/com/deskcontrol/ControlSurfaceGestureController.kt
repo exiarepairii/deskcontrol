@@ -42,6 +42,8 @@ class ControlSurfaceGestureController(
         MOVING_CURSOR,
         DRAGGING,
         DIRECT_GESTURE,
+        WAITING_DIRECT_GESTURE,
+        RECOVERING_DIRECT_GESTURE,
         SCROLL_MODE
     }
 
@@ -81,6 +83,9 @@ class ControlSurfaceGestureController(
     private var directGestureMoved = false
     private var directLongPressTriggered = false
     private var directGestureFeedbackSent = false
+    private var pendingDirectStartRegistered = false
+    private var directTouchGeneration = 0L
+    private var directGestureRecoveryPoint: PointF? = null
 
     var isTouchActive: Boolean = false
         private set
@@ -136,6 +141,8 @@ class ControlSurfaceGestureController(
         when (touchState) {
             TouchState.DRAGGING -> service?.endDragAtCursor()
             TouchState.DIRECT_GESTURE -> service?.endContinuousGesture()
+            TouchState.WAITING_DIRECT_GESTURE -> Unit
+            TouchState.RECOVERING_DIRECT_GESTURE -> Unit
             TouchState.SCROLL_MODE -> exitScrollMode()
             else -> Unit
         }
@@ -150,6 +157,8 @@ class ControlSurfaceGestureController(
         when (touchState) {
             TouchState.DRAGGING -> service?.cancelDrag()
             TouchState.DIRECT_GESTURE -> service?.cancelContinuousGesture()
+            TouchState.WAITING_DIRECT_GESTURE -> Unit
+            TouchState.RECOVERING_DIRECT_GESTURE -> Unit
             TouchState.SCROLL_MODE -> exitScrollMode()
             else -> Unit
         }
@@ -158,6 +167,7 @@ class ControlSurfaceGestureController(
     }
 
     private fun beginTouch(service: ControlAccessibilityService, event: MotionEvent) {
+        directTouchGeneration += 1L
         processor.reset()
         downX = event.x
         downY = event.y
@@ -168,6 +178,8 @@ class ControlSurfaceGestureController(
         directGestureMoved = false
         directLongPressTriggered = false
         directGestureFeedbackSent = false
+        pendingDirectStartRegistered = false
+        directGestureRecoveryPoint = null
         setTouchActive(true)
         when (singlePointerMode) {
             SinglePointerMode.POINTER -> scheduleLongPress(service)
@@ -266,7 +278,13 @@ class ControlSurfaceGestureController(
         event: MotionEvent
     ) {
         if (touchState == TouchState.DIRECT_GESTURE) {
-            if (!hasMovedPastSlop(event)) {
+            if (!shouldForwardDirectGestureMove(
+                    movementStarted = directGestureMoved,
+                    dxFromDown = event.x - downX,
+                    dyFromDown = event.y - downY,
+                    touchSlopPx = touchSlopPx
+                )
+            ) {
                 if (hasMovedPastLongPressSlop(event)) {
                     cancelLongPress()
                 }
@@ -288,6 +306,21 @@ class ControlSurfaceGestureController(
             service.updateContinuousGestureTo(target.x, target.y)
             return
         }
+        if (touchState == TouchState.WAITING_DIRECT_GESTURE) {
+            if (hasMovedPastSlop(event)) {
+                directGestureMoved = true
+                cancelDirectTouchStart()
+                cancelLongPress()
+            }
+            return
+        }
+        if (touchState == TouchState.RECOVERING_DIRECT_GESTURE) {
+            directGestureMoved = true
+            cancelDirectTouchStart()
+            cancelLongPress()
+            recoverDirectGesture(service, relativeGestureTarget(event))
+            return
+        }
         if (touchState == TouchState.ONE_FINGER_DOWN &&
             hasMovedPastLongPressSlop(event)
         ) {
@@ -295,14 +328,8 @@ class ControlSurfaceGestureController(
         }
         val moved = hasMovedPastSlop(event)
         if (touchState == TouchState.ONE_FINGER_DOWN && moved) {
-            touchState = if (service.startContinuousGestureAtCursor()) {
-                directGestureMoved = true
-                service.reportControlTutorialAction(ControlTutorialAction.SWIPE)
-                notifyDirectGestureFeedback()
-                TouchState.DIRECT_GESTURE
-            } else {
-                TouchState.MOVING_CURSOR
-            }
+            directGestureMoved = true
+            requestDirectGestureStart(service)
         }
         if (touchState != TouchState.DIRECT_GESTURE) return
         val target = relativeGestureTarget(event)
@@ -325,6 +352,8 @@ class ControlSurfaceGestureController(
                     onTap()
                 }
             }
+            TouchState.WAITING_DIRECT_GESTURE -> Unit
+            TouchState.RECOVERING_DIRECT_GESTURE -> Unit
             TouchState.ONE_FINGER_DOWN -> {
                 if (!hasMovedPastSlop(event)) {
                     service.tapAtCursor()
@@ -381,12 +410,121 @@ class ControlSurfaceGestureController(
             val moved = abs(lastTouchX - downX) > longPressCancelSlopPx ||
                 abs(lastTouchY - downY) > longPressCancelSlopPx
             if (moved) return@Runnable
-            if (service.startContinuousGestureAtCursor()) {
-                touchState = TouchState.DIRECT_GESTURE
-                scheduleLongPress(service)
-            }
+            requestDirectGestureStart(service)
         }
         handler.postDelayed(directTouchStartRunnable!!, directTouchStartDelay)
+    }
+
+    private fun requestDirectGestureStart(service: ControlAccessibilityService) {
+        val startGeneration = directTouchGeneration
+        val started = service.startContinuousGestureAtCursor { lastPoint ->
+            handleDirectGestureCancellation(startGeneration, lastPoint)
+        }
+        if (started) {
+            pendingDirectStartRegistered = false
+            touchState = TouchState.DIRECT_GESTURE
+            directGestureRecoveryPoint = null
+            if (directGestureMoved) {
+                service.reportControlTutorialAction(ControlTutorialAction.SWIPE)
+                notifyDirectGestureFeedback()
+                service.updateContinuousGestureTo(
+                    directStartCursor.x + lastTouchX - downX,
+                    directStartCursor.y + lastTouchY - downY
+                )
+            } else {
+                scheduleLongPress(service)
+            }
+            return
+        }
+        if (touchState == TouchState.RECOVERING_DIRECT_GESTURE) return
+        if (!service.isContinuousGestureBusy()) {
+            touchState = TouchState.RECOVERING_DIRECT_GESTURE
+            directGestureRecoveryPoint = service.getCursorPosition()
+            return
+        }
+
+        touchState = TouchState.WAITING_DIRECT_GESTURE
+        if (pendingDirectStartRegistered) return
+        pendingDirectStartRegistered = true
+        val waitGeneration = directTouchGeneration
+        service.whenContinuousGestureIdle {
+            if (waitGeneration != directTouchGeneration) {
+                return@whenContinuousGestureIdle
+            }
+            pendingDirectStartRegistered = false
+            if (touchState != TouchState.WAITING_DIRECT_GESTURE || !isTouchActive) {
+                return@whenContinuousGestureIdle
+            }
+            requestDirectGestureStart(service)
+        }
+    }
+
+    private fun handleDirectGestureCancellation(generation: Long, lastPoint: PointF) {
+        if (!shouldRecoverDirectGestureCancellation(
+                callbackGeneration = generation,
+                currentGeneration = directTouchGeneration,
+                isTouchActive = isTouchActive,
+                isDirectGestureState = touchState == TouchState.DIRECT_GESTURE ||
+                    touchState == TouchState.ONE_FINGER_DOWN ||
+                    touchState == TouchState.WAITING_DIRECT_GESTURE ||
+                    touchState == TouchState.RECOVERING_DIRECT_GESTURE
+            )
+        ) {
+            return
+        }
+        pendingDirectStartRegistered = false
+        directGestureRecoveryPoint = PointF(lastPoint.x, lastPoint.y)
+        touchState = TouchState.RECOVERING_DIRECT_GESTURE
+        DiagnosticsLog.add(
+            "DirectGesture: recovery armed generation=$generation " +
+                "point=(${lastPoint.x.toInt()},${lastPoint.y.toInt()})"
+        )
+    }
+
+    private fun recoverDirectGesture(
+        service: ControlAccessibilityService,
+        target: PointF
+    ) {
+        val start = directGestureRecoveryPoint ?: target
+        val generation = directTouchGeneration
+        val started = service.startContinuousGestureAt(start.x, start.y) { lastPoint ->
+            handleDirectGestureCancellation(generation, lastPoint)
+        }
+        if (started) {
+            pendingDirectStartRegistered = false
+            directGestureRecoveryPoint = null
+            touchState = TouchState.DIRECT_GESTURE
+            service.updateContinuousGestureTo(target.x, target.y)
+            DiagnosticsLog.add(
+                "DirectGesture: recovery started generation=$generation " +
+                    "from=(${start.x.toInt()},${start.y.toInt()}) " +
+                    "to=(${target.x.toInt()},${target.y.toInt()})"
+            )
+            return
+        }
+        if (touchState != TouchState.RECOVERING_DIRECT_GESTURE ||
+            !service.isContinuousGestureBusy() ||
+            pendingDirectStartRegistered
+        ) {
+            return
+        }
+        pendingDirectStartRegistered = true
+        service.whenContinuousGestureIdle {
+            if (generation != directTouchGeneration ||
+                touchState != TouchState.RECOVERING_DIRECT_GESTURE ||
+                !isTouchActive
+            ) {
+                return@whenContinuousGestureIdle
+            }
+            pendingDirectStartRegistered = false
+            recoverDirectGesture(
+                service,
+                PointF(
+                    directStartCursor.x + lastTouchX - downX,
+                    directStartCursor.y + lastTouchY - downY
+                )
+            )
+        }
     }
 
     private fun cancelDirectTouchStart() {
@@ -436,6 +574,8 @@ class ControlSurfaceGestureController(
         directGestureMoved = false
         directLongPressTriggered = false
         directGestureFeedbackSent = false
+        pendingDirectStartRegistered = false
+        directGestureRecoveryPoint = null
         setTouchActive(false)
     }
 
@@ -449,4 +589,23 @@ class ControlSurfaceGestureController(
         private const val TOUCH_SLOP_DP = 8f
         private const val LONG_PRESS_CANCEL_DP = 3f
     }
+}
+
+internal fun shouldForwardDirectGestureMove(
+    movementStarted: Boolean,
+    dxFromDown: Float,
+    dyFromDown: Float,
+    touchSlopPx: Float
+): Boolean {
+    if (movementStarted) return true
+    return hypot(dxFromDown.toDouble(), dyFromDown.toDouble()) > touchSlopPx
+}
+
+internal fun shouldRecoverDirectGestureCancellation(
+    callbackGeneration: Long,
+    currentGeneration: Long,
+    isTouchActive: Boolean,
+    isDirectGestureState: Boolean
+): Boolean {
+    return callbackGeneration == currentGeneration && isTouchActive && isDirectGestureState
 }

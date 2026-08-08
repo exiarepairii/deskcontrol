@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.13
+- Interactive tutorials: keep the external volume and hold HUD above the tutorial scrim so calibration, lock, and unlock progress remain visible while practicing hardware-key shortcuts.
+
+## 1.3.12
+- Motion Mouse: after holding Volume Up to unlock blackout, immediately recalibrate from the phone's current pose after restoring control-area focus, preventing locked-screen movement from carrying a stale aiming baseline into the unlocked session.
+
+## 1.3.11
+- Control surfaces: after holding Volume Up to unlock blackout, automatically focus and reactivate the Touchpad or Motion control area and warm up external-display Back forwarding.
+
+## 1.3.10
+- Volume shortcuts: reduce accidental calibration and blackout triggers by increasing the shared hold threshold from 600ms to 660ms and requiring the full app-defined duration instead of accepting the earlier system long-press flag.
+- External HUD: delay circular hold feedback for 120ms so quick volume adjustments show only the volume indicator instead of flashing the calibration or lock ring.
+
+## 1.3.9
+- Interactive tutorials: both Touch and Motion modes now require a real Volume Down hold for cursor centering or calibration, followed by real Volume Up holds to lock and unlock the phone blackout screen.
+- Tutorial architecture: keep shared cursor, gesture, volume, blackout, and completion steps in one flow while preserving mode-specific drag, calibration, and scrolling instructions.
+
+## 1.3.8
+- Control surfaces: share Volume Up/Down handling, hold timing, external-display HUD feedback, and blackout toggling between Touch and Motion modes.
+- Touch mode: show the projected volume HUD for short presses, center the cursor after holding Volume Down, and lock or unlock blackout after holding Volume Up.
+
+## 1.3.7
+- External display: add a minimal Material volume icon beneath the animated volume bar.
+
+## 1.3.6
+- External display: show an animated white volume indicator for short Volume Up and Volume Down presses in Motion Mouse mode.
+- Motion Mouse: show circular hold progress with a calibration icon for Volume Down calibration and place the cursor precisely at the ring center when calibration completes.
+- Screen blackout: hold Volume Up to show open-source Material lock or unlock icons on the external display, toggle the phone blackout state, and hide the projected cursor while blacked out.
+- Motion Mouse gestures: keep forwarding movement after a pause or direction reversal and serialize a following touch until the previous injected gesture has ended.
+
+## 1.3.5
+- Screen blackout: ignore repeated built-in display change callbacks when no external display is connected, preventing the blackout overlay from closing after a tap.
+- Diagnostics: persist recent logs across process restarts and record blackout touch, hint animation, display, and activity lifecycle events.
+
 ## 1.3.4
 - Android compatibility: target Android 16 (API 36) for the August 2026 Google Play requirement.
 - Google Play Billing: keep the last confirmed supporter entitlement while offline, and restore the Default launcher icon only after Google Play successfully confirms that the entitlement is no longer owned.

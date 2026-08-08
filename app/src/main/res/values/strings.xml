@@ -2,7 +2,7 @@
     <string name="app_name" translatable="false">DeskControl</string>
     <string name="accessibility_service_description">Enable to show a cursor on the external display and inject touch/keyboard input.</string>
     <string name="accessibility_disclosure_title">Accessibility service use</string>
-    <string name="accessibility_disclosure_message">DeskControl uses Accessibility Service to control apps on a connected external display. When enabled, it can identify the active app and window structure on that display. When you open or activate a control page, it may automatically focus the target window and, if needed, send a short focus-probe gesture. It then sends the touchpad or motion gestures, Back actions, and calibration key input that you initiate.\n\nActive app identifiers may appear temporarily in on-device diagnostics. Accessibility data is processed only on your device and is not sent to us or third parties.</string>
+    <string name="accessibility_disclosure_message">DeskControl uses Accessibility Service to control apps on a connected external display. When enabled, it can identify the active app and window structure on that display. When you open or activate a control page, it may automatically focus the target window and, if needed, send a short focus-probe gesture. It then sends the touchpad or motion gestures, Back actions, and calibration or screen-off key input that you initiate.\n\nActive app identifiers may appear in the persistent on-device diagnostic log. Accessibility data is processed only on your device and is not sent to us or third parties.</string>
     <string name="accessibility_disclosure_decline">Not now</string>
     <string name="accessibility_disclosure_accept">Agree and continue</string>
 
@@ -72,7 +72,7 @@
     <string name="touchpad_back_button">Back</string>
     <string name="touchpad_more_options">More options</string>
     <string name="control_surface_activation_hint">Tap to activate. Back is sent to the external display.</string>
-    <string name="touchpad_hint">Current mode: Touch\n\nSwipe: move cursor\nTap: click\nTouch and hold, then swipe: drag\nTwo fingers: scroll</string>
+    <string name="touchpad_hint">Current mode: Touch\n\nSwipe: move cursor\nTap: click\nTouch and hold, then swipe: drag\nTwo fingers: scroll\nHold Volume Down: center cursor\nHold Volume Up: screen off or unlock</string>
     <string name="touchpad_acceleration">Acceleration</string>
     <string name="touchpad_speed_for_max_accel">Speed for max accel</string>
     <string name="touchpad_jitter_threshold">Jitter threshold</string>
@@ -95,7 +95,7 @@
     <string name="touchpad_tuning_speed_value">%1$.1f px/ms</string>
     <string name="touchpad_tuning_px_value">%1$.1f px</string>
 
-    <string name="ray_mouse_tap_hint">Current mode: Motion\n\nTurn the phone: move the cursor\nTap: click at the cursor\nTouch and hold: long-press at the cursor\nSwipe: swipe from the cursor\nHold Volume Down: calibrate</string>
+    <string name="ray_mouse_tap_hint">Current mode: Motion\n\nTurn the phone: move the cursor\nTap: click at the cursor\nTouch and hold: long-press at the cursor\nSwipe: swipe from the cursor\nHold Volume Down: calibrate\nHold Volume Up: screen off or unlock</string>
     <string name="ray_mouse_quick_calibrate_unavailable">Quick calibration is not available yet.</string>
     <string name="ray_mouse_intro_title">Motion Mouse tips</string>
     <string name="ray_mouse_intro_aim">Move the cursor: calibration makes the current phone plane neutral. Turn left or right within that plane for horizontal movement; tilt forward or back for vertical movement.</string>
@@ -135,9 +135,9 @@
     <string name="control_mode_intro_question">How do you like to control the cursor?</string>
     <string name="control_mode_intro_touch">Touch</string>
     <string name="control_mode_intro_motion">Motion</string>
-    <string name="control_mode_intro_touch_tutorial">Slide one finger: move the cursor\nTap: click\nTouch and hold, then slide: drag\nSlide with two fingers: scroll</string>
+    <string name="control_mode_intro_touch_tutorial">Slide one finger: move the cursor\nTap: click\nTouch and hold, then slide: drag\nSlide with two fingers: scroll\nHold Volume Down: center the cursor</string>
     <string name="control_mode_intro_motion_tutorial">Turn the phone: move the cursor\nTap: click at the cursor\nTouch and hold: long-press at the cursor\nSwipe with one finger: swipe from the cursor</string>
-    <string name="control_mode_intro_blackout">You can turn off the phone screen to prevent accidental touches. Swipe up to unlock.</string>
+    <string name="control_mode_intro_blackout">You can turn off the phone screen to prevent accidental touches. Hold Volume Up to turn it off or unlock it; you can also swipe up to unlock.</string>
     <string name="control_mode_intro_confirm">Confirm</string>
     <string name="control_mode_intro_change_anytime">You can change this anytime</string>
     <string name="control_mode_intro_dismiss_hint">Tap anywhere to continue</string>
@@ -154,6 +154,12 @@
     <string name="external_tutorial_scroll_card_body">Keep scrolling to complete this step</string>
     <string name="external_tutorial_calibrate">First, press and hold Volume Down to calibrate</string>
     <string name="external_tutorial_calibrate_posture">You can do this anytime to return the cursor to the center</string>
+    <string name="external_tutorial_center_cursor">First, press and hold Volume Down to center the cursor</string>
+    <string name="external_tutorial_center_cursor_hint">You can do this anytime to quickly find the cursor</string>
+    <string name="external_tutorial_blackout_lock">Press and hold Volume Up to turn off the phone screen</string>
+    <string name="external_tutorial_blackout_lock_hint">The external display stays on while the phone is locked</string>
+    <string name="external_tutorial_blackout_unlock">Press and hold Volume Up again to unlock</string>
+    <string name="external_tutorial_blackout_unlock_hint">The phone control screen will return</string>
     <string name="external_tutorial_complete">Tutorial complete</string>
     <string name="external_tutorial_progress">%1$d / %2$d</string>
     <string name="control_mode_intro_tap_control_area">Now tap the touchpad area</string>
@@ -240,7 +246,7 @@
     <string name="settings_overview_support">Support</string>
     <string name="privacy_policy_title">Privacy policy</string>
     <string name="privacy_policy_summary">How DeskControl processes data on this device</string>
-    <string name="privacy_policy_body">Last updated: July 25, 2026\n\nDeskControl does not transmit app usage or accessibility data to the developer or third parties. It has no analytics, advertising, crash-reporting, account, or developer-operated remote-server SDK. The Google Play edition communicates with Google Play only to display, process, restore, and acknowledge the optional Supporter Icon Pack purchase.\n\nData processed on this device\n\nDeskControl locally processes the list and identifiers of launchable apps, app launch history and pinned choices, external-display properties, Motion Mouse sensor readings, app preferences, and an in-memory diagnostic log. Accessibility access is used to identify and focus the active window on the external display and to send only the gestures, Back actions, and calibration key input initiated by you.\n\nActive app identifiers may appear in diagnostics. Logs leave the app only if you explicitly copy them to the clipboard and choose to share them.\n\nAccessibility Service\n\nDeskControl does not use accessibility access to make autonomous decisions, read passwords, bypass security controls, or transmit screen or accessibility data.\n\nPurchases\n\nThe Google Play edition offers an optional one-time Supporter Icon Pack processed by Google Play. The outside-Play edition contains no purchase functionality.\n\nStorage and deletion\n\nLocal data is excluded from cloud backup and device transfer. Clear DeskControl storage or uninstall the app to delete it.</string>
+    <string name="privacy_policy_body">Last updated: August 8, 2026\n\nDeskControl does not transmit app usage or accessibility data to the developer or third parties. It has no analytics, advertising, crash-reporting, account, or developer-operated remote-server SDK. The Google Play edition communicates with Google Play only to display, process, restore, and acknowledge the optional Supporter Icon Pack purchase.\n\nData processed on this device\n\nDeskControl locally processes the list and identifiers of launchable apps, app launch history and pinned choices, external-display properties, Motion Mouse sensor readings, app preferences, and a persistent on-device diagnostic log of recent events. Accessibility access is used to identify and focus the active window on the external display and to send only the gestures, Back actions, and calibration or screen-off key input initiated by you.\n\nActive app identifiers may appear in diagnostics. Logs leave the app only if you explicitly copy them to the clipboard and choose to share them.\n\nAccessibility Service\n\nDeskControl does not use accessibility access to make autonomous decisions, read passwords, bypass security controls, or transmit screen or accessibility data.\n\nPurchases\n\nThe Google Play edition offers an optional one-time Supporter Icon Pack processed by Google Play. The outside-Play edition contains no purchase functionality.\n\nStorage and deletion\n\nLocal data is excluded from cloud backup and device transfer. Clear DeskControl storage or uninstall the app to delete it.</string>
     <string name="settings_overview_appearance_summary">%1$s · %2$s</string>
     <string name="settings_overview_display_summary">Keep screen on: %1$s · Auto-dim: %2$s</string>
     <plurals name="settings_overview_dock_summary">

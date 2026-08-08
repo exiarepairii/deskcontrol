@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 30
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.3.4"
+        versionCode = 33
+        versionName = "1.3.13"
     }
 
     productFlavors {
@@ -79,6 +79,7 @@ dependencies {
     directImplementation("dev.rikka.shizuku:api:13.1.5")
     directImplementation("dev.rikka.shizuku:provider:13.1.5")
     playImplementation("com.android.billingclient:billing:9.1.0")
+    testImplementation("junit:junit:4.13.2")
 }
 
 kotlin {
