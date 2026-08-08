@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true">
+
+    <com.deskcontrol.TutorialSpotlightView
+        android:id="@+id/controlSurfaceBlackoutSpotlight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/controlSurfaceBlackoutCallout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp">
+
+        <ImageView
+            android:id="@+id/controlSurfaceBlackoutArrow"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_intro_arrow_up"
+            app:tint="@color/controlModeIntroText" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/control_mode_intro_blackout"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/controlModeIntroText"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:gravity="center"
+            android:text="@string/control_mode_intro_dismiss_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/controlModeIntroSecondaryText" />
+    </LinearLayout>
+</FrameLayout>

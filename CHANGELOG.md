@@ -1,5 +1,62 @@
 # Changelog
 
+## 1.3.13
+- Interactive tutorials: keep the external volume and hold HUD above the tutorial scrim so calibration, lock, and unlock progress remain visible while practicing hardware-key shortcuts.
+
+## 1.3.12
+- Motion Mouse: after holding Volume Up to unlock blackout, immediately recalibrate from the phone's current pose after restoring control-area focus, preventing locked-screen movement from carrying a stale aiming baseline into the unlocked session.
+
+## 1.3.11
+- Control surfaces: after holding Volume Up to unlock blackout, automatically focus and reactivate the Touchpad or Motion control area and warm up external-display Back forwarding.
+
+## 1.3.10
+- Volume shortcuts: reduce accidental calibration and blackout triggers by increasing the shared hold threshold from 600ms to 660ms and requiring the full app-defined duration instead of accepting the earlier system long-press flag.
+- External HUD: delay circular hold feedback for 120ms so quick volume adjustments show only the volume indicator instead of flashing the calibration or lock ring.
+
+## 1.3.9
+- Interactive tutorials: both Touch and Motion modes now require a real Volume Down hold for cursor centering or calibration, followed by real Volume Up holds to lock and unlock the phone blackout screen.
+- Tutorial architecture: keep shared cursor, gesture, volume, blackout, and completion steps in one flow while preserving mode-specific drag, calibration, and scrolling instructions.
+
+## 1.3.8
+- Control surfaces: share Volume Up/Down handling, hold timing, external-display HUD feedback, and blackout toggling between Touch and Motion modes.
+- Touch mode: show the projected volume HUD for short presses, center the cursor after holding Volume Down, and lock or unlock blackout after holding Volume Up.
+
+## 1.3.7
+- External display: add a minimal Material volume icon beneath the animated volume bar.
+
+## 1.3.6
+- External display: show an animated white volume indicator for short Volume Up and Volume Down presses in Motion Mouse mode.
+- Motion Mouse: show circular hold progress with a calibration icon for Volume Down calibration and place the cursor precisely at the ring center when calibration completes.
+- Screen blackout: hold Volume Up to show open-source Material lock or unlock icons on the external display, toggle the phone blackout state, and hide the projected cursor while blacked out.
+- Motion Mouse gestures: keep forwarding movement after a pause or direction reversal and serialize a following touch until the previous injected gesture has ended.
+
+## 1.3.5
+- Screen blackout: ignore repeated built-in display change callbacks when no external display is connected, preventing the blackout overlay from closing after a tap.
+- Diagnostics: persist recent logs across process restarts and record blackout touch, hint animation, display, and activity lifecycle events.
+
+## 1.3.4
+- Android compatibility: target Android 16 (API 36) for the August 2026 Google Play requirement.
+- Google Play Billing: keep the last confirmed supporter entitlement while offline, and restore the Default launcher icon only after Google Play successfully confirms that the entitlement is no longer owned.
+- Google Play review access: unlock all launcher icons without changing or hiding the real purchase state and purchase action.
+- Accessibility: restore standard click semantics for interactive tutorial buttons without changing the touchpad gesture surface.
+- Control surfaces: hide the centered gesture instructions after auto-dim and show them again when brightness is restored.
+
+## 1.3.2
+- Google Play Billing: prevent duplicate connection attempts, wait for a usable product offer before enabling purchase, and add branch-specific error messages and diagnostics.
+- Accessibility: clarify that control-page activation may automatically focus the external window and send a short focus-probe gesture.
+- UI: align the Supporter Icons and Privacy Policy toolbars with the rest of the app and correctly handle edge-to-edge system insets.
+
+## 1.3.1
+- Google Play testing: rebuild the Play bundle with an incremented test version.
+
+## 1.3.0
+- Distribution: split Google Play (`play`) and outside-Play (`direct`) product flavors with separate package names and dependencies.
+- Accessibility: add a required in-app prominent disclosure, reduce event scope, and remove unused text injection.
+- Google Play: remove Shizuku, add a non-consumable Supporter Icon Pack, purchase restoration, default/white/gold launcher icons, and a hidden reusable review mode.
+- Direct distribution: retain Shizuku while excluding Play Billing, supporter UI, and alternate icon assets.
+- Review: add an on-device external-display interaction demo for reviewers without compatible display hardware.
+- Packaging: keep all language resources in the App Bundle and disable backup/device transfer of local settings and diagnostics.
+
 ## 1.2.0
 - Motion Mouse: add sensor-driven cursor control with rotation-aware aiming, quick Volume Down calibration, haptic feedback, and dedicated tuning controls.
 - Control surfaces: unify Touch and Motion navigation, gesture handling, back forwarding, screen blackout, auto-dim, and keep-screen-on behavior.

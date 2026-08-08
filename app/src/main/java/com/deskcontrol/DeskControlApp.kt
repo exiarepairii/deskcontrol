@@ -7,7 +7,8 @@ class DeskControlApp : Application() {
     override fun onCreate() {
         super.onCreate()
         SettingsStore.init(this)
-        DiagnosticsLog.init(resources)
+        DiagnosticsLog.init(this)
+        DiagnosticsLog.add("Process: start ${DiagnosticsState.process()}")
         SettingsStore.applyAppLanguage()
         AppCompatDelegate.setDefaultNightMode(SettingsStore.nightMode)
         DisplaySessionManager.init(this)

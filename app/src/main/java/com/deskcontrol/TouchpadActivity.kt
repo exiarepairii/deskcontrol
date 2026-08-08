@@ -1,13 +1,17 @@
 package com.deskcontrol
 
+import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.HapticFeedbackConstants
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import com.deskcontrol.databinding.ActivityTouchpadBinding
 import com.google.android.material.slider.Slider
 
@@ -22,6 +26,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private lateinit var onboardingController: ControlSurfaceOnboardingController
     private lateinit var tuningPanelController: ControlSurfaceTuningPanelController
     private lateinit var modeIntroController: ControlSurfaceModeIntroController
+    private lateinit var volumeKeyController: ControlSurfaceVolumeKeyController
     private val handler = Handler(Looper.getMainLooper())
     private var externalDisplayAvailable = false
     private var touchpadActive = false
@@ -32,9 +37,19 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         binding = ActivityTouchpadBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsStore.setLastControlSurface(this, ControlSurfaceMode.TOUCHPAD)
-        windowPolicy = ControlSurfaceWindowPolicy(this, "Touchpad")
-        DiagnosticsLog.add("Touchpad: create displayId=${display?.displayId ?: -1}")
+        windowPolicy = ControlSurfaceWindowPolicy(
+            activity = this,
+            logName = "Touchpad",
+            onDimmedChanged = { dimmed ->
+                binding.touchpadHint.isInvisible = dimmed
+            }
+        )
+        DiagnosticsLog.add(
+            "Touchpad: create savedState=${savedInstanceState != null} " +
+                DiagnosticsState.activity(this)
+        )
         configureOledControlSurfaceWindow(binding.root, binding.touchpadToolbar)
+        volumeControlStream = AudioManager.STREAM_MUSIC
         tuningPanelController = ControlSurfaceTuningPanelController(
             root = binding.touchpadRoot,
             panel = binding.tuningPanel
@@ -61,6 +76,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             root = binding.touchpadRoot,
             currentMode = ControlSurfaceMode.TOUCHPAD,
             switchTarget = binding.touchpadSwitchToRay,
+            blackoutTarget = binding.touchpadBlackout,
             controlArea = binding.touchpadArea,
             onActivationRequested = {
                 setTouchpadActive(true)
@@ -78,7 +94,17 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             logName = "Touchpad",
             onBeforeShow = gestureController::finishActiveGesture,
             onUserInteraction = windowPolicy::restartAutoDimCountdown,
-            onUnlocked = windowPolicy::restartAutoDimCountdown
+            onUnlocked = windowPolicy::restartAutoDimCountdown,
+            onVisibilityChanged = ControlAccessibilityService::requestCursorForceHidden
+        )
+        volumeKeyController = ControlSurfaceVolumeKeyController(
+            context = this,
+            handler = handler,
+            logName = "Touchpad",
+            isBlackoutVisible = { blackoutController.isVisible },
+            onInteraction = windowPolicy::restartAutoDimCountdown,
+            onCalibrationRequested = ::centerCursorFromVolumeKey,
+            onBlackoutToggleRequested = ::toggleBlackoutFromVolumeKey
         )
         accessibilityGateController = AccessibilityGateController(
             activity = this,
@@ -87,7 +113,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             controlArea = binding.touchpadArea,
             tuningPanel = binding.tuningPanel,
             openSettingsButton = binding.btnOpenAccessibility,
-            enableWithShizukuButton = binding.btnEnableAccessibilityShizuku,
+            advancedEnableButton = binding.btnEnableAccessibilityAdvanced,
             onEnabledChanged = { enabled ->
                 setTouchpadActive(false)
                 if (enabled) {
@@ -112,6 +138,8 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             switchControlSurface(RayMouseActivity::class.java)
         }
         binding.touchpadBlackout.setOnClickListener {
+            gestureController.finishActiveGesture()
+            setTouchpadActive(false)
             blackoutController.show()
         }
         binding.touchpadMore.setOnClickListener {
@@ -136,6 +164,10 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     override fun onStart() {
         super.onStart()
+        DiagnosticsLog.add(
+            "Touchpad: start blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
         DisplaySessionManager.addListener(this)
         accessibilityGateController.onStart()
         onboardingController.onStateChanged()
@@ -144,22 +176,36 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     override fun onResume() {
         super.onResume()
         accessibilityGateController.refresh()
+        ControlAccessibilityService.setControlSurfaceKeyHandler(volumeKeyController::handle)
         refreshTuningControls()
         windowPolicy.onResume()
         updateWindowPolicyActivity()
         backController.warmUpOnResume("touchpad_resume")
-        DiagnosticsLog.add("Touchpad: resume")
+        DiagnosticsLog.add(
+            "Touchpad: resume blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
     }
 
     override fun onPause() {
+        DiagnosticsLog.add(
+            "Touchpad: pause blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing " +
+                DiagnosticsState.activity(this)
+        )
         ControlAccessibilityService.dismissControlTutorial()
+        ControlAccessibilityService.setControlSurfaceKeyHandler(null)
+        volumeKeyController.cancel()
         windowPolicy.onPause()
         gestureController.cancel()
-        DiagnosticsLog.add("Touchpad: pause")
         super.onPause()
     }
 
     override fun onStop() {
+        DiagnosticsLog.add(
+            "Touchpad: stop blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing"
+        )
         DisplaySessionManager.removeListener(this)
         windowPolicy.onStop()
         gestureController.cancel()
@@ -167,9 +213,15 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     }
 
     override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
+        val externalDisplayWasAvailable = externalDisplayAvailable
+        DiagnosticsLog.add(
+            "Touchpad: display callback info=${info?.displayId ?: "none"} " +
+                "previousAvailable=$externalDisplayWasAvailable " +
+                "blackout=${blackoutController.isVisible}"
+        )
         externalDisplayAvailable = info != null
-        if (info == null) {
-            blackoutController.hide()
+        if (externalDisplayWasAvailable && info == null) {
+            blackoutController.hide("external_display_missing")
             DiagnosticsLog.add("Touchpad: brightness restored (external display removed)")
         }
         updateWindowPolicyActivity()
@@ -177,6 +229,12 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     }
 
     override fun onDestroy() {
+        DiagnosticsLog.add(
+            "Touchpad: destroy blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing " +
+                DiagnosticsState.activity(this)
+        )
+        volumeKeyController.cancel()
         blackoutController.destroy()
         accessibilityGateController.onDestroy()
         onboardingController.onDestroy()
@@ -184,6 +242,14 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         windowPolicy.onDestroy()
         gestureController.cancel()
         super.onDestroy()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        DiagnosticsLog.add(
+            "Touchpad: saveInstanceState blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
+        super.onSaveInstanceState(outState)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -205,13 +271,12 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             binding.touchpadArea.getGlobalVisibleRect(rect)
             val inTouchpad = rect.contains(event.rawX.toInt(), event.rawY.toInt())
             setTouchpadActive(inTouchpad)
-            if (inTouchpad) {
-                // Proactively warm up external focus on first finger down to reduce
-                // "back no-op due to missing focus" right after returning to touchpad.
-                backController.warmUpOnActivation("touch_down")
-            }
         }
         return super.dispatchTouchEvent(event)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        return if (volumeKeyController.handle(event)) true else super.dispatchKeyEvent(event)
     }
 
     private fun showMoreMenu() {
@@ -245,7 +310,8 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun setTouchpadActive(active: Boolean) {
         val resolvedActive = active &&
             externalDisplayAvailable &&
-            ControlAccessibilityService.isEnabled(this)
+            ControlAccessibilityService.isEnabled(this) &&
+            !blackoutController.isVisible
         val wasActive = touchpadActive
         touchpadActive = resolvedActive
         binding.touchpadArea.isActivated = resolvedActive
@@ -259,6 +325,42 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             DiagnosticsLog.add("Touchpad: active=$resolvedActive")
         }
         updateWindowPolicyActivity()
+    }
+
+    private fun centerCursorFromVolumeKey(): ControlSurfaceVolumeKeyController.CalibrationResult {
+        val service = ControlAccessibilityService.current()
+        val failureReason = when {
+            !externalDisplayAvailable -> "external_display_missing"
+            !ControlAccessibilityService.isEnabled(this) -> "accessibility_disabled"
+            service == null -> "accessibility_service_unavailable"
+            !service.hasExternalDisplaySession() -> "external_display_session_missing"
+            else -> null
+        }
+        if (failureReason != null || service == null) {
+            binding.root.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            return ControlSurfaceVolumeKeyController.CalibrationResult(
+                success = false,
+                failureReason = failureReason ?: "unknown"
+            )
+        }
+        service.centerCursorOnExternalDisplay()
+        setTouchpadActive(true)
+        binding.root.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        return ControlSurfaceVolumeKeyController.CalibrationResult(success = true)
+    }
+
+    private fun toggleBlackoutFromVolumeKey(wasBlackoutVisible: Boolean) {
+        gestureController.finishActiveGesture()
+        if (wasBlackoutVisible) {
+            blackoutController.hide("volume_up_hold")
+            binding.touchpadArea.requestFocusFromTouch()
+            setTouchpadActive(true)
+            backController.warmUpOnActivation("volume_up_unlock")
+        } else {
+            setTouchpadActive(false)
+            blackoutController.show()
+        }
+        binding.root.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
     private fun showExternalControlTutorial() {

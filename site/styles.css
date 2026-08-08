@@ -1906,3 +1906,53 @@ footer p {
         animation-iteration-count: 1 !important;
     }
 }
+/* Standalone policy page */
+.policy-page {
+    width: min(860px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 128px 0 96px;
+}
+
+.policy-page article {
+    padding: clamp(28px, 5vw, 56px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.policy-page h1 {
+    margin: 0 0 12px;
+    font-size: clamp(2.2rem, 6vw, 4.2rem);
+    line-height: 1;
+}
+
+.policy-page h2 {
+    margin: 42px 0 12px;
+    font-size: 1.25rem;
+}
+
+.policy-page p,
+.policy-page li {
+    color: var(--muted);
+    line-height: 1.75;
+}
+
+.policy-page ul {
+    padding-left: 1.25rem;
+}
+
+.policy-meta {
+    margin: 0 0 36px;
+    color: var(--accent);
+}
+
+.policy-back {
+    display: inline-flex;
+    margin-bottom: 28px;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.policy-back:hover {
+    color: var(--text);
+}

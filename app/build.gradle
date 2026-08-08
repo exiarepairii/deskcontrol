@@ -5,7 +5,9 @@ plugins {
 
 android {
     namespace = "com.deskcontrol"
-    compileSdk = 35
+    compileSdk = 36
+
+    flavorDimensions += "distribution"
 
     def keystorePath = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH")
     def keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD")
@@ -24,28 +26,24 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.deskcontrol"
         minSdk = 30
-        targetSdk = 35
-        versionCode = 19
-        versionName = "1.2.0"
+        targetSdk = 36
+        versionCode = 33
+        versionName = "1.3.13"
+    }
+
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+            applicationId = "com.suspace.deskcontrol"
+        }
+        create("direct") {
+            dimension = "distribution"
+            applicationId = "com.deskcontrol"
+        }
     }
 
     buildTypes {
-        create("whiteIconPreview") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".preview.white"
-            versionNameSuffix = "-white-icon-preview"
-            matchingFallbacks = ["debug"]
-        }
-
-        create("goldIconPreview") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".preview.gold"
-            versionNameSuffix = "-gold-icon-preview"
-            matchingFallbacks = ["debug"]
-        }
-
         release {
             minifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
@@ -60,6 +58,12 @@ android {
         viewBinding = true
     }
 
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -72,8 +76,10 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.preference:preference-ktx:1.2.1")
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
+    directImplementation("dev.rikka.shizuku:api:13.1.5")
+    directImplementation("dev.rikka.shizuku:provider:13.1.5")
+    playImplementation("com.android.billingclient:billing:9.1.0")
+    testImplementation("junit:junit:4.13.2")
 }
 
 kotlin {

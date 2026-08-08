@@ -2,6 +2,7 @@ package com.deskcontrol
 
 import android.content.Context
 import android.view.MotionEvent
+import java.util.Locale
 
 class DirectScrollController(
     private val context: Context,
@@ -39,8 +40,9 @@ class DirectScrollController(
         active = true
         DiagnosticsLog.add(
             "Touchpad: direct scroll enter mid=(${lastScrollMidX.toInt()},${lastScrollMidY.toInt()}) " +
-                "scale=(${String.format("%.2f", scrollMapScaleX)},${String.format("%.2f", scrollMapScaleY)}) " +
-                "gain=${String.format("%.2f", directScrollGain)} " +
+                "scale=(${String.format(Locale.ROOT, "%.2f", scrollMapScaleX)}," +
+                "${String.format(Locale.ROOT, "%.2f", scrollMapScaleY)}) " +
+                "gain=${String.format(Locale.ROOT, "%.2f", directScrollGain)} " +
                 "step=${SettingsStore.touchpadDirectScrollStepDp.toInt()}dp " +
                 "anchor=(${directAnchorX.toInt()},${directAnchorY.toInt()})"
         )

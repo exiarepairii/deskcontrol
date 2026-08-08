@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import com.deskcontrol.databinding.ActivityRayMouseBinding
 import com.google.android.material.slider.Slider
 
@@ -29,6 +30,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private lateinit var onboardingController: ControlSurfaceOnboardingController
     private lateinit var tuningPanelController: ControlSurfaceTuningPanelController
     private lateinit var modeIntroController: ControlSurfaceModeIntroController
+    private lateinit var volumeKeyController: ControlSurfaceVolumeKeyController
     private val handler = Handler(Looper.getMainLooper())
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
     private var sensorStarted = false
@@ -37,16 +39,11 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private var introDialogVisible = false
     private var autoCalibrationScheduled = false
     private var autoCalibrationRetryCount = 0
-    private var volumeDownHeld = false
-    private var volumeDownLongPressTriggered = false
     private val autoCalibrateRunnable = object : Runnable {
         override fun run() {
             autoCalibrationScheduled = false
             tryAutoCalibrate()
         }
-    }
-    private val volumeDownLongPressRunnable = Runnable {
-        triggerVolumeDownCalibration("timeout")
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -55,7 +52,13 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         binding = ActivityRayMouseBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsStore.setLastControlSurface(this, ControlSurfaceMode.RAY_MOUSE)
-        windowPolicy = ControlSurfaceWindowPolicy(this, "MotionMouse")
+        windowPolicy = ControlSurfaceWindowPolicy(
+            activity = this,
+            logName = "MotionMouse",
+            onDimmedChanged = { dimmed ->
+                binding.rayMouseHint.isInvisible = dimmed
+            }
+        )
         gestureController = ControlSurfaceGestureController(
             context = this,
             handler = handler,
@@ -65,6 +68,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             },
             serviceProvider = { ControlAccessibilityService.current() },
             singlePointerMode = ControlSurfaceGestureController.SinglePointerMode.GESTURE_ONLY,
+            twoFingerScrollEnabled = false,
             onServiceUnavailable = {
                 Toast.makeText(
                     this,
@@ -94,6 +98,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             root = binding.rayMouseRoot,
             currentMode = ControlSurfaceMode.RAY_MOUSE,
             switchTarget = binding.btnRaySwitchToTouch,
+            blackoutTarget = binding.btnRayBlackout,
             controlArea = binding.rayMouseArea,
             onActivationRequested = {
                 setRayMouseActive(true)
@@ -111,7 +116,8 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             logName = "MotionMouse",
             onBeforeShow = gestureController::finishActiveGesture,
             onUserInteraction = windowPolicy::restartAutoDimCountdown,
-            onUnlocked = windowPolicy::restartAutoDimCountdown
+            onUnlocked = windowPolicy::restartAutoDimCountdown,
+            onVisibilityChanged = ControlAccessibilityService::requestCursorForceHidden
         )
         accessibilityGateController = AccessibilityGateController(
             activity = this,
@@ -120,7 +126,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             controlArea = binding.rayMouseArea,
             tuningPanel = binding.rayTuningContent,
             openSettingsButton = binding.btnRayOpenAccessibility,
-            enableWithShizukuButton = binding.btnRayEnableAccessibilityShizuku,
+            advancedEnableButton = binding.btnRayEnableAccessibilityAdvanced,
             onEnabledChanged = { enabled ->
                 setRayMouseActive(false)
                 if (enabled && !introDialogVisible) {
@@ -134,7 +140,10 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             logName = "MotionMouse",
             isControlActive = { rayMouseActive }
         )
-        DiagnosticsLog.add("MotionMouse: create displayId=${display?.displayId ?: -1}")
+        DiagnosticsLog.add(
+            "MotionMouse: create savedState=${savedInstanceState != null} " +
+                DiagnosticsState.activity(this)
+        )
         configureOledControlSurfaceWindow(binding.root, binding.rayMouseToolbar)
         tuningPanelController = ControlSurfaceTuningPanelController(
             root = binding.rayMouseRoot,
@@ -156,6 +165,15 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                 }
             }
         )
+        volumeKeyController = ControlSurfaceVolumeKeyController(
+            context = this,
+            handler = handler,
+            logName = "MotionMouse",
+            isBlackoutVisible = { blackoutController.isVisible },
+            onInteraction = windowPolicy::restartAutoDimCountdown,
+            onCalibrationRequested = ::performVolumeKeyCalibration,
+            onBlackoutToggleRequested = ::toggleBlackoutFromVolumeKey
+        )
 
         binding.rayMouseBack.setOnClickListener { finish() }
         binding.btnRaySwitchToTouch.setOnClickListener {
@@ -164,7 +182,8 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             switchControlSurface(TouchpadActivity::class.java)
         }
         binding.btnRayBlackout.setOnClickListener {
-            setRayMouseActive(true)
+            gestureController.finishActiveGesture()
+            setRayMouseActive(false)
             blackoutController.show()
         }
         binding.rayMouseArea.setOnTouchListener { _, event ->
@@ -188,6 +207,10 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     override fun onStart() {
         super.onStart()
+        DiagnosticsLog.add(
+            "MotionMouse: start blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
         DisplaySessionManager.addListener(this)
         accessibilityGateController.onStart()
         updateState()
@@ -197,7 +220,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     override fun onResume() {
         super.onResume()
         accessibilityGateController.refresh()
-        ControlAccessibilityService.setRayMouseKeyHandler(::handleRayMouseKeyEvent)
+        ControlAccessibilityService.setControlSurfaceKeyHandler(volumeKeyController::handle)
         refreshTuningControls()
         windowPolicy.onResume()
         startSensorsIfPossible()
@@ -205,13 +228,22 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         tryAutoCalibrate()
         updateState()
         backController.warmUpOnResume("ray_mouse_resume")
+        DiagnosticsLog.add(
+            "MotionMouse: resume blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
     }
 
     override fun onPause() {
+        DiagnosticsLog.add(
+            "MotionMouse: pause blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing " +
+                DiagnosticsState.activity(this)
+        )
         ControlAccessibilityService.dismissControlTutorial()
-        ControlAccessibilityService.setRayMouseKeyHandler(null)
+        ControlAccessibilityService.setControlSurfaceKeyHandler(null)
         windowPolicy.onPause()
-        cancelVolumeDownGesture()
+        volumeKeyController.cancel()
         cancelAutoCalibrate()
         gestureController.cancel()
         stopSensors()
@@ -219,13 +251,22 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     }
 
     override fun onStop() {
+        DiagnosticsLog.add(
+            "MotionMouse: stop blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing"
+        )
         DisplaySessionManager.removeListener(this)
         windowPolicy.onStop()
         super.onStop()
     }
 
     override fun onDestroy() {
-        cancelVolumeDownGesture()
+        DiagnosticsLog.add(
+            "MotionMouse: destroy blackout=${blackoutController.isVisible} " +
+                "changingConfig=$isChangingConfigurations finishing=$isFinishing " +
+                DiagnosticsState.activity(this)
+        )
+        volumeKeyController.cancel()
         handler.removeCallbacksAndMessages(null)
         blackoutController.destroy()
         accessibilityGateController.onDestroy()
@@ -233,6 +274,14 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         modeIntroController.destroy()
         windowPolicy.onDestroy()
         super.onDestroy()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        DiagnosticsLog.add(
+            "MotionMouse: saveInstanceState blackout=${blackoutController.isVisible} " +
+                DiagnosticsState.activity(this)
+        )
+        super.onSaveInstanceState(outState)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -251,57 +300,30 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             binding.rayMouseArea.getGlobalVisibleRect(areaBounds)
             val inControlArea = areaBounds.contains(event.rawX.toInt(), event.rawY.toInt())
             setRayMouseActive(inControlArea)
-            if (inControlArea) {
-                backController.warmUpOnActivation("ray_mouse_touch_down")
-            }
         }
         return super.dispatchTouchEvent(event)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        return if (handleRayMouseKeyEvent(event)) true else super.dispatchKeyEvent(event)
-    }
-
-    private fun handleRayMouseKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) return false
-        when (event.action) {
-            KeyEvent.ACTION_DOWN -> {
-                if (!volumeDownHeld) {
-                    beginVolumeDownHold(event)
-                }
-                val heldDurationMs = (event.eventTime - event.downTime).coerceAtLeast(0L)
-                if (!volumeDownLongPressTriggered &&
-                    (event.isLongPress || heldDurationMs >= VOLUME_DOWN_CALIBRATION_HOLD_MS)
-                ) {
-                    triggerVolumeDownCalibration("key_repeat")
-                }
-                return true
-            }
-
-            KeyEvent.ACTION_UP -> {
-                val wasHeld = volumeDownHeld
-                volumeDownHeld = false
-                handler.removeCallbacks(volumeDownLongPressRunnable)
-                if (wasHeld && !volumeDownLongPressTriggered && !event.isCanceled) {
-                    adjustMediaVolumeDown()
-                }
-                volumeDownLongPressTriggered = false
-                return true
-            }
-        }
-        return true
+        return if (volumeKeyController.handle(event)) true else super.dispatchKeyEvent(event)
     }
 
     override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
-        if (displayInfo != info) {
+        val previousDisplayInfo = displayInfo
+        DiagnosticsLog.add(
+            "MotionMouse: display callback info=${info?.displayId ?: "none"} " +
+                "previousInfo=${previousDisplayInfo?.displayId ?: "none"} " +
+                "blackout=${blackoutController.isVisible}"
+        )
+        if (previousDisplayInfo != info) {
             gestureController.cancel()
             setRayMouseActive(false)
             controller.resetCalibration()
             initialCalibrationDone = false
         }
         displayInfo = info
-        if (info == null) {
-            blackoutController.hide()
+        if (previousDisplayInfo != null && info == null) {
+            blackoutController.hide("external_display_missing")
         }
         autoCalibrationRetryCount = 0
         tryAutoCalibrate()
@@ -556,36 +578,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         }
     }
 
-    private fun adjustMediaVolumeDown() {
-        getSystemService(AudioManager::class.java).adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            AudioManager.ADJUST_LOWER,
-            AudioManager.FLAG_SHOW_UI
-        )
-    }
-
-    private fun beginVolumeDownHold(event: KeyEvent) {
-        volumeDownHeld = true
-        volumeDownLongPressTriggered = false
-        handler.removeCallbacks(volumeDownLongPressRunnable)
-        val heldDurationMs = (event.eventTime - event.downTime).coerceAtLeast(0L)
-        val remainingMs = (VOLUME_DOWN_CALIBRATION_HOLD_MS - heldDurationMs).coerceAtLeast(0L)
-        DiagnosticsLog.add(
-            "MotionMouse: volume-down hold start repeat=${event.repeatCount} " +
-                "heldMs=$heldDurationMs remainingMs=$remainingMs"
-        )
-        if (remainingMs == 0L || event.isLongPress) {
-            triggerVolumeDownCalibration("initial_long_press")
-        } else {
-            handler.postDelayed(volumeDownLongPressRunnable, remainingMs)
-        }
-    }
-
-    private fun triggerVolumeDownCalibration(source: String) {
-        if (!volumeDownHeld || volumeDownLongPressTriggered) return
-        volumeDownLongPressTriggered = true
-        handler.removeCallbacks(volumeDownLongPressRunnable)
-        windowPolicy.restartAutoDimCountdown()
+    private fun performVolumeKeyCalibration(): ControlSurfaceVolumeKeyController.CalibrationResult {
         val calibrated = calibrate(
             markInitialDone = true,
             showAccessibilityToast = false,
@@ -593,10 +586,8 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             activateControl = true
         )
         if (calibrated) {
+            ControlAccessibilityService.current()?.centerCursorOnExternalDisplay()
             performCalibrationSuccessHaptic()
-            ControlAccessibilityService.notifyControlTutorialAction(
-                ControlTutorialAction.CALIBRATE
-            )
         } else {
             performRayHaptic(HapticFeedbackConstants.REJECT)
             Toast.makeText(
@@ -605,10 +596,44 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                 Toast.LENGTH_SHORT
             ).show()
         }
-        DiagnosticsLog.add(
-            "MotionMouse: volume-down calibration source=$source success=$calibrated " +
-                "failure=${if (calibrated) "none" else quickCalibrationFailureReason()}"
+        return ControlSurfaceVolumeKeyController.CalibrationResult(
+            success = calibrated,
+            failureReason = if (calibrated) null else quickCalibrationFailureReason()
         )
+    }
+
+    private fun toggleBlackoutFromVolumeKey(wasBlackoutVisible: Boolean) {
+        gestureController.finishActiveGesture()
+        if (wasBlackoutVisible) {
+            blackoutController.hide("volume_up_hold")
+            binding.rayMouseArea.requestFocusFromTouch()
+            setRayMouseActive(true)
+            recalibrateAfterVolumeUnlock()
+            backController.warmUpOnActivation("volume_up_unlock")
+        } else {
+            setRayMouseActive(false)
+            blackoutController.show()
+        }
+        performRayHaptic(HapticFeedbackConstants.CONFIRM)
+    }
+
+    private fun recalibrateAfterVolumeUnlock() {
+        val recalibrated = calibrate(
+            markInitialDone = true,
+            showAccessibilityToast = false,
+            hapticFeedback = false,
+            activateControl = true
+        )
+        DiagnosticsLog.add(
+            "MotionMouse: volume unlock recalibrated=$recalibrated " +
+                "failure=${if (recalibrated) "none" else quickCalibrationFailureReason()}"
+        )
+        if (recalibrated) return
+
+        controller.resetCalibration()
+        initialCalibrationDone = false
+        autoCalibrationRetryCount = 0
+        tryAutoCalibrate()
     }
 
     private fun quickCalibrationFailureReason(): String {
@@ -624,19 +649,15 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun showExternalControlTutorial() {
         if (ControlAccessibilityService.requestControlTutorial(ControlSurfaceMode.RAY_MOUSE)) {
             binding.root.announceForAccessibility(
-                getString(R.string.external_tutorial_move_to_circle)
+                getString(R.string.external_tutorial_calibrate)
             )
         }
     }
 
-    private fun cancelVolumeDownGesture() {
-        volumeDownHeld = false
-        volumeDownLongPressTriggered = false
-        handler.removeCallbacks(volumeDownLongPressRunnable)
-    }
-
     private fun setRayMouseActive(active: Boolean) {
-        val resolvedActive = active && isControlSurfaceAvailable()
+        val blackoutVisible =
+            ::blackoutController.isInitialized && blackoutController.isVisible
+        val resolvedActive = active && isControlSurfaceAvailable() && !blackoutVisible
         val wasActive = rayMouseActive
         rayMouseActive = resolvedActive
         binding.rayMouseArea.isActivated = resolvedActive
@@ -712,7 +733,6 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     companion object {
         private const val AUTO_CALIBRATE_RETRY_MS = 200L
         private const val AUTO_CALIBRATE_MAX_RETRIES = 25
-        private const val VOLUME_DOWN_CALIBRATION_HOLD_MS = 600L
         private const val CALIBRATION_SUCCESS_VIBRATION_MS = 35L
     }
 }

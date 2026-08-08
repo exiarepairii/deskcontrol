@@ -77,13 +77,26 @@ class SettingsOverviewFragment : Fragment() {
             ) { open(SettingsPage.CURSOR) }
         )
 
+        DistributionFeatures.createSettingsRow(context)?.let { supportRow ->
+            pageLayout.addGroup(R.string.settings_overview_support, supportRow)
+        }
+
         pageLayout.addGroup(
             R.string.settings_overview_other,
             context.navigationRow(
                 R.drawable.ic_settings_developer,
                 R.string.settings_developer_section,
                 context.getString(R.string.settings_overview_developer_summary)
-            ) { open(SettingsPage.DEVELOPER) }
+            ) { open(SettingsPage.DEVELOPER) },
+            context.navigationRow(
+                R.drawable.ic_accessibility,
+                R.string.privacy_policy_title,
+                context.getString(R.string.privacy_policy_summary)
+            ) {
+                startActivity(
+                    android.content.Intent(context, PrivacyPolicyActivity::class.java)
+                )
+            }
         )
     }
 
