@@ -19,6 +19,7 @@ class ControlSurfaceOnboardingController(
         if (!ControlAccessibilityService.isReady()) return
         if (DisplaySessionManager.getExternalDisplayInfo() == null) return
         if (SessionStore.lastLaunchedPackage != null) return
+        if (ProjectedAppRestoreCoordinator.hasVerifiedCandidate()) return
 
         promptedThisEntry = true
         dialog = AlertDialog.Builder(activity)

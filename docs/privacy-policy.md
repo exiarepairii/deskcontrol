@@ -26,7 +26,7 @@ features:
 - motion sensor readings while Motion Mouse is active;
 - accessibility window metadata, active app identifiers, focusable UI
   structure, confirmation that a selected app appeared on the intended display,
-  natural-restoration checks after display wake, user-initiated gestures, Back
+  natural-restoration checks after display reconnect or wake, user-initiated gestures, Back
   actions, and calibration or screen-off key input needed to control the
   connected external display;
 - app preferences and a persistent on-device diagnostic log of recent events.
@@ -44,7 +44,7 @@ external display and send only actions initiated by the user through the
 touchpad or Motion Mouse. It also identifies and focuses the active window on
 that display and forwards user-initiated Back, calibration, and screen-off key
 actions.
-After the same display wakes, DeskControl may use the locally observed app
+After an external display reconnects or wakes, DeskControl may use the locally observed app
 identifier to ask whether the user wants to reopen the last verified projected
 app. It does not reopen that app without foreground user confirmation.
 DeskControl does not read passwords, bypass security controls, or transmit

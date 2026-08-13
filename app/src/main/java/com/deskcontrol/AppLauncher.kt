@@ -104,26 +104,19 @@ object AppLauncher {
     fun launchRestoreOnExternalDisplay(
         context: Context,
         component: ComponentName,
-        expectedDisplayId: Int,
-        expectedSessionGeneration: Long
+        expectedDisplayId: Int
     ): Result {
         val flowId = newFlowId()
-        val expectedIdentity = ControlAccessibilityService.ExternalSessionIdentity(
-            displayId = expectedDisplayId,
-            generation = expectedSessionGeneration
-        )
         DiagnosticsLog.add(
             "LaunchRequest[$flowId]: event=RESTORE_CONFIRMATION strategy=$LAUNCH_STRATEGY " +
                 "component=${component.flattenToShortString()} " +
-                "requestedDisplayId=$expectedDisplayId generation=$expectedSessionGeneration " +
+                "requestedDisplayId=$expectedDisplayId " +
                 "context=${context.javaClass.simpleName} sourceDisplayId=${sourceDisplayId(context)}"
         )
         val currentDisplay = DisplaySessionManager.getExternalDisplayInfo()
-        val currentIdentity = ControlAccessibilityService.currentExternalSessionIdentity()
         if (DisplaySessionManager.getSelectedDisplayState() !=
                 DisplaySessionManager.ExternalDisplayState.ACTIVE ||
-            currentDisplay?.displayId != expectedDisplayId ||
-            currentIdentity != expectedIdentity
+            currentDisplay?.displayId != expectedDisplayId
         ) {
             return fail(
                 context,
@@ -151,8 +144,7 @@ object AppLauncher {
             className = component.className,
             displayId = expectedDisplayId,
             flowId = flowId,
-            origin = LaunchOrigin.RESTORE_CONFIRMATION,
-            expectedSessionIdentity = expectedIdentity
+            origin = LaunchOrigin.RESTORE_CONFIRMATION
         )
     }
 
@@ -181,8 +173,7 @@ object AppLauncher {
         className: String?,
         displayId: Int,
         flowId: String,
-        origin: LaunchOrigin,
-        expectedSessionIdentity: ControlAccessibilityService.ExternalSessionIdentity? = null
+        origin: LaunchOrigin
     ): Result {
         val component = resolveLauncherComponent(context, packageName, className, flowId)
             ?: return fail(
@@ -206,20 +197,9 @@ object AppLauncher {
         )
 
         return try {
-            val currentSessionIdentity =
-                ControlAccessibilityService.currentExternalSessionIdentity()
+            val currentTargetIdentity =
+                ControlAccessibilityService.currentExternalTargetIdentity()
                     ?.takeIf { it.displayId == displayId }
-            if (expectedSessionIdentity != null &&
-                currentSessionIdentity != expectedSessionIdentity
-            ) {
-                return fail(
-                    context,
-                    FailureReason.DISPLAY_SESSION_CHANGED,
-                    R.string.app_launch_detail_display_session_changed,
-                    stage = "RESTORE_VALIDATION",
-                    flowId = flowId
-                )
-            }
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
             DiagnosticsLog.add(
                 "Launch[$flowId]: event=DISPATCH stage=EXTERNAL_HANDOFF " +
@@ -234,7 +214,7 @@ object AppLauncher {
                 displayId,
                 flowId,
                 origin,
-                currentSessionIdentity
+                currentTargetIdentity
             )
         } catch (se: SecurityException) {
             launchException(
@@ -428,7 +408,7 @@ object AppLauncher {
         displayId: Int,
         flowId: String,
         origin: LaunchOrigin,
-        sessionIdentity: ControlAccessibilityService.ExternalSessionIdentity?
+        targetIdentity: ControlAccessibilityService.ExternalSessionIdentity?
     ): Result {
         val packageName = component.packageName
         if (origin == LaunchOrigin.USER) {
@@ -438,7 +418,7 @@ object AppLauncher {
                 flowId = flowId,
                 component = component,
                 displayId = displayId,
-                sessionIdentity = sessionIdentity
+                targetIdentity = targetIdentity
             )
         }
         SessionStore.lastLaunchFailure = null
@@ -446,7 +426,7 @@ object AppLauncher {
             "Launch[$flowId]: event=EXTERNAL_API_ACCEPTED stage=EXTERNAL_HANDOFF " +
                 "strategy=$LAUNCH_STRATEGY origin=${origin.name} package=$packageName " +
                 "component=${component.flattenToShortString()} displayId=$displayId " +
-                "session=${sessionIdentity ?: "none"}; " +
+                "targetSession=${targetIdentity ?: "none"}; " +
                 "verified=false awaiting_window_observation=true"
         )
         ControlAccessibilityService.requestLaunchObservation(
@@ -459,9 +439,9 @@ object AppLauncher {
             flowId,
             packageName,
             displayId,
-            phase = "POST_EXTERNAL_TARGET",
-            expectedSessionIdentity = sessionIdentity
+            phase = "POST_EXTERNAL_TARGET"
         )
+        ControlAccessibilityService.requestReattachAfterExternalLaunch(displayId, flowId)
         return Result(Outcome.EXTERNAL_REQUEST_ACCEPTED, flowId)
     }
 

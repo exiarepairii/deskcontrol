@@ -31,8 +31,8 @@
 ## Current UX conventions
 - Main screen hierarchy: status row + contextual display selector, primary action, secondary actions.
 - App launches use the exact launcher component and the direct external-display path. Compatibility experiments must not add persistent launch modes or test controls to Home.
-- A verified projected-app candidate is kept only in the current process. When the same selected display changes from `ACTIVE` through `SUSPENDED` back to `ACTIVE`, wait for the new accessibility session and for natural task restoration, then ask on the foreground phone Activity before reopening it. Initial connection, physical remove/add, display changes, lock screen, background state, and non-allowed exact-target preflight must never launch silently.
-- A confirmed restore is scoped to one display-session generation and does not update app-recents ranking or replace the last app explicitly selected by the user.
+- A verified projected-app candidate is kept only in the current process. When the selected display wakes from `SUSPENDED`, or when a physically removed display reconnects with a newly assigned display ID, first allow natural task restoration and then ask on the foreground phone Activity before reopening it. The question must not depend on the accessibility cursor/Dock Overlay being ready: some Android builds do not issue a usable external window token until an app window exists there. Initial connection without a verified candidate, an in-place display selection change, lock screen, background state, and non-allowed exact-target preflight must never launch silently.
+- A confirmed restore is scoped to one single-consumption reconnect/wake request and the currently active selected display. It does not update app-recents ranking or replace the last app explicitly selected by the user.
 - When Choose app is tapped without an active external display, keep the user on Home, gently nudge the status section, and distinguish connect-first from wake-the-selected-display feedback.
 - Display selection must not reject `OFF` alone: retain trusted or policy-approved HDMI while it sleeps, but exclude a non-ON, untrusted display only when both standard and allow-embedded policy probes explicitly deny it.
 - Display selector uses 1-based labels (Display 1/2/3) and shows resolution as the secondary line.
@@ -69,6 +69,7 @@
 - TODO: add explicit `Off` and `Auto while DeskControl is foreground` policy choices if real-device feedback justifies them. Keep the current foreground `Ask` behavior as the safe default, and never add background or lock-screen auto-launch.
 - TODO: consider a private notification for an in-process pending restore when no DeskControl Activity is visible. Notification content must not reveal the target app on the lock screen, and tapping it must still lead to a user-confirmed foreground action.
 - TODO: add instrumentation coverage for Activity rotation/navigation, lock/unlock, multi-resume with the external App Drawer, component removal, and a real `DisplayManager → AccessibilityService → WindowManager` sleep/wake sequence. Keep the pure reducer coverage for duplicate callbacks, unchanged-ID `ON → OFF/DOZE → ON`, stale generations, natural restore, policy denial, and manual-launch supersession.
+- TODO: if an automatic (non-confirmed) reconnect policy is ever added, introduce a reliable hardware identity and expiry before carrying a candidate across `removed → added`; the current process-local reconnect behavior is safe only because it always asks the foreground user.
 
 ## Visual system and theming
 - Colors are defined in `app/src/main/res/values/colors.xml` and `app/src/main/res/values-night/colors.xml`.

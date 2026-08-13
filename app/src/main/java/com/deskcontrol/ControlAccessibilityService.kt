@@ -124,6 +124,10 @@ class ControlAccessibilityService : AccessibilityService() {
         fun currentExternalSessionIdentity(): ExternalSessionIdentity? =
             instance?.externalSessionIdentity()
 
+        /** Identity of the selected attach target, even while its Overlay is not yet ready. */
+        internal fun currentExternalTargetIdentity(): ExternalSessionIdentity? =
+            instance?.externalTargetIdentity()
+
         /**
          * Returns true only when accessibility can currently see [packageName] on [displayId].
          * A false value can also mean that window observation is unavailable, so callers must
@@ -164,6 +168,15 @@ class ControlAccessibilityService : AccessibilityService() {
         fun requestSuspendOverlay() {
             pendingDisplayInfo = null
             instance?.suspendOverlay()
+        }
+
+        /**
+         * Some Android builds reject accessibility windows until an app window exists on the
+         * external display. Once a launch is accepted, give an exhausted attach lifecycle one
+         * fresh bounded attempt sequence instead of leaving controls permanently unavailable.
+         */
+        internal fun requestReattachAfterExternalLaunch(displayId: Int, flowId: String) {
+            instance?.scheduleReattachAfterExternalLaunch(displayId, flowId)
         }
 
         fun requestCursorAppearanceRefresh() {
@@ -209,7 +222,7 @@ class ControlAccessibilityService : AccessibilityService() {
             LAUNCH_OBSERVATION_DELAYS_MS.forEach { delayMs ->
                 service.handler.postDelayed(
                     {
-                        val currentIdentity = service.externalSessionIdentity()
+                        val currentIdentity = service.externalTargetIdentity()
                         if (instance !== service ||
                             (expectedSessionIdentity != null &&
                                 currentIdentity != expectedSessionIdentity)
@@ -298,6 +311,12 @@ class ControlAccessibilityService : AccessibilityService() {
             ATTACH_MAX_ATTEMPTS,
             generationAllocator = displaySessionGenerationSequence::incrementAndGet
         )
+    private data class PendingPostLaunchReattach(
+        val displayId: Int,
+        val flowId: String,
+        val notBeforeElapsedMs: Long
+    )
+    private var pendingPostLaunchReattach: PendingPostLaunchReattach? = null
     private var attachRetryRunnable: Runnable? = null
     private var cursorX = 0f
     private var cursorY = 0f
@@ -1153,12 +1172,12 @@ class ControlAccessibilityService : AccessibilityService() {
                 "displayId=$displayId targetPackage=$targetPackage targetVisible=$targetVisible " +
                 "verification=$verification windows=[$windowSummary]"
         )
-        if (targetVisible && phase == "POST_EXTERNAL_TARGET" && sessionIdentity != null) {
+        if (targetVisible && phase == "POST_EXTERNAL_TARGET") {
             ProjectedAppRestoreCoordinator.onLaunchWindowVerified(
                 flowId = attemptId,
                 packageName = targetPackage,
                 displayId = displayId,
-                sessionGeneration = sessionIdentity.generation
+                sessionGeneration = sessionIdentity?.generation
             )
         }
     }
@@ -1413,6 +1432,73 @@ class ControlAccessibilityService : AccessibilityService() {
         )
     }
 
+    private fun externalTargetIdentity(): ExternalSessionIdentity? {
+        val info = displaySessionLifecycle.target ?: return null
+        if (displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.DISCONNECTED ||
+            displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.SUSPENDED
+        ) {
+            return null
+        }
+        return ExternalSessionIdentity(
+            displayId = info.displayId,
+            generation = displaySessionLifecycle.generation
+        )
+    }
+
+    private fun scheduleReattachAfterExternalLaunch(displayId: Int, flowId: String) {
+        val info = DisplaySessionManager.getExternalDisplayInfo()
+        if (DisplaySessionManager.getSelectedDisplayState() !=
+                DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+            info?.displayId != displayId ||
+            hasExternalDisplaySession()
+        ) {
+            return
+        }
+        pendingPostLaunchReattach = PendingPostLaunchReattach(
+            displayId = displayId,
+            flowId = flowId,
+            notBeforeElapsedMs = SystemClock.elapsedRealtime() + 350L
+        )
+        maybeRunPostLaunchReattach()
+    }
+
+    private fun maybeRunPostLaunchReattach() {
+        val pending = pendingPostLaunchReattach ?: return
+        val canRestart =
+            displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.EXHAUSTED ||
+                displaySessionLifecycle.target == null
+        if (!canRestart) return
+        val delayMs = (pending.notBeforeElapsedMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        handler.postDelayed(
+            {
+                if (pendingPostLaunchReattach !== pending) return@postDelayed
+                val info = DisplaySessionManager.getExternalDisplayInfo()
+                val stillRestartable =
+                    displaySessionLifecycle.state ==
+                        ExternalDisplaySessionLifecycle.State.EXHAUSTED ||
+                        displaySessionLifecycle.target == null
+                if (instance !== this ||
+                    DisplaySessionManager.getSelectedDisplayState() !=
+                        DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+                    info?.displayId != pending.displayId ||
+                    hasExternalDisplaySession() ||
+                    !stillRestartable
+                ) {
+                    pendingPostLaunchReattach = null
+                    return@postDelayed
+                }
+                pendingPostLaunchReattach = null
+                DiagnosticsLog.add(
+                    "Accessibility: post-launch reattach flowId=${pending.flowId} " +
+                        "displayId=${pending.displayId} " +
+                        "previousState=${displaySessionLifecycle.state.name}"
+                )
+                attachToDisplay(info)
+            },
+            delayMs
+        )
+    }
+
     private fun isPackageVisible(packageName: String, displayId: Int): Boolean {
         return snapshotWindows().any { window ->
             window.displayId == displayId &&
@@ -1452,6 +1538,7 @@ class ControlAccessibilityService : AccessibilityService() {
                 return
             }
             cancelAttachRetryRunnable()
+            pendingPostLaunchReattach = null
             notifyRuntimeStateChanged()
             DiagnosticsLog.add(
                 "Accessibility: session connected displayId=${attempt.target.displayId} " +
@@ -1468,6 +1555,7 @@ class ControlAccessibilityService : AccessibilityService() {
                     "generation=${attempt.generation} " +
                     "attempts=${displaySessionLifecycle.attemptCount}"
             )
+            maybeRunPostLaunchReattach()
         }
     }
 
@@ -1587,12 +1675,14 @@ class ControlAccessibilityService : AccessibilityService() {
 
     private fun detachOverlay() {
         cancelAttachRetryRunnable()
+        pendingPostLaunchReattach = null
         displaySessionLifecycle.disconnect()
         clearDisplaySessionResources()
     }
 
     private fun suspendOverlay() {
         cancelAttachRetryRunnable()
+        pendingPostLaunchReattach = null
         val shouldTearDown = displaySessionLifecycle.suspend()
         if (shouldTearDown || hasDisplaySessionResources()) {
             clearDisplaySessionResources()

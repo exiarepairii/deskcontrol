@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -13,9 +12,11 @@ class ProjectedAppRestoreStateTest {
     fun firstNoneOrActiveSnapshotDoesNotCreateRequest() {
         val state = ProjectedAppRestoreState()
 
+        assertFalse(state.hasVerifiedCandidate())
         assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.NONE, null))
         assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
         assertNull(state.currentRequest())
+        assertFalse(state.hasVerifiedCandidate())
     }
 
     @Test
@@ -28,6 +29,7 @@ class ProjectedAppRestoreStateTest {
         )
 
         assertEquals(candidate(displayId = 30), request.candidate)
+        assertEquals(ProjectedAppRestoreState.Trigger.WAKE, request.trigger)
         assertEquals(request, state.currentRequest())
         assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
         assertEquals(request, state.currentRequest())
@@ -58,16 +60,39 @@ class ProjectedAppRestoreStateTest {
     }
 
     @Test
-    fun physicalRemovalClearsCandidateAndWakeHistory() {
+    fun physicalReconnectCreatesRequestAndMigratesCandidateToNewDisplayId() {
         val state = activeStateWithCandidate(displayId = 30)
 
         state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
         state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.NONE, null)
-        assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
-        state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
+        val request = requireNotNull(
+            state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 31)
+        )
 
-        assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
-        assertNull(state.currentRequest())
+        assertEquals(31, request.candidate.displayId)
+        assertEquals(ProjectedAppRestoreState.Trigger.RECONNECT, request.trigger)
+        assertTrue(state.hasVerifiedCandidate())
+        state.consumeRequest(request.key)
+        state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 31)
+        val wake = requireNotNull(
+            state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 31)
+        )
+        assertEquals(ProjectedAppRestoreState.Trigger.WAKE, wake.trigger)
+        assertEquals(31, wake.candidate.displayId)
+    }
+
+    @Test
+    fun physicalReconnectCanAppearSuspendedBeforeBecomingActive() {
+        val state = activeStateWithCandidate(displayId = 30)
+
+        state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.NONE, null)
+        state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 31)
+        val request = requireNotNull(
+            state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 31)
+        )
+
+        assertEquals(ProjectedAppRestoreState.Trigger.RECONNECT, request.trigger)
+        assertEquals(31, request.candidate.displayId)
     }
 
     @Test
@@ -111,21 +136,6 @@ class ProjectedAppRestoreStateTest {
     }
 
     @Test
-    fun requestCanBindOnlyOneConnectedSessionGeneration() {
-        val state = activeStateWithCandidate(displayId = 30)
-        state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
-        val request = requireNotNull(
-            state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30)
-        )
-
-        val bound = requireNotNull(state.bindSession(request.key, generation = 22L))
-        assertEquals(22L, bound.resumedSessionGeneration)
-        assertSame(bound, state.bindSession(request.key, generation = 22L))
-        assertNull(state.bindSession(request.key, generation = 23L))
-        assertEquals(bound, state.currentRequest())
-    }
-
-    @Test
     fun consumingRequestIsSingleUseAndKeepsCandidateForNextSleep() {
         val state = activeStateWithCandidate(displayId = 30)
         state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
@@ -147,7 +157,7 @@ class ProjectedAppRestoreStateTest {
     }
 
     @Test
-    fun staleRequestKeyCannotBindOrConsumeNewRequest() {
+    fun staleRequestKeyCannotConsumeNewRequest() {
         val state = activeStateWithCandidate(displayId = 30)
         state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
         val old = requireNotNull(
@@ -159,7 +169,6 @@ class ProjectedAppRestoreStateTest {
             state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30)
         )
 
-        assertNull(state.bindSession(old.key, generation = 50L))
         assertNull(state.consumeRequest(old.key))
         assertEquals(current, state.currentRequest())
     }
@@ -174,7 +183,6 @@ class ProjectedAppRestoreStateTest {
 
         state.clear()
         assertNull(state.currentRequest())
-        assertNull(state.bindSession(old.key, generation = 7L))
         assertNull(state.consumeRequest(old.key))
         assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
 
@@ -187,13 +195,16 @@ class ProjectedAppRestoreStateTest {
     }
 
     @Test
-    fun nullDisplayIdIsTreatedAsNoDisplayAndClearsState() {
+    fun nullDisplayIdIsTreatedAsDisconnectAndCanCreateReconnectRequest() {
         val state = activeStateWithCandidate(displayId = 30)
 
         state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.SUSPENDED, 30)
         assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, null))
-        assertNull(state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30))
-        assertNull(state.currentRequest())
+        val request = requireNotNull(
+            state.onDisplaySnapshot(ProjectedAppRestoreState.DisplayState.ACTIVE, 30)
+        )
+        assertEquals(ProjectedAppRestoreState.Trigger.RECONNECT, request.trigger)
+        assertEquals(request, state.currentRequest())
     }
 
     private fun activeStateWithCandidate(displayId: Int): ProjectedAppRestoreState {
@@ -212,8 +223,7 @@ class ProjectedAppRestoreStateTest {
             packageName = packageName,
             className = "$packageName.MainActivity",
             displayId = displayId,
-            flowId = flowId,
-            verifiedSessionGeneration = 11L
+            flowId = flowId
         )
     }
 }

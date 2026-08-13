@@ -131,6 +131,12 @@ object DisplaySessionManager {
         ControlAccessibilityService.requestDetachOverlay()
     }
 
+    private fun disconnectDisplaySession() {
+        ProjectedAppRestoreCoordinator.onDisplayDisconnected()
+        SessionStore.clear()
+        ControlAccessibilityService.requestDetachOverlay()
+    }
+
     private fun suspendSession() {
         ControlAccessibilityService.requestSuspendOverlay()
     }
@@ -293,7 +299,7 @@ object DisplaySessionManager {
         when (selectedDisplayState) {
             ExternalDisplayState.NONE -> {
                 if (previousDisplayState != ExternalDisplayState.NONE) {
-                    stopSession()
+                    disconnectDisplaySession()
                 }
             }
 

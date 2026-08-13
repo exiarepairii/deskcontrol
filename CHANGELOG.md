@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.22
+- Projection recovery: show the foreground restore question after either a same-display wake or a process-local physical reconnect, even when Android has not yet granted the accessibility cursor/Dock Overlay a usable external window token.
+- Restore verification: retain a user launch made before Accessibility Service finishes connecting and accept it as a future recovery candidate only after the target app is actually observed on the active external display.
+- Reconnect controls: after an external launch creates the first usable app window, restart one exhausted bounded Overlay attach sequence; keep the first-use app picker from covering a verified reconnect candidate.
+
 ## 1.3.21
 - Projection recovery: after the same selected display wakes from sleep, ask before reopening the last app that accessibility-window observation actually verified on that display; first wait for Android to restore it naturally, and defer the question while DeskControl is backgrounded or the phone is locked.
 - Restore safety: bind each question to one fresh display-session generation, require the exact target to pass display-policy preflight, and keep restore launches out of recent-app ranking and the last explicit user choice.

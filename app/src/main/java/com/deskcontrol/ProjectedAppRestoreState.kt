@@ -1,11 +1,13 @@
 package com.deskcontrol
 
 /**
- * Process-local state for offering to restore an app after an external display wakes.
+ * Process-local state for offering to restore an app after an external display wakes or reconnects.
  *
- * A display id can survive a sleep/wake cycle, so a restore request is created only for an
- * observed ACTIVE -> SUSPENDED -> ACTIVE transition on that same id. Physical removal, changing
- * the selected display, and process restart intentionally discard the candidate.
+ * A display id can survive a sleep/wake cycle and can also be reassigned after a physical
+ * reconnect. A restore request is created for an observed ACTIVE -> SUSPENDED -> ACTIVE
+ * transition on the same id, or for a process-local disconnect -> reconnect after a verified
+ * projection. Changing the selected display without a disconnect and process restart discard the
+ * candidate.
  *
  * This class contains no Android dependencies so the lifecycle and single-consumption rules can
  * be tested without a device.
@@ -21,19 +23,24 @@ class ProjectedAppRestoreState {
         val packageName: String,
         val className: String,
         val displayId: Int,
-        val flowId: String,
-        val verifiedSessionGeneration: Long
+        val flowId: String
     )
+
+    enum class Trigger {
+        WAKE,
+        RECONNECT
+    }
 
     data class Request(
         val key: Long,
         val candidate: Candidate,
-        val resumedSessionGeneration: Long? = null
+        val trigger: Trigger
     )
 
     private var lastDisplayState: DisplayState? = null
     private var trackedDisplayId: Int? = null
     private var suspendedFromActive = false
+    private var disconnectedWithCandidate = false
     private var verifiedCandidate: Candidate? = null
     private var pendingRequest: Request? = null
     private var requestSequence = 0L
@@ -46,7 +53,12 @@ class ProjectedAppRestoreState {
      */
     fun onDisplaySnapshot(state: DisplayState, displayId: Int?): Request? {
         if (state == DisplayState.NONE || displayId == null) {
-            clearTrackedValues()
+            if (lastDisplayState != null && lastDisplayState != DisplayState.NONE) {
+                disconnectedWithCandidate = verifiedCandidate != null
+            }
+            trackedDisplayId = null
+            suspendedFromActive = false
+            pendingRequest = null
             lastDisplayState = DisplayState.NONE
             return null
         }
@@ -57,6 +69,7 @@ class ProjectedAppRestoreState {
             verifiedCandidate = null
             pendingRequest = null
             suspendedFromActive = false
+            disconnectedWithCandidate = false
         }
 
         return when (state) {
@@ -83,19 +96,33 @@ class ProjectedAppRestoreState {
                     previousState == DisplayState.SUSPENDED &&
                         previousDisplayId == displayId &&
                         suspendedFromActive
+                val isReconnect =
+                    disconnectedWithCandidate &&
+                        (previousState == DisplayState.NONE ||
+                            previousState == DisplayState.SUSPENDED)
                 lastDisplayState = DisplayState.ACTIVE
                 trackedDisplayId = displayId
                 suspendedFromActive = false
+                disconnectedWithCandidate = false
 
-                if (!isSameDisplayWake) {
+                if (!isSameDisplayWake && !isReconnect) {
                     null
                 } else {
                     verifiedCandidate
-                        ?.takeIf { it.displayId == displayId }
+                        ?.let { candidate ->
+                            when {
+                                isSameDisplayWake && candidate.displayId == displayId -> candidate
+                                isReconnect -> candidate.copy(displayId = displayId).also {
+                                    verifiedCandidate = it
+                                }
+                                else -> null
+                            }
+                        }
                         ?.let { candidate ->
                             Request(
                                 key = nextRequestKey(),
-                                candidate = candidate
+                                candidate = candidate,
+                                trigger = if (isSameDisplayWake) Trigger.WAKE else Trigger.RECONNECT
                             ).also { pendingRequest = it }
                         }
                 }
@@ -111,6 +138,7 @@ class ProjectedAppRestoreState {
         verifiedCandidate = candidate
         pendingRequest = null
         suspendedFromActive = false
+        disconnectedWithCandidate = false
         return true
     }
 
@@ -119,23 +147,12 @@ class ProjectedAppRestoreState {
         verifiedCandidate = null
         pendingRequest = null
         suspendedFromActive = false
+        disconnectedWithCandidate = false
     }
 
     fun currentRequest(): Request? = pendingRequest
 
-    /**
-     * Binds a wake request to the newly connected accessibility-session generation.
-     *
-     * Binding the same generation is idempotent. A different generation cannot replace an
-     * existing binding; the owner must let the display lifecycle create a new request instead.
-     */
-    fun bindSession(key: Long, generation: Long): Request? {
-        val current = pendingRequest?.takeIf { it.key == key } ?: return null
-        val boundGeneration = current.resumedSessionGeneration
-        if (boundGeneration != null && boundGeneration != generation) return null
-        if (boundGeneration == generation) return current
-        return current.copy(resumedSessionGeneration = generation).also { pendingRequest = it }
-    }
+    fun hasVerifiedCandidate(): Boolean = verifiedCandidate != null
 
     /** Claims a request once while retaining its candidate for a future sleep/wake cycle. */
     fun consumeRequest(key: Long): Request? {
@@ -153,6 +170,7 @@ class ProjectedAppRestoreState {
     private fun clearTrackedValues() {
         trackedDisplayId = null
         suspendedFromActive = false
+        disconnectedWithCandidate = false
         verifiedCandidate = null
         pendingRequest = null
     }

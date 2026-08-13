@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Display
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -18,22 +19,25 @@ import androidx.lifecycle.Lifecycle
 import java.lang.ref.WeakReference
 
 /**
- * Offers one foreground, user-confirmed relaunch after the same selected display wakes.
+ * Offers one foreground, user-confirmed relaunch after an external display wakes or reconnects.
  *
  * Candidates are process-local and come only from accessibility-window verification of an
- * explicit user launch. Physical removal, display selection changes, and process death all drop
- * the candidate. This object never starts an Activity from the background.
+ * explicit user launch. A physical reconnect can reuse that candidate on the newly assigned
+ * display id, but an in-place display selection change and process death drop it. This object
+ * never starts an Activity from the background.
  */
 object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
     Application.ActivityLifecycleCallbacks {
 
     private const val NATURAL_RESTORE_GRACE_MS = 1_200L
+    private const val ACCEPTED_ATTEMPT_TTL_MS = 120_000L
+    private val ACCEPTED_ATTEMPT_CHECK_DELAYS_MS = longArrayOf(0L, 300L, 1_200L, 3_000L)
 
     private data class AcceptedAttempt(
         val flowId: String,
         val component: ComponentName,
         val displayId: Int,
-        val sessionGeneration: Long
+        val acceptedAtElapsedMs: Long
     )
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -48,7 +52,11 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
     private var graceKey: Long? = null
 
     private val runtimeStateListener: () -> Unit = {
-        mainHandler.post(::evaluatePendingRequest)
+        mainHandler.post {
+            verifyAcceptedAttemptIfVisible()
+            acceptedAttempt?.flowId?.let(::scheduleAcceptedAttemptChecks)
+            evaluatePendingRequest()
+        }
     }
 
     @Synchronized
@@ -76,15 +84,19 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
         flowId: String,
         component: ComponentName,
         displayId: Int,
-        sessionIdentity: ControlAccessibilityService.ExternalSessionIdentity?
+        targetIdentity: ControlAccessibilityService.ExternalSessionIdentity?
     ) {
         runOnMain {
-            if (sessionIdentity == null || sessionIdentity.displayId != displayId) {
+            if (DisplaySessionManager.getSelectedDisplayState() !=
+                    DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+                DisplaySessionManager.getSelectedDisplayId() != displayId ||
+                (targetIdentity != null && targetIdentity.displayId != displayId)
+            ) {
                 acceptedAttempt = null
                 DiagnosticsLog.add(
-                    "RestoreProjection: event=CANDIDATE_DEFERRED flowId=$flowId " +
+                    "RestoreProjection: event=CANDIDATE_REJECTED flowId=$flowId " +
                         "component=${component.flattenToShortString()} displayId=$displayId " +
-                        "reason=no_matching_accessibility_session"
+                        "reason=display_session_changed target=${targetIdentity ?: "none"}"
                 )
                 return@runOnMain
             }
@@ -92,13 +104,15 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
                 flowId = flowId,
                 component = component,
                 displayId = displayId,
-                sessionGeneration = sessionIdentity.generation
+                acceptedAtElapsedMs = SystemClock.elapsedRealtime()
             )
             DiagnosticsLog.add(
-                "RestoreProjection: event=AWAITING_VERIFICATION flowId=$flowId " +
+                "RestoreProjection: event=${if (targetIdentity == null) "CANDIDATE_DEFERRED" else "AWAITING_VERIFICATION"} " +
+                    "flowId=$flowId " +
                     "component=${component.flattenToShortString()} displayId=$displayId " +
-                    "generation=${sessionIdentity.generation}"
+                    "target=${targetIdentity ?: "none"} retained=true"
             )
+            scheduleAcceptedAttemptChecks(flowId)
         }
     }
 
@@ -106,37 +120,16 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
         flowId: String,
         packageName: String,
         displayId: Int,
-        sessionGeneration: Long
+        sessionGeneration: Long?
     ) {
         runOnMain {
-            val attempt = acceptedAttempt
-            if (attempt == null ||
-                attempt.flowId != flowId ||
-                attempt.component.packageName != packageName ||
-                attempt.displayId != displayId ||
-                attempt.sessionGeneration != sessionGeneration
-            ) {
-                return@runOnMain
-            }
-            val candidate = ProjectedAppRestoreState.Candidate(
-                packageName = attempt.component.packageName,
-                className = attempt.component.className,
-                displayId = displayId,
-                flowId = flowId,
-                verifiedSessionGeneration = sessionGeneration
-            )
-            val recorded = state.recordVerified(candidate)
-            acceptedAttempt = null
-            DiagnosticsLog.add(
-                "RestoreProjection: event=CANDIDATE_VERIFIED accepted=$recorded flowId=$flowId " +
-                    "component=${attempt.component.flattenToShortString()} displayId=$displayId " +
-                    "generation=$sessionGeneration"
-            )
+            recordVerifiedAttempt(flowId, packageName, displayId, sessionGeneration)
         }
     }
 
     fun onAccessibilityWindowsChanged() {
         runOnMain {
+            verifyAcceptedAttemptIfVisible()
             val request = state.currentRequest() ?: return@runOnMain
             if (ControlAccessibilityService.isPackageVisibleOnDisplay(
                     request.candidate.packageName,
@@ -148,9 +141,100 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
         }
     }
 
+    private fun scheduleAcceptedAttemptChecks(flowId: String) {
+        ACCEPTED_ATTEMPT_CHECK_DELAYS_MS.forEach { delayMs ->
+            mainHandler.postDelayed(
+                {
+                    if (acceptedAttempt?.flowId == flowId) {
+                        verifyAcceptedAttemptIfVisible()
+                    }
+                },
+                delayMs
+            )
+        }
+    }
+
+    private fun verifyAcceptedAttemptIfVisible() {
+        val attempt = acceptedAttempt ?: return
+        val ageMs = SystemClock.elapsedRealtime() - attempt.acceptedAtElapsedMs
+        if (ageMs > ACCEPTED_ATTEMPT_TTL_MS) {
+            acceptedAttempt = null
+            DiagnosticsLog.add(
+                "RestoreProjection: event=CANDIDATE_EXPIRED flowId=${attempt.flowId} " +
+                    "displayId=${attempt.displayId} ageMs=$ageMs"
+            )
+            return
+        }
+        if (DisplaySessionManager.getSelectedDisplayState() !=
+                DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+            DisplaySessionManager.getSelectedDisplayId() != attempt.displayId ||
+            !ControlAccessibilityService.isPackageVisibleOnDisplay(
+                attempt.component.packageName,
+                attempt.displayId
+            )
+        ) {
+            return
+        }
+        recordVerifiedAttempt(
+            flowId = attempt.flowId,
+            packageName = attempt.component.packageName,
+            displayId = attempt.displayId,
+            sessionGeneration = ControlAccessibilityService.currentExternalSessionIdentity()
+                ?.generation
+        )
+    }
+
+    private fun recordVerifiedAttempt(
+        flowId: String,
+        packageName: String,
+        displayId: Int,
+        sessionGeneration: Long?
+    ) {
+        val attempt = acceptedAttempt
+        if (attempt == null ||
+            attempt.flowId != flowId ||
+            attempt.component.packageName != packageName ||
+            attempt.displayId != displayId ||
+            SystemClock.elapsedRealtime() - attempt.acceptedAtElapsedMs >
+                ACCEPTED_ATTEMPT_TTL_MS ||
+            DisplaySessionManager.getSelectedDisplayState() !=
+                DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+            DisplaySessionManager.getSelectedDisplayId() != displayId
+        ) {
+            return
+        }
+        val candidate = ProjectedAppRestoreState.Candidate(
+            packageName = attempt.component.packageName,
+            className = attempt.component.className,
+            displayId = displayId,
+            flowId = flowId
+        )
+        val recorded = state.recordVerified(candidate)
+        acceptedAttempt = null
+        DiagnosticsLog.add(
+            "RestoreProjection: event=CANDIDATE_VERIFIED accepted=$recorded flowId=$flowId " +
+                "component=${attempt.component.flattenToShortString()} displayId=$displayId " +
+                "observedSessionGeneration=${sessionGeneration ?: "none"}"
+        )
+    }
+
     fun onSessionStopped() {
         runOnMain {
             clearAll("session_stopped")
+        }
+    }
+
+    /** Used only to keep first-use app selection from covering a pending restore question. */
+    fun hasVerifiedCandidate(): Boolean = state.hasVerifiedCandidate()
+
+    /** Cancels in-flight UI/verification while retaining a verified app for a reconnect prompt. */
+    fun onDisplayDisconnected() {
+        runOnMain {
+            acceptedAttempt = null
+            cancelGrace()
+            promptReadyKey = null
+            dismissDialogWithoutDecision()
+            DiagnosticsLog.add("RestoreProjection: event=DISPLAY_DISCONNECTED candidate=retained")
         }
     }
 
@@ -171,12 +255,14 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
                 cancelGrace()
                 promptReadyKey = null
                 dismissDialogWithoutDecision()
+            } else if (acceptedAttempt?.let { it.displayId != displayId } == true) {
+                acceptedAttempt = null
             }
             if (request != null) {
                 DiagnosticsLog.add(
                     "RestoreProjection: event=WAKE_DETECTED request=${request.key} " +
                         "component=${component(request).flattenToShortString()} " +
-                        "displayId=${request.candidate.displayId}"
+                        "displayId=${request.candidate.displayId} trigger=${request.trigger.name}"
                 )
             }
             evaluatePendingRequest()
@@ -196,64 +282,41 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
         ) {
             return
         }
-        val session = ControlAccessibilityService.currentExternalSessionIdentity()
-        if (session == null || session.displayId != request.candidate.displayId) {
-            DiagnosticsLog.add(
-                "RestoreProjection: event=WAITING_READY request=${request.key} " +
-                    "displayId=${request.candidate.displayId}"
-            )
-            return
-        }
-        val bound = state.bindSession(request.key, session.generation)
-        if (bound == null) {
-            state.consumeRequest(request.key)
-            cancelGrace()
-            promptReadyKey = null
-            dismissDialogWithoutDecision()
-            DiagnosticsLog.add(
-                "RestoreProjection: event=CANCELLED request=${request.key} " +
-                    "reason=session_generation_changed current=${session.generation}"
-            )
-            return
-        }
         if (ControlAccessibilityService.isPackageVisibleOnDisplay(
-                bound.candidate.packageName,
-                bound.candidate.displayId
+                request.candidate.packageName,
+                request.candidate.displayId
             )
         ) {
-            completeNaturalRestore(bound)
+            completeNaturalRestore(request)
             return
         }
-        if (promptReadyKey == bound.key) {
+        if (promptReadyKey == request.key) {
             maybeShowPrompt()
             return
         }
-        if (graceKey == bound.key) return
+        if (graceKey == request.key) return
         cancelGrace()
         val runnable = Runnable {
             graceRunnable = null
             graceKey = null
-            finishNaturalRestoreGrace(bound.key)
+            finishNaturalRestoreGrace(request.key)
         }
         graceRunnable = runnable
-        graceKey = bound.key
+        graceKey = request.key
         mainHandler.postDelayed(runnable, NATURAL_RESTORE_GRACE_MS)
         DiagnosticsLog.add(
-            "RestoreProjection: event=NATURAL_RESTORE_GRACE request=${bound.key} " +
-                "delayMs=$NATURAL_RESTORE_GRACE_MS generation=${bound.resumedSessionGeneration}"
+            "RestoreProjection: event=NATURAL_RESTORE_GRACE request=${request.key} " +
+                "delayMs=$NATURAL_RESTORE_GRACE_MS overlayReady=" +
+                ControlAccessibilityService.isReady()
         )
     }
 
     private fun finishNaturalRestoreGrace(requestKey: Long) {
         val request = state.currentRequest()?.takeIf { it.key == requestKey } ?: return
-        val generation = request.resumedSessionGeneration ?: return
-        val identity = ControlAccessibilityService.currentExternalSessionIdentity()
-        if (identity != ControlAccessibilityService.ExternalSessionIdentity(
-                request.candidate.displayId,
-                generation
-            )
+        if (DisplaySessionManager.getSelectedDisplayState() !=
+                DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+            DisplaySessionManager.getSelectedDisplayId() != request.candidate.displayId
         ) {
-            evaluatePendingRequest()
             return
         }
         if (ControlAccessibilityService.isPackageVisibleOnDisplay(
@@ -281,11 +344,7 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
                 "displayId=${request.candidate.displayId}"
         )
         if (allowed != true) {
-            state.consumeRequest(request.key)
-            DiagnosticsLog.add(
-                "RestoreProjection: event=CANCELLED request=${request.key} " +
-                    "reason=display_policy_not_allowed result=$allowed"
-            )
+            invalidateCandidate("display_policy_not_allowed:$allowed", request)
             return
         }
         promptReadyKey = request.key
@@ -352,8 +411,7 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
         DiagnosticsLog.add(
             "RestoreProjection: event=PROMPT_SHOWN request=${request.key} " +
                 "component=${target.flattenToShortString()} " +
-                "displayId=${request.candidate.displayId} " +
-                "generation=${request.resumedSessionGeneration}"
+                "displayId=${request.candidate.displayId} trigger=${request.trigger.name}"
         )
     }
 
@@ -368,18 +426,16 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
             completeNaturalRestore(request)
             return
         }
-        val generation = request.resumedSessionGeneration ?: return
         val claimed = state.consumeRequest(requestKey) ?: return
         promptReadyKey = null
         DiagnosticsLog.add(
             "RestoreProjection: event=DECISION request=$requestKey decision=OPEN_AGAIN " +
-                "generation=$generation"
+                "trigger=${claimed.trigger.name}"
         )
         val result = AppLauncher.launchRestoreOnExternalDisplay(
             context = host,
             component = component(claimed),
-            expectedDisplayId = claimed.candidate.displayId,
-            expectedSessionGeneration = generation
+            expectedDisplayId = claimed.candidate.displayId
         )
         val message = if (result.success) {
             host.getString(
@@ -406,15 +462,9 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
     }
 
     private fun revalidateRequest(request: ProjectedAppRestoreState.Request): Boolean {
-        val generation = request.resumedSessionGeneration ?: return false
-        val identity = ControlAccessibilityService.currentExternalSessionIdentity()
         if (DisplaySessionManager.getSelectedDisplayState() !=
                 DisplaySessionManager.ExternalDisplayState.ACTIVE ||
-            DisplaySessionManager.getSelectedDisplayId() != request.candidate.displayId ||
-            identity != ControlAccessibilityService.ExternalSessionIdentity(
-                request.candidate.displayId,
-                generation
-            )
+            DisplaySessionManager.getSelectedDisplayId() != request.candidate.displayId
         ) {
             return false
         }
@@ -425,13 +475,7 @@ object ProjectedAppRestoreCoordinator : DisplaySessionManager.Listener,
             return false
         }
         if (AppLauncher.isExternalLaunchAllowed(app, target, request.candidate.displayId) != true) {
-            state.consumeRequest(request.key)
-            promptReadyKey = null
-            dismissDialogWithoutDecision()
-            DiagnosticsLog.add(
-                "RestoreProjection: event=CANCELLED request=${request.key} " +
-                    "reason=display_policy_changed"
-            )
+            invalidateCandidate("display_policy_changed", request)
             return false
         }
         return true
