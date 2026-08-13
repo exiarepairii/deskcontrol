@@ -1,6 +1,6 @@
 # DeskControl Privacy Policy
 
-Last updated: August 9, 2026
+Last updated: August 14, 2026
 
 DeskControl does not transmit app usage or accessibility data to the developer
 or third parties. The app has no analytics, advertising, crash-reporting,
@@ -25,14 +25,17 @@ features:
   permission, and server-identity state;
 - motion sensor readings while Motion Mouse is active;
 - accessibility window metadata, active app identifiers, focusable UI
-  structure, user-initiated gestures, Back actions, and calibration or screen-off
-  key input needed to control the connected external display;
+  structure, confirmation that a selected app appeared on the intended display,
+  natural-restoration checks after display wake, user-initiated gestures, Back
+  actions, and calibration or screen-off key input needed to control the
+  connected external display;
 - app preferences and a persistent on-device diagnostic log of recent events.
 
-This information remains on the device. Diagnostic logs leave the app only
-when the user explicitly copies them to the clipboard and chooses to share
-them. Diagnostics deliberately exclude Android ID, device serial numbers,
-network identifiers, and a full inventory of installed apps or system settings.
+This information remains on the device. Diagnostic logs leave app-private
+storage only when the user explicitly copies them or saves them through the
+system file picker; the user then decides whether to share them. Diagnostics
+deliberately exclude Android ID, device serial numbers, network identifiers,
+and a full inventory of installed apps or system settings.
 
 ## Accessibility Service
 
@@ -41,9 +44,11 @@ external display and send only actions initiated by the user through the
 touchpad or Motion Mouse. It also identifies and focuses the active window on
 that display and forwards user-initiated Back, calibration, and screen-off key
 actions.
-DeskControl does not use accessibility access to make autonomous decisions,
-read passwords, bypass security controls, or transmit screen or accessibility
-data.
+After the same display wakes, DeskControl may use the locally observed app
+identifier to ask whether the user wants to reopen the last verified projected
+app. It does not reopen that app without foreground user confirmation.
+DeskControl does not read passwords, bypass security controls, or transmit
+screen or accessibility data.
 
 ## Purchases
 

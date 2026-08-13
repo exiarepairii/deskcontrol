@@ -7,7 +7,10 @@ package com.deskcontrol
  * state to keep one target across bounded retries, and to reject stale results after a disconnect
  * or target change.
  */
-class ExternalDisplaySessionLifecycle<T>(private val maxAttempts: Int) {
+class ExternalDisplaySessionLifecycle<T>(
+    private val maxAttempts: Int,
+    private val generationAllocator: (() -> Long)? = null
+) {
     enum class State {
         DISCONNECTED,
         SUSPENDED,
@@ -133,6 +136,6 @@ class ExternalDisplaySessionLifecycle<T>(private val maxAttempts: Int) {
     }
 
     private fun invalidateGeneration() {
-        generation += 1L
+        generation = generationAllocator?.invoke() ?: (generation + 1L)
     }
 }

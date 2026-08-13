@@ -27,11 +27,17 @@ import android.widget.Toast
 import java.util.ArrayDeque
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.math.min
 
 class ControlAccessibilityService : AccessibilityService() {
     enum class ScrollAxis { VERTICAL, HORIZONTAL }
+
+    data class ExternalSessionIdentity(
+        val displayId: Int,
+        val generation: Long
+    )
 
 
     companion object {
@@ -87,6 +93,7 @@ class ControlAccessibilityService : AccessibilityService() {
         @Volatile
         private var controlSurfaceKeyHandler: ((KeyEvent) -> Boolean)? = null
         private val runtimeStateListeners = CopyOnWriteArraySet<() -> Unit>()
+        private val displaySessionGenerationSequence = AtomicLong()
 
         fun current(): ControlAccessibilityService? = instance
 
@@ -113,6 +120,17 @@ class ControlAccessibilityService : AccessibilityService() {
 
         /** Whether controls can currently inject input into an attached external-display session. */
         fun isReady(): Boolean = instance?.hasExternalDisplaySession() == true
+
+        fun currentExternalSessionIdentity(): ExternalSessionIdentity? =
+            instance?.externalSessionIdentity()
+
+        /**
+         * Returns true only when accessibility can currently see [packageName] on [displayId].
+         * A false value can also mean that window observation is unavailable, so callers must
+         * use it only to suppress duplicate restore prompts, never as proof that launch failed.
+         */
+        fun isPackageVisibleOnDisplay(packageName: String, displayId: Int): Boolean =
+            instance?.isPackageVisible(packageName, displayId) == true
 
         fun addRuntimeStateListener(listener: () -> Unit) {
             runtimeStateListeners.add(listener)
@@ -176,7 +194,8 @@ class ControlAccessibilityService : AccessibilityService() {
             attemptId: String,
             targetPackage: String,
             displayId: Int,
-            phase: String = "EXTERNAL"
+            phase: String = "EXTERNAL",
+            expectedSessionIdentity: ExternalSessionIdentity? = null
         ) {
             val service = instance
             if (service == null) {
@@ -186,15 +205,33 @@ class ControlAccessibilityService : AccessibilityService() {
                 )
                 return
             }
+            var staleObservationLogged = false
             LAUNCH_OBSERVATION_DELAYS_MS.forEach { delayMs ->
                 service.handler.postDelayed(
                     {
+                        val currentIdentity = service.externalSessionIdentity()
+                        if (instance !== service ||
+                            (expectedSessionIdentity != null &&
+                                currentIdentity != expectedSessionIdentity)
+                        ) {
+                            if (!staleObservationLogged) {
+                                staleObservationLogged = true
+                                DiagnosticsLog.add(
+                                    "Launch[$attemptId]: event=OBSERVATION_CANCELLED phase=$phase " +
+                                        "reason=stale_display_session expected=" +
+                                        "${expectedSessionIdentity ?: "none"} current=" +
+                                        "${currentIdentity ?: "none"}"
+                                )
+                            }
+                            return@postDelayed
+                        }
                         service.logLaunchObservation(
                             attemptId,
                             targetPackage,
                             displayId,
                             phase,
-                            delayMs
+                            delayMs,
+                            currentIdentity
                         )
                     },
                     delayMs
@@ -258,7 +295,8 @@ class ControlAccessibilityService : AccessibilityService() {
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
     private val displaySessionLifecycle =
         ExternalDisplaySessionLifecycle<DisplaySessionManager.ExternalDisplayInfo>(
-            ATTACH_MAX_ATTEMPTS
+            ATTACH_MAX_ATTEMPTS,
+            generationAllocator = displaySessionGenerationSequence::incrementAndGet
         )
     private var attachRetryRunnable: Runnable? = null
     private var cursorX = 0f
@@ -327,7 +365,7 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: android.view.accessibility.AccessibilityEvent?) {
-        // No-op for MVP.
+        ProjectedAppRestoreCoordinator.onAccessibilityWindowsChanged()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -1070,7 +1108,12 @@ class ControlAccessibilityService : AccessibilityService() {
     )
 
     private fun snapshotWindows(): List<AccessibilityWindowInfo> {
-        return windows?.toList().orEmpty()
+        val windowsByDisplay = windowsOnAllDisplays
+        return buildList {
+            for (index in 0 until windowsByDisplay.size()) {
+                addAll(windowsByDisplay.valueAt(index).orEmpty())
+            }
+        }
     }
 
     private fun logLaunchObservation(
@@ -1078,7 +1121,8 @@ class ControlAccessibilityService : AccessibilityService() {
         targetPackage: String,
         displayId: Int,
         phase: String,
-        sampleDelayMs: Long
+        sampleDelayMs: Long,
+        sessionIdentity: ExternalSessionIdentity?
     ) {
         val displayWindows = snapshotWindows().filter { it.displayId == displayId }
         if (displayWindows.isEmpty()) {
@@ -1109,6 +1153,14 @@ class ControlAccessibilityService : AccessibilityService() {
                 "displayId=$displayId targetPackage=$targetPackage targetVisible=$targetVisible " +
                 "verification=$verification windows=[$windowSummary]"
         )
+        if (targetVisible && phase == "POST_EXTERNAL_TARGET" && sessionIdentity != null) {
+            ProjectedAppRestoreCoordinator.onLaunchWindowVerified(
+                flowId = attemptId,
+                packageName = targetPackage,
+                displayId = displayId,
+                sessionGeneration = sessionIdentity.generation
+            )
+        }
     }
 
     private fun resolveExternalWindowState(
@@ -1350,6 +1402,22 @@ class ControlAccessibilityService : AccessibilityService() {
         return displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.CONNECTED &&
             displayInfo != null &&
             overlayView != null
+    }
+
+    private fun externalSessionIdentity(): ExternalSessionIdentity? {
+        val info = displayInfo ?: return null
+        if (!hasExternalDisplaySession()) return null
+        return ExternalSessionIdentity(
+            displayId = info.displayId,
+            generation = displaySessionLifecycle.generation
+        )
+    }
+
+    private fun isPackageVisible(packageName: String, displayId: Int): Boolean {
+        return snapshotWindows().any { window ->
+            window.displayId == displayId &&
+                window.root?.packageName?.toString() == packageName
+        }
     }
 
     private fun attachToDisplay(

@@ -13,5 +13,6 @@ class DeskControlApp : Application() {
         SettingsStore.applyAppLanguage()
         AppCompatDelegate.setDefaultNightMode(SettingsStore.nightMode)
         DisplaySessionManager.init(this)
+        ProjectedAppRestoreCoordinator.init(this)
     }
 }

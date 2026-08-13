@@ -2,11 +2,25 @@ package com.deskcontrol
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExternalDisplaySessionLifecycleTest {
+    @Test
+    fun sharedAllocatorKeepsGenerationsUniqueAcrossOwners() {
+        var nextGeneration = 0L
+        val allocator = { ++nextGeneration }
+        val first = ExternalDisplaySessionLifecycle<String>(2, allocator)
+        val second = ExternalDisplaySessionLifecycle<String>(2, allocator)
+
+        val firstGeneration = first.begin("display-30")
+        val secondGeneration = second.begin("display-30")
+
+        assertNotEquals(firstGeneration, secondGeneration)
+    }
+
     @Test
     fun failedInitialAttachCanRetryAndConnect() {
         val lifecycle = ExternalDisplaySessionLifecycle<String>(maxAttempts = 3)

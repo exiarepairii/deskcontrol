@@ -25,8 +25,8 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/deskcontrol-release.jks"
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease
+      - name: Build Direct release APK
+        run: ./gradlew assembleDirectRelease
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/deskcontrol-release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -36,11 +36,11 @@ jobs:
       - name: Locate and rename APK
         id: apk
         run: |
-          APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          APK_PATH="app/build/outputs/apk/direct/release/app-direct-release.apk"
           TAG_NAME="${GITHUB_REF_NAME}"
-          RENAMED_PATH="app/build/outputs/apk/release/deskcontrol-${TAG_NAME}.apk"
+          RENAMED_PATH="app/build/outputs/apk/direct/release/deskcontrol-direct-${TAG_NAME}.apk"
           mv "$APK_PATH" "$RENAMED_PATH"
-          echo "path=$RENAMED_PATH" >> $GITHUB_OUTPUT
+          echo "path=$RENAMED_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK to release assets
         uses: softprops/action-gh-release@v2

@@ -23,6 +23,11 @@ object AppLauncher {
 
     private val attemptSequence = AtomicLong()
 
+    private enum class LaunchOrigin {
+        USER,
+        RESTORE_CONFIRMATION
+    }
+
     enum class Outcome {
         EXTERNAL_REQUEST_ACCEPTED,
         FAILED
@@ -32,6 +37,7 @@ object AppLauncher {
         NO_EXTERNAL_DISPLAY,
         FEATURE_UNSUPPORTED,
         NO_LAUNCH_INTENT,
+        DISPLAY_SESSION_CHANGED,
         SECURITY_EXCEPTION,
         START_FAILED
     }
@@ -52,6 +58,7 @@ object AppLauncher {
         packageName: String,
         className: String? = null
     ): Result {
+        ProjectedAppRestoreCoordinator.onUserLaunchRequested()
         val flowId = newFlowId()
         val sourceDisplayId = sourceDisplayId(context)
         DiagnosticsLog.add(
@@ -88,8 +95,84 @@ object AppLauncher {
             packageName,
             className,
             displayInfo.displayId,
-            flowId
+            flowId,
+            origin = LaunchOrigin.USER
         )
+    }
+
+    @Synchronized
+    fun launchRestoreOnExternalDisplay(
+        context: Context,
+        component: ComponentName,
+        expectedDisplayId: Int,
+        expectedSessionGeneration: Long
+    ): Result {
+        val flowId = newFlowId()
+        val expectedIdentity = ControlAccessibilityService.ExternalSessionIdentity(
+            displayId = expectedDisplayId,
+            generation = expectedSessionGeneration
+        )
+        DiagnosticsLog.add(
+            "LaunchRequest[$flowId]: event=RESTORE_CONFIRMATION strategy=$LAUNCH_STRATEGY " +
+                "component=${component.flattenToShortString()} " +
+                "requestedDisplayId=$expectedDisplayId generation=$expectedSessionGeneration " +
+                "context=${context.javaClass.simpleName} sourceDisplayId=${sourceDisplayId(context)}"
+        )
+        val currentDisplay = DisplaySessionManager.getExternalDisplayInfo()
+        val currentIdentity = ControlAccessibilityService.currentExternalSessionIdentity()
+        if (DisplaySessionManager.getSelectedDisplayState() !=
+                DisplaySessionManager.ExternalDisplayState.ACTIVE ||
+            currentDisplay?.displayId != expectedDisplayId ||
+            currentIdentity != expectedIdentity
+        ) {
+            return fail(
+                context,
+                FailureReason.DISPLAY_SESSION_CHANGED,
+                R.string.app_launch_detail_display_session_changed,
+                stage = "RESTORE_VALIDATION",
+                flowId = flowId
+            )
+        }
+        if (!context.packageManager.hasSystemFeature(
+                PackageManager.FEATURE_ACTIVITIES_ON_SECONDARY_DISPLAYS
+            )
+        ) {
+            return fail(
+                context,
+                FailureReason.FEATURE_UNSUPPORTED,
+                R.string.app_launch_detail_feature_unsupported,
+                stage = "RESTORE_VALIDATION",
+                flowId = flowId
+            )
+        }
+        return launchDirect(
+            context = context,
+            packageName = component.packageName,
+            className = component.className,
+            displayId = expectedDisplayId,
+            flowId = flowId,
+            origin = LaunchOrigin.RESTORE_CONFIRMATION,
+            expectedSessionIdentity = expectedIdentity
+        )
+    }
+
+    fun isExternalLaunchAllowed(
+        context: Context,
+        component: ComponentName,
+        displayId: Int
+    ): Boolean? {
+        val intent = buildLaunchIntent(context, component)
+        return try {
+            context.getSystemService(ActivityManager::class.java)
+                .isActivityStartAllowedOnDisplay(context, displayId, intent)
+        } catch (ex: Exception) {
+            DiagnosticsLog.add(
+                "RestoreProjection: event=PREFLIGHT_EXCEPTION " +
+                    "component=${component.flattenToShortString()} displayId=$displayId " +
+                    "exception=${ex.javaClass.name} message=${safeMessage(ex)}"
+            )
+            null
+        }
     }
 
     private fun launchDirect(
@@ -97,7 +180,9 @@ object AppLauncher {
         packageName: String,
         className: String?,
         displayId: Int,
-        flowId: String
+        flowId: String,
+        origin: LaunchOrigin,
+        expectedSessionIdentity: ControlAccessibilityService.ExternalSessionIdentity? = null
     ): Result {
         val component = resolveLauncherComponent(context, packageName, className, flowId)
             ?: return fail(
@@ -107,15 +192,7 @@ object AppLauncher {
                 stage = "EXTERNAL_HANDOFF",
                 flowId = flowId
             )
-        val packageIntent = context.packageManager.getLaunchIntentForPackage(packageName)
-        val launchIntent = if (packageIntent?.component == component) {
-            packageIntent
-        } else {
-            standardLauncherIntent(component)
-        }.apply {
-            setComponent(component)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val launchIntent = buildLaunchIntent(context, component)
 
         logIntent(flowId, "EXTERNAL_HANDOFF", launchIntent)
         logTargetCapabilities(context, flowId, "EXTERNAL_HANDOFF", component)
@@ -129,18 +206,35 @@ object AppLauncher {
         )
 
         return try {
+            val currentSessionIdentity =
+                ControlAccessibilityService.currentExternalSessionIdentity()
+                    ?.takeIf { it.displayId == displayId }
+            if (expectedSessionIdentity != null &&
+                currentSessionIdentity != expectedSessionIdentity
+            ) {
+                return fail(
+                    context,
+                    FailureReason.DISPLAY_SESSION_CHANGED,
+                    R.string.app_launch_detail_display_session_changed,
+                    stage = "RESTORE_VALIDATION",
+                    flowId = flowId
+                )
+            }
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
             DiagnosticsLog.add(
                 "Launch[$flowId]: event=DISPATCH stage=EXTERNAL_HANDOFF " +
-                    "strategy=$LAUNCH_STRATEGY sourceDisplayId=${sourceDisplayId(context)} " +
+                    "strategy=$LAUNCH_STRATEGY origin=${origin.name} " +
+                    "sourceDisplayId=${sourceDisplayId(context)} " +
                     "requestedDisplayId=$displayId activityOptionsLaunchDisplayId=$displayId"
             )
             context.startActivity(launchIntent, options.toBundle())
             externalRequestAccepted(
                 context,
-                packageName,
+                component,
                 displayId,
-                flowId
+                flowId,
+                origin,
+                currentSessionIdentity
             )
         } catch (se: SecurityException) {
             launchException(
@@ -202,6 +296,18 @@ object AppLauncher {
             addCategory(Intent.CATEGORY_LAUNCHER)
             setComponent(component)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        }
+    }
+
+    private fun buildLaunchIntent(context: Context, component: ComponentName): Intent {
+        val packageIntent = context.packageManager.getLaunchIntentForPackage(component.packageName)
+        return (if (packageIntent?.component == component) {
+            packageIntent
+        } else {
+            standardLauncherIntent(component)
+        }).apply {
+            setComponent(component)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
 
@@ -318,16 +424,29 @@ object AppLauncher {
 
     private fun externalRequestAccepted(
         context: Context,
-        packageName: String,
+        component: ComponentName,
         displayId: Int,
-        flowId: String
+        flowId: String,
+        origin: LaunchOrigin,
+        sessionIdentity: ControlAccessibilityService.ExternalSessionIdentity?
     ): Result {
-        AppLaunchHistory.recordLaunch(context.applicationContext, packageName)
-        SessionStore.lastLaunchedPackage = packageName
+        val packageName = component.packageName
+        if (origin == LaunchOrigin.USER) {
+            AppLaunchHistory.recordLaunch(context.applicationContext, packageName)
+            SessionStore.lastLaunchedPackage = packageName
+            ProjectedAppRestoreCoordinator.onUserLaunchAccepted(
+                flowId = flowId,
+                component = component,
+                displayId = displayId,
+                sessionIdentity = sessionIdentity
+            )
+        }
         SessionStore.lastLaunchFailure = null
         DiagnosticsLog.add(
             "Launch[$flowId]: event=EXTERNAL_API_ACCEPTED stage=EXTERNAL_HANDOFF " +
-                "strategy=$LAUNCH_STRATEGY package=$packageName displayId=$displayId; " +
+                "strategy=$LAUNCH_STRATEGY origin=${origin.name} package=$packageName " +
+                "component=${component.flattenToShortString()} displayId=$displayId " +
+                "session=${sessionIdentity ?: "none"}; " +
                 "verified=false awaiting_window_observation=true"
         )
         ControlAccessibilityService.requestLaunchObservation(
@@ -340,7 +459,8 @@ object AppLauncher {
             flowId,
             packageName,
             displayId,
-            phase = "POST_EXTERNAL_TARGET"
+            phase = "POST_EXTERNAL_TARGET",
+            expectedSessionIdentity = sessionIdentity
         )
         return Result(Outcome.EXTERNAL_REQUEST_ACCEPTED, flowId)
     }
@@ -457,6 +577,8 @@ object AppLauncher {
             FailureReason.NO_EXTERNAL_DISPLAY -> R.string.app_launch_reason_no_external_display
             FailureReason.FEATURE_UNSUPPORTED -> R.string.app_launch_reason_feature_unsupported
             FailureReason.NO_LAUNCH_INTENT -> R.string.app_launch_reason_no_launch_intent
+            FailureReason.DISPLAY_SESSION_CHANGED ->
+                R.string.app_launch_reason_display_session_changed
             FailureReason.SECURITY_EXCEPTION -> R.string.app_launch_reason_security_exception
             FailureReason.START_FAILED -> R.string.app_launch_reason_start_failed
         }

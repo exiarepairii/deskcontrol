@@ -31,6 +31,8 @@
 ## Current UX conventions
 - Main screen hierarchy: status row + contextual display selector, primary action, secondary actions.
 - App launches use the exact launcher component and the direct external-display path. Compatibility experiments must not add persistent launch modes or test controls to Home.
+- A verified projected-app candidate is kept only in the current process. When the same selected display changes from `ACTIVE` through `SUSPENDED` back to `ACTIVE`, wait for the new accessibility session and for natural task restoration, then ask on the foreground phone Activity before reopening it. Initial connection, physical remove/add, display changes, lock screen, background state, and non-allowed exact-target preflight must never launch silently.
+- A confirmed restore is scoped to one display-session generation and does not update app-recents ranking or replace the last app explicitly selected by the user.
 - When Choose app is tapped without an active external display, keep the user on Home, gently nudge the status section, and distinguish connect-first from wake-the-selected-display feedback.
 - Display selection must not reject `OFF` alone: retain trusted or policy-approved HDMI while it sleeps, but exclude a non-ON, untrusted display only when both standard and allow-embedded policy probes explicitly deny it.
 - Display selector uses 1-based labels (Display 1/2/3) and shows resolution as the secondary line.
@@ -48,7 +50,7 @@
 - Automatic external-display focus recovery defaults to enabled; preserve an existing stored user choice when loading settings.
 - Accessibility settings state and runtime control readiness are distinct: settings/disclosure UI may use configured state, but touch activation, injection, and Motion Mouse calibration require the service to be connected with an attached external-display session. Runtime state changes must refresh visible control surfaces; Motion Mouse direct touch must not wait for a rotation-sensor sample once that session is ready.
 - Motion Mouse auto-calibration does not activate control mode; direct touch, manual calibration, and Volume Down calibration activate it only while the blackout is hidden, while entering blackout explicitly deactivates it.
-- Motion Mouse haptic feedback is enabled by default, persisted, and applies to calibration, clicks, and drag start.
+- Motion Mouse haptic feedback is disabled by default, persisted, and applies to calibration, clicks, and drag start when enabled.
 - Touchpad and Motion Mouse share `ControlSurfaceVolumeKeyController` while the page is resumed; the accessibility service forwards Volume Up/Down so the shortcuts still work when the external app owns input focus, and the shared handler must be cleared in `onPause`.
 - Unlocking blackout with a Volume Up hold must focus and reactivate the current Touchpad or Motion control area, restart its window policy, and warm up external-display Back forwarding so control resumes immediately without another tap. Motion mode must then recalibrate from the phone's current pose; Touch mode must not calibrate.
 - Shared hardware-key feedback is drawn on the selected external display: short Volume Up/Down presses adjust media volume once on release and show the white right-edge volume HUD; circular hold feedback waits 120ms so quick taps do not flash a ring; a 660ms Volume Down hold calibrates Motion Mouse or centers the Touchpad cursor, and a 660ms Volume Up hold toggles phone blackout. Require the full app-defined duration instead of accepting Android's earlier `isLongPress` flag so normal volume adjustments remain conservative.
@@ -63,14 +65,10 @@
 
 ## Deferred TODOs
 
-### Restore the last projected app after display wake
-- TODO: optionally restore the last successfully projected app when the same selected display transitions from `SUSPENDED` back to `ACTIVE`. Do not trigger this for `NONE → ACTIVE`, physical unplug/replug, a changed selection, or an unknown display.
-- Arm restoration only after accessibility-window observation verifies that the exact launcher `ComponentName` is visible on the intended external display. `SessionStore.lastLaunchedPackage` is not sufficient because it records an API-accepted but unverified request.
-- Wait for the new display-session generation to connect and for `ControlAccessibilityService.isReady()` before making a restore decision. First observe whether Android restored the target window naturally; if it is already visible, do not launch it again.
-- Bind each restore decision to one display-session generation and allow at most one dispatch. Cancel when the generation, selected display, foreground app choice, component availability, or launch policy changes; never create an automatic retry loop.
-- Offer `Off`, `Ask` (default), and `Auto while DeskControl is foreground` modes. When the phone is locked, DeskControl is backgrounded, or exact-target display preflight is not explicitly allowed, defer or ask after returning to the foreground instead of launching silently.
-- Automatic restoration must not increment app-recents history or replace the last app explicitly selected by the user. Log the candidate, lifecycle transition, generation, readiness, existing-window check, policy result, dispatch/cancellation reason, and verified outcome.
-- Regression coverage must include duplicate display callbacks, unchanged-ID `ON → OFF/DOZE → ON`, natural task restoration, stale-generation callbacks, component removal, policy denial, background/locked state, and a manual launch superseding a pending restore.
+### Projected-app restore follow-ups
+- TODO: add explicit `Off` and `Auto while DeskControl is foreground` policy choices if real-device feedback justifies them. Keep the current foreground `Ask` behavior as the safe default, and never add background or lock-screen auto-launch.
+- TODO: consider a private notification for an in-process pending restore when no DeskControl Activity is visible. Notification content must not reveal the target app on the lock screen, and tapping it must still lead to a user-confirmed foreground action.
+- TODO: add instrumentation coverage for Activity rotation/navigation, lock/unlock, multi-resume with the external App Drawer, component removal, and a real `DisplayManager → AccessibilityService → WindowManager` sleep/wake sequence. Keep the pure reducer coverage for duplicate callbacks, unchanged-ID `ON → OFF/DOZE → ON`, stale generations, natural restore, policy denial, and manual-launch supersession.
 
 ## Visual system and theming
 - Colors are defined in `app/src/main/res/values/colors.xml` and `app/src/main/res/values-night/colors.xml`.

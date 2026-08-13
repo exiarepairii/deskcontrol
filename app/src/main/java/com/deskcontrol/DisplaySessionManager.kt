@@ -126,6 +126,7 @@ object DisplaySessionManager {
     }
 
     fun stopSession() {
+        ProjectedAppRestoreCoordinator.onSessionStopped()
         SessionStore.clear()
         ControlAccessibilityService.requestDetachOverlay()
     }

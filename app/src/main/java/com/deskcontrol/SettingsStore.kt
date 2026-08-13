@@ -16,6 +16,7 @@ object SettingsStore {
     private const val LANGUAGE_ENGLISH = "en"
     private const val LANGUAGE_CHINESE = "zh-CN"
     private const val BASE_SCROLL_SPEED = 0.4f
+    internal const val DEFAULT_RAY_HAPTIC_FEEDBACK_ENABLED = false
 
     var nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         private set
@@ -57,7 +58,7 @@ object SettingsStore {
         private set
     var touchpadAutoFocusEnabled = true
         private set
-    var rayHapticFeedbackEnabled = true
+    var rayHapticFeedbackEnabled = DEFAULT_RAY_HAPTIC_FEEDBACK_ENABLED
         private set
     var rayHorizontalRangeDeg = RayMouseController.DEFAULT_HORIZONTAL_RANGE_DEG
         private set
@@ -133,7 +134,7 @@ object SettingsStore {
         )
         rayHapticFeedbackEnabled = prefs.getBoolean(
             "ray_haptic_feedback",
-            rayHapticFeedbackEnabled
+            DEFAULT_RAY_HAPTIC_FEEDBACK_ENABLED
         )
         rayHorizontalRangeDeg = snapToStep(
             prefs.getFloat(PREF_RAY_HORIZONTAL_RANGE_DEG, rayHorizontalRangeDeg),

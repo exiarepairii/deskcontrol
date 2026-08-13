@@ -1,12 +1,17 @@
 # Changelog
 
+## 1.3.21
+- Projection recovery: after the same selected display wakes from sleep, ask before reopening the last app that accessibility-window observation actually verified on that display; first wait for Android to restore it naturally, and defer the question while DeskControl is backgrounded or the phone is locked.
+- Restore safety: bind each question to one fresh display-session generation, require the exact target to pass display-policy preflight, and keep restore launches out of recent-app ranking and the last explicit user choice.
+- Motion Mouse: disable haptic feedback by default while preserving every existing stored user choice.
+- Tutorial lifecycle: restore the cursor's previous auto-hide behavior when an external display sleeps or disconnects during the interactive tutorial.
+
 ## 1.3.20
 - External display selection: automatically ignore an unavailable untrusted recording display and switch to an active system-approved display when one appears, while retaining a lone active legacy display as a compatibility fallback.
 - Display lifecycle: suspend display-scoped controls while a selected HDMI display sleeps, then rebuild a fresh bounded session when it wakes without allowing stale gestures or retries to return.
 - App launch: use the exact launcher component and the production direct-display path only; remove the A/B/C phone-prewarm compatibility test from Home and from persisted launch behavior.
 - Diagnostics: record display trust, policy probes, Xiaomi projection components, target-app capabilities, and automatic selection decisions, and allow the complete report to be saved through the system file picker.
 - Accessibility: distinguish configured, connected, and ready states so controls only run after the service and current display session are both available.
-- Tutorial lifecycle: restore the cursor's previous auto-hide behavior when an external display sleeps or disconnects during the interactive tutorial.
 
 ## 1.3.19-launch-test
 - Display lifecycle: treat a present non-ON display as suspended, tear down its display-scoped controls once, and recreate a fresh generation when it returns to ON even if its display ID is unchanged.
