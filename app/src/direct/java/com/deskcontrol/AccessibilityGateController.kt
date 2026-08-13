@@ -25,6 +25,10 @@ class AccessibilityGateController(
     private var shizukuBinderReady = false
     private var shizukuEnableInFlight = false
     private var destroyed = false
+    private var runtimeListenerRegistered = false
+    private val runtimeStateListener: () -> Unit = {
+        if (!destroyed) refresh()
+    }
 
     private val shizukuBinderListener = Shizuku.OnBinderReceivedListener {
         shizukuBinderReady = true
@@ -70,22 +74,35 @@ class AccessibilityGateController(
     }
 
     fun onStart() {
+        if (!runtimeListenerRegistered) {
+            ControlAccessibilityService.addRuntimeStateListener(runtimeStateListener)
+            runtimeListenerRegistered = true
+        }
         refreshShizukuBinderState()
         refresh()
     }
 
     fun refresh() {
-        val enabled = ControlAccessibilityService.isEnabled(activity)
-        gate.isVisible = !enabled
-        content.alpha = if (enabled) 1f else DISABLED_CONTENT_ALPHA
-        controlArea.isEnabled = enabled
-        tuningPanel.isEnabled = enabled
-        onEnabledChanged(enabled)
+        val configured = ControlAccessibilityService.isConfigured(activity)
+        val ready = configured && ControlAccessibilityService.isReady()
+        gate.isVisible = !configured
+        content.alpha = if (configured) 1f else DISABLED_CONTENT_ALPHA
+        controlArea.isEnabled = ready
+        tuningPanel.isEnabled = configured
+        onEnabledChanged(ready)
         updateShizukuButton()
+    }
+
+    fun onStop() {
+        if (runtimeListenerRegistered) {
+            ControlAccessibilityService.removeRuntimeStateListener(runtimeStateListener)
+            runtimeListenerRegistered = false
+        }
     }
 
     fun onDestroy() {
         destroyed = true
+        onStop()
         Shizuku.removeBinderReceivedListener(shizukuBinderListener)
         Shizuku.removeBinderDeadListener(shizukuDeadListener)
         Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
@@ -195,7 +212,7 @@ class AccessibilityGateController(
             return false
         }
         SystemClock.sleep(SHIZUKU_ENABLE_SETTLE_MS)
-        return ControlAccessibilityService.isEnabled(activity)
+        return ControlAccessibilityService.isConfigured(activity)
     }
 
     private fun mergeAccessibilityServices(current: String?, component: String): String {

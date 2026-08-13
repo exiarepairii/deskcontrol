@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <package android:name="com.milink.service" />
+        <package android:name="com.xiaomi.miplay_client" />
+        <package android:name="com.xiaomi.mi_connect_service" />
+        <package android:name="com.xiaomi.mirror" />
+        <package android:name="com.miui.screenrecorder" />
+        <package android:name="com.miui.securitycenter" />
+        <package android:name="moe.shizuku.privileged.api" />
+    </queries>
+
     <application>
         <activity-alias
             android:name=".launcher.DirectLauncher"

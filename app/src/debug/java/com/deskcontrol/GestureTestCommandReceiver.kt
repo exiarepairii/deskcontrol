@@ -4,7 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
+import android.os.Handler
+import android.os.Looper
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.Display
 
 class GestureTestCommandReceiver : BroadcastReceiver() {
@@ -38,12 +41,22 @@ class GestureTestCommandReceiver : BroadcastReceiver() {
                     resultCode = RESULT_UNAVAILABLE
                     return
                 }
-                service.updateContinuousGestureTo(
-                    intent.getFloatExtra(EXTRA_X, 0f),
-                    intent.getFloatExtra(EXTRA_Y, 0f)
-                )
-                resultCode = RESULT_OK
+                resultCode = if (
+                    service.updateContinuousGestureTo(
+                        intent.getFloatExtra(EXTRA_X, 0f),
+                        intent.getFloatExtra(EXTRA_Y, 0f)
+                    )
+                ) {
+                    RESULT_OK
+                } else {
+                    RESULT_REJECTED
+                }
             }
+
+            ACTION_RUN_PAUSED_REVERSAL -> runPausedReversal(
+                service,
+                intent.getLongExtra(EXTRA_PAUSE_MS, PAUSED_REVERSAL_PAUSE_MS)
+            )
 
             ACTION_END -> {
                 if (service == null) {
@@ -91,6 +104,61 @@ class GestureTestCommandReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun runPausedReversal(
+        service: ControlAccessibilityService?,
+        pauseMs: Long
+    ) {
+        if (service == null) {
+            resultCode = RESULT_UNAVAILABLE
+            return
+        }
+        val pendingResult = goAsync()
+        service.moveCursorTo(640f, 468f)
+        val started = service.startContinuousGestureAtCursor()
+        Log.i(COMMAND_LOG_TAG, "start accepted=$started pauseMs=$pauseMs")
+        if (!started) {
+            pendingResult.resultCode = RESULT_REJECTED
+            pendingResult.finish()
+            return
+        }
+        var allUpdatesAccepted = service.updateContinuousGestureTo(640f, 288f)
+        Log.i(
+            COMMAND_LOG_TAG,
+            "update index=initial accepted=$allUpdatesAccepted"
+        )
+        val handler = Handler(Looper.getMainLooper())
+        val reversePoints = floatArrayOf(308f, 328f, 348f, 368f, 388f)
+        reversePoints.forEachIndexed { index, y ->
+            handler.postDelayed(
+                {
+                    val accepted = service.updateContinuousGestureTo(640f, y)
+                    allUpdatesAccepted = accepted && allUpdatesAccepted
+                    Log.i(
+                        COMMAND_LOG_TAG,
+                        "update index=$index y=${y.toInt()} " +
+                            "accepted=$accepted"
+                    )
+                },
+                pauseMs + index * PAUSED_REVERSAL_STEP_MS
+            )
+        }
+        handler.postDelayed(
+            {
+                service.endContinuousGesture()
+                service.whenContinuousGestureIdle {
+                    Log.i(
+                        COMMAND_LOG_TAG,
+                        "idle allUpdatesAccepted=$allUpdatesAccepted"
+                    )
+                    pendingResult.resultCode =
+                        if (allUpdatesAccepted) RESULT_OK else RESULT_REJECTED
+                    pendingResult.finish()
+                }
+            },
+            pauseMs + reversePoints.size * PAUSED_REVERSAL_STEP_MS
+        )
+    }
+
     @Suppress("DEPRECATION")
     private fun attachToExternalDisplay(context: Context) {
         val display = context.getSystemService(DisplayManager::class.java)
@@ -114,6 +182,8 @@ class GestureTestCommandReceiver : BroadcastReceiver() {
         const val ACTION_STATUS = "com.deskcontrol.test.STATUS"
         const val ACTION_START = "com.deskcontrol.test.START"
         const val ACTION_UPDATE = "com.deskcontrol.test.UPDATE"
+        const val ACTION_RUN_PAUSED_REVERSAL =
+            "com.deskcontrol.test.RUN_PAUSED_REVERSAL"
         const val ACTION_END = "com.deskcontrol.test.END"
         const val ACTION_WAIT_IDLE = "com.deskcontrol.test.WAIT_IDLE"
         const val ACTION_SHOW_VOLUME_HUD = "com.deskcontrol.test.SHOW_VOLUME_HUD"
@@ -121,10 +191,14 @@ class GestureTestCommandReceiver : BroadcastReceiver() {
         const val EXTRA_X = "x"
         const val EXTRA_Y = "y"
         const val EXTRA_HOLD_ACTION = "hold_action"
+        const val EXTRA_PAUSE_MS = "pause_ms"
         const val RESULT_OK = 1
         const val RESULT_REJECTED = 0
         const val RESULT_UNAVAILABLE = -1
         private const val HUD_PREVIEW_DURATION_MS = 60_000L
         private const val HUD_PREVIEW_ELAPSED_MS = 36_000L
+        private const val PAUSED_REVERSAL_PAUSE_MS = 500L
+        private const val PAUSED_REVERSAL_STEP_MS = 120L
+        private const val COMMAND_LOG_TAG = "GestureDeviceCommand"
     }
 }

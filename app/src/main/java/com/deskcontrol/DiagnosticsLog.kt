@@ -3,6 +3,7 @@ package com.deskcontrol
 import android.content.Context
 import android.content.res.Resources
 import android.util.AtomicFile
+import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
@@ -12,6 +13,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 
 object DiagnosticsLog {
+    private const val LOGCAT_TAG = "DeskControlDiag"
     private const val MAX_LINES = 1_000
     private const val COMPACT_EVERY_N_WRITES = 100
     private const val LOG_FILE_NAME = "diagnostics.log"
@@ -47,11 +49,13 @@ object DiagnosticsLog {
     @Synchronized
     fun add(message: String) {
         val timestamp = createFormatter().format(Date())
+        val sanitizedMessage = message.replace('\n', ' ')
+        Log.i(LOGCAT_TAG, sanitizedMessage)
         val removedOldest = lines.size >= MAX_LINES
         if (removedOldest) {
             lines.removeFirst()
         }
-        val line = formatLine(timestamp, message.replace('\n', ' '))
+        val line = formatLine(timestamp, sanitizedMessage)
         lines.addLast(line)
         val compactedLines = if (
             removedOldest && writesSinceCompaction >= COMPACT_EVERY_N_WRITES

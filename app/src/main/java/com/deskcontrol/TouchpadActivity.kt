@@ -114,9 +114,9 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             tuningPanel = binding.tuningPanel,
             openSettingsButton = binding.btnOpenAccessibility,
             advancedEnableButton = binding.btnEnableAccessibilityAdvanced,
-            onEnabledChanged = { enabled ->
+            onEnabledChanged = { ready ->
                 setTouchpadActive(false)
-                if (enabled) {
+                if (ready) {
                     modeIntroController.showChoiceIfNeeded()
                 }
                 onboardingController.onStateChanged()
@@ -206,6 +206,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             "Touchpad: stop blackout=${blackoutController.isVisible} " +
                 "changingConfig=$isChangingConfigurations finishing=$isFinishing"
         )
+        accessibilityGateController.onStop()
         DisplaySessionManager.removeListener(this)
         windowPolicy.onStop()
         gestureController.cancel()
@@ -221,8 +222,12 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         )
         externalDisplayAvailable = info != null
         if (externalDisplayWasAvailable && info == null) {
-            blackoutController.hide("external_display_missing")
-            DiagnosticsLog.add("Touchpad: brightness restored (external display removed)")
+            gestureController.cancel()
+            setTouchpadActive(false)
+            blackoutController.hide("external_display_unavailable")
+            DiagnosticsLog.add(
+                "Touchpad: brightness restored (external display suspended or removed)"
+            )
         }
         updateWindowPolicyActivity()
         onboardingController.onStateChanged()
@@ -291,7 +296,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                         true
                     }
                     R.id.action_replay_control_tutorial -> {
-                        if (ControlAccessibilityService.isEnabled(this@TouchpadActivity)) {
+                        if (ControlAccessibilityService.isConfigured(this@TouchpadActivity)) {
                             gestureController.finishActiveGesture()
                             setTouchpadActive(false)
                             modeIntroController.replay()
@@ -310,7 +315,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun setTouchpadActive(active: Boolean) {
         val resolvedActive = active &&
             externalDisplayAvailable &&
-            ControlAccessibilityService.isEnabled(this) &&
+            ControlAccessibilityService.isReady() &&
             !blackoutController.isVisible
         val wasActive = touchpadActive
         touchpadActive = resolvedActive
@@ -331,7 +336,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         val service = ControlAccessibilityService.current()
         val failureReason = when {
             !externalDisplayAvailable -> "external_display_missing"
-            !ControlAccessibilityService.isEnabled(this) -> "accessibility_disabled"
+            !ControlAccessibilityService.isConfigured(this) -> "accessibility_disabled"
             service == null -> "accessibility_service_unavailable"
             !service.hasExternalDisplaySession() -> "external_display_session_missing"
             else -> null

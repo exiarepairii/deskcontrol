@@ -34,16 +34,27 @@ class AppDrawerActivity : AppCompatActivity() {
         binding.appGrid.layoutManager = GridLayoutManager(this, spanCount)
         adapter = AppAdapter(loadLaunchableApps()) { entry ->
             DiagnosticsLog.add("Drawer: launch request package=${entry.packageName}")
-            val result = AppLauncher.launchOnExternalDisplay(this, entry.packageName)
-            if (result.success) {
-                DiagnosticsLog.add("Drawer: launch success package=${entry.packageName}")
-                finish()
-            } else {
-                val message = AppLauncher.buildFailureMessage(this, result)
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                DiagnosticsLog.add(
-                    "Drawer: launch failure package=${entry.packageName} reason=${result.reason}"
-                )
+            val result = AppLauncher.launchOnExternalDisplay(
+                this,
+                entry.packageName,
+                entry.className
+            )
+            when (result.outcome) {
+                AppLauncher.Outcome.EXTERNAL_REQUEST_ACCEPTED -> {
+                    DiagnosticsLog.add(
+                        "Drawer: external API accepted flowId=${result.flowId} " +
+                            "package=${entry.packageName}"
+                    )
+                    finish()
+                }
+                AppLauncher.Outcome.FAILED -> {
+                    val message = AppLauncher.buildFailureMessage(this, result)
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    DiagnosticsLog.add(
+                        "Drawer: launch failure flowId=${result.flowId} " +
+                            "package=${entry.packageName} reason=${result.reason}"
+                    )
+                }
             }
         }
         binding.appGrid.adapter = adapter
@@ -54,6 +65,7 @@ class AppDrawerActivity : AppCompatActivity() {
             AppEntry(
                 label = app.label,
                 packageName = app.packageName,
+                className = app.className,
                 icon = app.icon
             )
         }
@@ -62,6 +74,7 @@ class AppDrawerActivity : AppCompatActivity() {
     data class AppEntry(
         val label: String,
         val packageName: String,
+        val className: String,
         val icon: android.graphics.drawable.Drawable
     )
 

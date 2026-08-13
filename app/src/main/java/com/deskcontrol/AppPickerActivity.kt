@@ -42,20 +42,27 @@ class AppPickerActivity : AppCompatActivity() {
                 setResult(RESULT_OK, data)
                 finish()
             } else {
-                val result = AppLauncher.launchOnExternalDisplay(this, entry.packageName)
-                if (result.success) {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.app_launched_toast, entry.label),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    if (!intent.getBooleanExtra(EXTRA_RETURN_TO_CALLER, false)) {
-                        startActivity(lastControlSurfaceIntent())
+                val result = AppLauncher.launchOnExternalDisplay(
+                    this,
+                    entry.packageName,
+                    entry.className
+                )
+                when (result.outcome) {
+                    AppLauncher.Outcome.EXTERNAL_REQUEST_ACCEPTED -> {
+                        Toast.makeText(
+                            this,
+                            getString(R.string.app_launch_requested_toast, entry.label),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        if (!intent.getBooleanExtra(EXTRA_RETURN_TO_CALLER, false)) {
+                            startActivity(lastControlSurfaceIntent())
+                        }
+                        finish()
                     }
-                    finish()
-                } else {
-                    val message = AppLauncher.buildFailureMessage(this, result)
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    AppLauncher.Outcome.FAILED -> {
+                        val message = AppLauncher.buildFailureMessage(this, result)
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -91,6 +98,7 @@ class AppPickerActivity : AppCompatActivity() {
             AppEntry(
                 label = resolveInfo.loadLabel(pm).toString(),
                 packageName = appInfo.packageName,
+                className = resolveInfo.activityInfo.name,
                 icon = resolveInfo.loadIcon(pm),
                 launchCount = AppLaunchHistory.getCount(this, appInfo.packageName)
             )
@@ -116,6 +124,7 @@ class AppPickerActivity : AppCompatActivity() {
     data class AppEntry(
         val label: String,
         val packageName: String,
+        val className: String,
         val icon: android.graphics.drawable.Drawable,
         val launchCount: Int
     )

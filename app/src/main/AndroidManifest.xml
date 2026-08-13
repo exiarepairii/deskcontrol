@@ -30,6 +30,13 @@
             android:exported="false" />
 
         <activity
+            android:name=".EmbeddedDisplayProbeActivity"
+            android:allowEmbedded="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false" />
 

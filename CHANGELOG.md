@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.3.20
+- External display selection: automatically ignore an unavailable untrusted recording display and switch to an active system-approved display when one appears, while retaining a lone active legacy display as a compatibility fallback.
+- Display lifecycle: suspend display-scoped controls while a selected HDMI display sleeps, then rebuild a fresh bounded session when it wakes without allowing stale gestures or retries to return.
+- App launch: use the exact launcher component and the production direct-display path only; remove the A/B/C phone-prewarm compatibility test from Home and from persisted launch behavior.
+- Diagnostics: record display trust, policy probes, Xiaomi projection components, target-app capabilities, and automatic selection decisions, and allow the complete report to be saved through the system file picker.
+- Accessibility: distinguish configured, connected, and ready states so controls only run after the service and current display session are both available.
+
+## 1.3.19-launch-test
+- Display lifecycle: treat a present non-ON display as suspended, tear down its display-scoped controls once, and recreate a fresh generation when it returns to ON even if its display ID is unchanged.
+- Display selection: keep trusted or policy-approved HDMI selected while it sleeps, while still excluding suspended untrusted recording displays that both launch-policy probes explicitly deny.
+- Accessibility: keep Debug control Activities, the service, and the device-test receiver in one process; protect the ADB gesture receiver with the system DUMP permission; distinguish configured, connected, and ready states in diagnostics and require a ready display session for actual controls.
+- Input recovery: keep overlay attach retries bounded despite unrelated display callbacks, cancel display-scoped scroll state on suspend, and ignore late gesture callbacks from an older session generation.
+
+## 1.3.18-launch-test
+- Display selection feedback: show a one-time message when DeskControl ignores an unusable display while keeping a working one, or when every detected external display is currently unavailable.
+- Diagnostics: retain only the latest display-selection notice until Home consumes it, while recording queued, superseded, cleared, and consumed states in the saved log.
+
+## 1.3.17-launch-test
+- External display selection: exclude invalid and powered-off recording displays, compare every public non-default display, and automatically move to a system-approved active display when one appears.
+- Compatibility: keep a lone active legacy or MiPlay display as a fallback when no display passes the generic launch-policy probe, preserving OEM and privileged launch paths.
+- Diagnostics: record raw versus selectable displays, policy and MediaRoute signals, exclusion reasons, and every automatic or manual selection decision.
+
+## 1.3.16-launch-test
+- External display: make disconnect cleanup and reconnect initialization one reusable session lifecycle, retry transient overlay attach failures without losing the target, and report connected only after the cursor overlay is actually attached.
+- Diagnostics: add fresh ROM/build, display trust and mode, selected system setting, Xiaomi projection component, USB/media-route, target-app version, and direct-build Shizuku state snapshots for normal-versus-failing Xiaomi comparisons.
+- Display diagnostics: print flags as unsigned eight-digit hex, decode `TRUSTED` and other stable policy bits, preserve unknown OEM bits, and compare standard versus `allowEmbedded` Activity preflight without using hidden APIs.
+- Logging: retain the last connected external-display snapshot after disconnect and deduplicate unchanged display callbacks so brightness events cannot evict launch evidence before export.
+
+## 1.3.15-launch-test
+- Compatibility test: replace the ineffective external proxy with two phone-prewarm variants. B retries the warmed launcher task on the external display; C retries with `MULTIPLE_TASK` to force a separate external task.
+- Launch flow: keep phone prewarm and external handoff as separate outcomes, persist the pending second-tap flow for ten minutes, and never report an accepted API call as a verified external launch.
+- Diagnostics: correlate both stages with one flow ID, record target task/embedding capabilities and decoded intent flags, compare external-display preflight before and after phone prewarm, and sample phone/external windows from dispatch through 120 seconds without treating a slow confirmation as final failure.
+
+## 1.3.14-launch-test
+- Compatibility test: add selectable A/B/C app-launch strategies for direct display launch, `LauncherApps` display launch, and launch from an external-display activity.
+- Diagnostics: correlate each launch attempt across the selected strategy, proxy activity, source and target displays, display-start preflight, resolved component, sanitized exceptions, and a delayed external-window observation that detects silent system blocking; mirror persistent diagnostics to the `DeskControlDiag` Logcat tag for ADB capture.
+- Diagnostics: add a Save action that opens the system document picker in Download and exports the complete report as a UTF-8 text file without storage permissions.
+
 ## 1.3.13
 - Interactive tutorials: keep the external volume and hold HUD above the tutorial scrim so calibration, lock, and unlock progress remain visible while practicing hardware-key shortcuts.
 

@@ -127,11 +127,16 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             tuningPanel = binding.rayTuningContent,
             openSettingsButton = binding.btnRayOpenAccessibility,
             advancedEnableButton = binding.btnRayEnableAccessibilityAdvanced,
-            onEnabledChanged = { enabled ->
+            onEnabledChanged = { ready ->
                 setRayMouseActive(false)
-                if (enabled && !introDialogVisible) {
+                if (ready && !introDialogVisible) {
                     showRayMouseIntroIfNeeded()
                 }
+                if (ready) {
+                    autoCalibrationRetryCount = 0
+                    tryAutoCalibrate()
+                }
+                updateState()
                 onboardingController.onStateChanged()
             }
         )
@@ -255,6 +260,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             "MotionMouse: stop blackout=${blackoutController.isVisible} " +
                 "changingConfig=$isChangingConfigurations finishing=$isFinishing"
         )
+        accessibilityGateController.onStop()
         DisplaySessionManager.removeListener(this)
         windowPolicy.onStop()
         super.onStop()
@@ -323,7 +329,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         }
         displayInfo = info
         if (previousDisplayInfo != null && info == null) {
-            blackoutController.hide("external_display_missing")
+            blackoutController.hide("external_display_unavailable")
         }
         autoCalibrationRetryCount = 0
         tryAutoCalibrate()
@@ -355,7 +361,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         activateControl: Boolean
     ): Boolean {
         val info = displayInfo ?: return false
-        if (!ControlAccessibilityService.isEnabled(this)) {
+        if (!ControlAccessibilityService.isConfigured(this)) {
             if (showAccessibilityToast) {
                 Toast.makeText(
                     this,
@@ -366,12 +372,22 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             return false
         }
         val service = ControlAccessibilityService.current()
+        if (service?.hasExternalDisplaySession() != true) {
+            if (showAccessibilityToast) {
+                Toast.makeText(
+                    this,
+                    getString(R.string.control_service_not_ready_toast),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            return false
+        }
         if (!controller.isAvailable || !controller.hasOrientationSample) return false
         controller.calibrate(info)
         if (markInitialDone) {
             initialCalibrationDone = true
         }
-        service?.wakeCursor()
+        service.wakeCursor()
         if (activateControl) {
             setRayMouseActive(true)
         }
@@ -386,7 +402,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         if (!controller.hasOrientationSample) return false
         if (!controller.isAvailable) return false
         if (displayInfo == null) return false
-        if (!ControlAccessibilityService.isEnabled(this)) return false
+        if (!ControlAccessibilityService.isReady()) return false
         return calibrate(
             markInitialDone = true,
             showAccessibilityToast = false,
@@ -405,7 +421,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         if (initialCalibrationDone || autoCalibrationScheduled) return
         if (!controller.isAvailable || !controller.hasOrientationSample) return
         if (displayInfo == null) return
-        if (!ControlAccessibilityService.isEnabled(this)) return
+        if (!ControlAccessibilityService.isReady()) return
         if (autoCalibrationRetryCount >= AUTO_CALIBRATE_MAX_RETRIES) return
         autoCalibrationRetryCount += 1
         autoCalibrationScheduled = true
@@ -508,7 +524,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                         true
                     }
                     R.id.action_replay_control_tutorial -> {
-                        if (ControlAccessibilityService.isEnabled(this@RayMouseActivity)) {
+                        if (ControlAccessibilityService.isConfigured(this@RayMouseActivity)) {
                             gestureController.finishActiveGesture()
                             setRayMouseActive(false)
                             modeIntroController.replay()
@@ -639,7 +655,9 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private fun quickCalibrationFailureReason(): String {
         return when {
             displayInfo == null -> "external_display_missing"
-            !ControlAccessibilityService.isEnabled(this) -> "accessibility_disabled"
+            !ControlAccessibilityService.isConfigured(this) -> "accessibility_disabled"
+            !ControlAccessibilityService.isConnected() -> "accessibility_service_unavailable"
+            !ControlAccessibilityService.isReady() -> "external_display_session_missing"
             !controller.isAvailable -> "sensor_unavailable"
             !controller.hasOrientationSample -> "orientation_sample_missing"
             else -> "unknown"
@@ -679,7 +697,7 @@ class RayMouseActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     private fun isControlSurfaceAvailable(): Boolean {
         return displayInfo != null &&
-            ControlAccessibilityService.isEnabled(this)
+            ControlAccessibilityService.isReady()
     }
 
     private fun updateWindowPolicyActivity() {

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 data class LaunchableApp(
     val label: String,
     val packageName: String,
+    val className: String,
     val icon: android.graphics.drawable.Drawable
 )
 
@@ -26,6 +27,7 @@ object LaunchableAppCatalog {
             LaunchableApp(
                 label = resolveInfo.loadLabel(pm).toString(),
                 packageName = appInfo.packageName,
+                className = resolveInfo.activityInfo.name,
                 icon = resolveInfo.loadIcon(pm)
             )
         }.distinctBy { it.packageName }

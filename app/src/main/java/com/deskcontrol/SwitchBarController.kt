@@ -258,6 +258,7 @@ class SwitchBarController(
                 SwitchBarOverlayView.Item(
                     label = app.label,
                     packageName = app.packageName,
+                    className = app.className,
                     icon = app.icon
                 )
             )
@@ -291,6 +292,7 @@ class SwitchBarController(
                     SwitchBarOverlayView.Item(
                         label = app.label,
                         packageName = app.packageName,
+                        className = app.className,
                         icon = app.icon
                     )
                 )
@@ -309,19 +311,31 @@ class SwitchBarController(
             return
         }
         val packageName = item.packageName ?: return
-        val result = AppLauncher.launchOnExternalDisplay(serviceContext, packageName)
-        if (result.success) {
-            DiagnosticsLog.add("SwitchBar: launch success package=$packageName")
-            if (SettingsStore.touchpadAutoFocusEnabled) {
-                handler.postDelayed(
-                    { ControlAccessibilityService.requestExternalFocusWarmup("app_launch") },
-                    120L
+        val result = AppLauncher.launchOnExternalDisplay(
+            serviceContext,
+            packageName,
+            item.className
+        )
+        when (result.outcome) {
+            AppLauncher.Outcome.EXTERNAL_REQUEST_ACCEPTED -> {
+                DiagnosticsLog.add(
+                    "SwitchBar: external API accepted flowId=${result.flowId} package=$packageName"
+                )
+                if (SettingsStore.touchpadAutoFocusEnabled) {
+                    handler.postDelayed(
+                        { ControlAccessibilityService.requestExternalFocusWarmup("app_launch") },
+                        120L
+                    )
+                }
+            }
+            AppLauncher.Outcome.FAILED -> {
+                val message = AppLauncher.buildFailureMessage(windowContext, result)
+                Toast.makeText(windowContext, message, Toast.LENGTH_LONG).show()
+                DiagnosticsLog.add(
+                    "SwitchBar: launch failure flowId=${result.flowId} " +
+                        "package=$packageName reason=${result.reason}"
                 )
             }
-        } else {
-            val message = AppLauncher.buildFailureMessage(windowContext, result)
-            Toast.makeText(windowContext, message, Toast.LENGTH_LONG).show()
-            DiagnosticsLog.add("SwitchBar: launch failure package=$packageName reason=${result.reason}")
         }
     }
 

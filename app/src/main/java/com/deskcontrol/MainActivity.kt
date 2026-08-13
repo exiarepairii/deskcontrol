@@ -17,9 +17,11 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
     private lateinit var binding: ActivityMainBinding
     private var displayStatusNudge: ObjectAnimator? = null
     private var externalDisplayConnected = false
+    private var externalDisplayState = DisplaySessionManager.ExternalDisplayState.NONE
     private var availableDisplays: List<DisplaySessionManager.ExternalDisplayInfo> = emptyList()
     private var selectedDisplayId: Int? = null
     private var lastSelectedDisplayId: Int? = null
+    private var displaySelectionToast: android.widget.Toast? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,9 +36,16 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
                 startActivity(Intent(this, AppPickerActivity::class.java))
             } else {
                 nudgeDisconnectedDisplayStatus()
+                val messageRes = if (
+                    externalDisplayState == DisplaySessionManager.ExternalDisplayState.SUSPENDED
+                ) {
+                    R.string.choose_app_wake_display_first
+                } else {
+                    R.string.choose_app_connect_display_first
+                }
                 android.widget.Toast.makeText(
                     this,
-                    R.string.choose_app_connect_display_first,
+                    messageRes,
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
             }
@@ -62,15 +71,21 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     override fun onDestroy() {
         displayStatusNudge?.cancel()
+        displaySelectionToast?.cancel()
         super.onDestroy()
     }
 
     override fun onDisplayChanged(info: DisplaySessionManager.ExternalDisplayInfo?) {
-        externalDisplayConnected = info != null
-        binding.statusDisplayValue.text = if (externalDisplayConnected) {
-            getString(R.string.external_display_connected)
-        } else {
-            getString(R.string.external_display_not_connected)
+        externalDisplayState = DisplaySessionManager.getSelectedDisplayState()
+        externalDisplayConnected = externalDisplayState ==
+            DisplaySessionManager.ExternalDisplayState.ACTIVE && info != null
+        binding.statusDisplayValue.text = when (externalDisplayState) {
+            DisplaySessionManager.ExternalDisplayState.ACTIVE ->
+                getString(R.string.external_display_connected)
+            DisplaySessionManager.ExternalDisplayState.SUSPENDED ->
+                getString(R.string.external_display_suspended)
+            DisplaySessionManager.ExternalDisplayState.NONE ->
+                getString(R.string.external_display_not_connected)
         }
         updateSecondaryActions()
     }
@@ -82,10 +97,32 @@ class MainActivity : AppCompatActivity(), DisplaySessionManager.Listener {
         availableDisplays = displays
         this.selectedDisplayId = selectedDisplayId
         updateDisplaySelector()
+        DisplaySessionManager.consumeSelectionNotice()?.let(::showDisplaySelectionNotice)
+    }
+
+    private fun showDisplaySelectionNotice(
+        notice: DisplaySessionManager.SelectionNotice
+    ) {
+        val messageRes = when (notice.type) {
+            DisplaySessionManager.SelectionNoticeType.EXCLUDED_UNAVAILABLE ->
+                R.string.display_excluded_unavailable
+            DisplaySessionManager.SelectionNoticeType.DETECTED_UNAVAILABLE ->
+                R.string.display_detected_unavailable
+        }
+        val duration = when (notice.type) {
+            DisplaySessionManager.SelectionNoticeType.EXCLUDED_UNAVAILABLE ->
+                android.widget.Toast.LENGTH_SHORT
+            DisplaySessionManager.SelectionNoticeType.DETECTED_UNAVAILABLE ->
+                android.widget.Toast.LENGTH_LONG
+        }
+        displaySelectionToast?.cancel()
+        displaySelectionToast = android.widget.Toast.makeText(this, messageRes, duration).also {
+            it.show()
+        }
     }
 
     private fun updateAccessibilityState() {
-        val accessibilityEnabled = ControlAccessibilityService.isEnabled(this)
+        val accessibilityEnabled = ControlAccessibilityService.isConfigured(this)
         binding.statusAccessibilityValue.text = if (accessibilityEnabled) {
             getString(R.string.accessibility_enabled)
         } else {

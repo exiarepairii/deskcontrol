@@ -17,6 +17,12 @@ class AccessibilityGateController(
     advancedEnableButton: View,
     private val onEnabledChanged: (Boolean) -> Unit
 ) {
+    private var destroyed = false
+    private var runtimeListenerRegistered = false
+    private val runtimeStateListener: () -> Unit = {
+        if (!destroyed) refresh()
+    }
+
     init {
         advancedEnableButton.isVisible = false
         openSettingsButton.setOnClickListener {
@@ -26,18 +32,35 @@ class AccessibilityGateController(
         }
     }
 
-    fun onStart() = refresh()
-
-    fun refresh() {
-        val enabled = ControlAccessibilityService.isEnabled(activity)
-        gate.isVisible = !enabled
-        content.alpha = if (enabled) 1f else DISABLED_CONTENT_ALPHA
-        controlArea.isEnabled = enabled
-        tuningPanel.isEnabled = enabled
-        onEnabledChanged(enabled)
+    fun onStart() {
+        if (!runtimeListenerRegistered) {
+            ControlAccessibilityService.addRuntimeStateListener(runtimeStateListener)
+            runtimeListenerRegistered = true
+        }
+        refresh()
     }
 
-    fun onDestroy() = Unit
+    fun refresh() {
+        val configured = ControlAccessibilityService.isConfigured(activity)
+        val ready = configured && ControlAccessibilityService.isReady()
+        gate.isVisible = !configured
+        content.alpha = if (configured) 1f else DISABLED_CONTENT_ALPHA
+        controlArea.isEnabled = ready
+        tuningPanel.isEnabled = configured
+        onEnabledChanged(ready)
+    }
+
+    fun onStop() {
+        if (runtimeListenerRegistered) {
+            ControlAccessibilityService.removeRuntimeStateListener(runtimeStateListener)
+            runtimeListenerRegistered = false
+        }
+    }
+
+    fun onDestroy() {
+        destroyed = true
+        onStop()
+    }
 
     private companion object {
         const val DISABLED_CONTENT_ALPHA = 0.35f

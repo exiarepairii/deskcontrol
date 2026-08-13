@@ -6,13 +6,11 @@
             android:launchMode="singleTop"
             android:theme="@android:style/Theme.Material.Light.NoActionBar" />
 
-        <service
-            android:name=".ControlAccessibilityService"
-            android:process=":accessibility" />
+        <service android:name=".ControlAccessibilityService" />
 
         <receiver
             android:name=".GestureTestCommandReceiver"
             android:exported="true"
-            android:process=":accessibility" />
+            android:permission="android.permission.DUMP" />
     </application>
 </manifest>

@@ -7,12 +7,16 @@
 
     <string name="external_display_label">外接显示器</string>
     <string name="external_display_connected">已连接</string>
+    <string name="external_display_suspended">已休眠</string>
     <string name="external_display_not_connected">未连接</string>
     <string name="accessibility_label">无障碍</string>
     <string name="accessibility_enabled">已启用</string>
     <string name="accessibility_required">需要启用</string>
     <string name="choose_app_for_display">为外接显示器选择应用</string>
     <string name="choose_app_connect_display_first">请先连接外接显示器，再选择应用。</string>
+    <string name="choose_app_wake_display_first">请先唤醒已选择的外接显示器，再选择应用。</string>
+    <string name="display_excluded_unavailable">已忽略不可用显示器，当前使用可用显示器。</string>
+    <string name="display_detected_unavailable">检测到外接显示器，但当前没有可用显示器。</string>
     <string name="open_touchpad">打开触控板</string>
     <string name="settings">设置</string>
 
@@ -26,7 +30,7 @@
     <string name="switch_bar_all_apps">全部应用</string>
     <string name="app_icon_content_description">应用图标</string>
     <string name="app_placeholder_name">应用名称</string>
-    <string name="app_launched_toast">已启动 %1$s</string>
+    <string name="app_launch_requested_toast">已向外接屏发送打开 %1$s 的请求</string>
     <string name="app_launch_failed_generic">启动失败</string>
     <string name="app_launch_failed_with_detail">%1$s: %2$s</string>
     <string name="app_launch_failed_reason_only">%1$s</string>
@@ -43,17 +47,28 @@
 
     <string name="diagnostics_title">诊断</string>
     <string name="diagnostics_details_label">详情</string>
+    <string name="diagnostics_app_info">应用：%1$s（%2$d）</string>
+    <string name="diagnostics_device_info">设备：%1$s %2$s，Android API %3$d</string>
     <string name="diagnostics_external_display_not_connected">外接显示器：未连接</string>
+    <string name="diagnostics_external_display_suspended">外接显示器：id=%1$d，已休眠</string>
     <string name="diagnostics_external_display_info">外接显示器：id=%1$d，尺寸=%2$dx%3$d，dpi=%4$d，旋转=%5$d</string>
+    <string name="diagnostics_accessibility_state">无障碍：已配置=%1$b，已连接=%2$b，可控制=%3$b</string>
     <string name="diagnostics_accessibility_enabled">无障碍：已启用</string>
     <string name="diagnostics_accessibility_disabled">无障碍：未启用</string>
     <string name="diagnostics_last_launch_failure">上次启动失败：%1$s</string>
     <string name="diagnostics_last_injection_result">上次注入结果：%1$s</string>
+    <string name="diagnostics_environment_snapshot_label">当前环境：</string>
+    <string name="diagnostics_display_snapshot_label">当前显示器快照：</string>
+    <string name="diagnostics_last_seen_display_snapshot_label">上次连接的外接显示器快照：</string>
     <string name="diagnostics_logs_label">日志：</string>
     <string name="diagnostics_logs_empty">暂无日志</string>
     <string name="diagnostics_none">无</string>
     <string name="diagnostics_copy_logs">复制</string>
     <string name="diagnostics_copy_logs_done">日志已复制</string>
+    <string name="diagnostics_save_logs">保存</string>
+    <string name="diagnostics_save_logs_done">日志已保存</string>
+    <string name="diagnostics_save_logs_failed">日志保存失败</string>
+    <string name="diagnostics_save_logs_picker_unavailable">未找到系统文件管理器</string>
 
     <string name="host_title">外接显示器托管</string>
     <string name="host_no_external_display">未检测到外接显示器</string>
@@ -81,6 +96,7 @@
     <string name="touchpad_enable_accessibility_advanced">高级启用方式</string>
     <string name="touchpad_open_accessibility_settings">打开无障碍设置</string>
     <string name="touchpad_accessibility_required_toast">请先启用无障碍服务</string>
+    <string name="control_service_not_ready_toast">外屏控制仍在连接中，请唤醒显示器后重试。</string>
     <string name="control_surface_choose_app_title">为外接显示器选择应用</string>
     <string name="control_surface_choose_app_message">无障碍已就绪。你可以选择要投放到外接显示器的应用，也可以暂时跳过并继续使用控制功能。</string>
     <string name="control_surface_choose_app_action">选择应用</string>
@@ -244,7 +260,7 @@
     <string name="settings_overview_support">支持</string>
     <string name="privacy_policy_title">隐私政策</string>
     <string name="privacy_policy_summary">了解 DeskControl 如何在本机处理数据</string>
-    <string name="privacy_policy_body">最后更新：2026 年 8 月 8 日\n\nDeskControl 不会把应用使用数据或无障碍数据传输给开发者或第三方。应用不含分析、广告、崩溃上报、账号或开发者运营的远程服务器 SDK。Google Play 版本仅会与 Google Play 通信，以显示、处理、恢复和确认可选的“支持者图标包”购买。\n\n本机处理的数据\n\nDeskControl 会在本机处理可启动应用列表和标识、应用启动历史与固定选择、外接屏幕属性、体感鼠标传感器读数、应用设置，以及记录近期事件的本机持久化诊断日志。无障碍权限用于识别和聚焦外接屏幕上的活动窗口，并且只发送由你主动发起的手势、返回操作，以及校准或熄屏按键输入。\n\n活动应用标识可能出现在诊断日志中。只有当你明确复制日志并主动分享时，日志才会离开应用。\n\n无障碍服务\n\nDeskControl 不会使用无障碍权限自主决策、读取密码、绕过安全控制或传输屏幕及无障碍数据。\n\n购买\n\nGoogle Play 版本提供由 Google Play 处理的可选一次性“支持者图标包”。Google Play 外版本不包含购买功能。\n\n存储与删除\n\n本地数据不会参与云端备份或设备迁移。清除 DeskControl 存储空间或卸载应用即可删除这些数据。</string>
+    <string name="privacy_policy_body">最后更新：2026 年 8 月 9 日\n\nDeskControl 不会把应用使用数据或无障碍数据传输给开发者或第三方。应用不含分析、广告、崩溃上报、账号或开发者运营的远程服务器 SDK。Google Play 版本仅会与 Google Play 通信，以显示、处理、恢复和确认可选的“支持者图标包”购买。\n\n本机处理的数据\n\nDeskControl 会在本机处理可启动应用列表和标识、应用启动历史与固定选择、外接屏幕属性和模式、设备及系统构建信息、选定的显示/开发者设置、固定范围内相关投屏/系统组件的版本与状态、Google Play 外版本中的可选 Shizuku 服务状态、体感鼠标传感器读数、应用设置，以及记录近期事件的本机持久化诊断日志。无障碍权限用于识别和聚焦外接屏幕上的活动窗口，并且只发送由你主动发起的手势、返回操作，以及校准或熄屏按键输入。\n\n活动应用标识可能出现在诊断日志中。只有当你明确复制日志并主动分享时，日志才会离开应用。诊断信息不包含 Android ID、设备序列号、网络标识，也不会收集完整的已安装应用或系统设置清单。\n\n无障碍服务\n\nDeskControl 不会使用无障碍权限自主决策、读取密码、绕过安全控制或传输屏幕及无障碍数据。\n\n购买\n\nGoogle Play 版本提供由 Google Play 处理的可选一次性“支持者图标包”。Google Play 外版本不包含购买功能。\n\n存储与删除\n\n本地数据不会参与云端备份或设备迁移。清除 DeskControl 存储空间或卸载应用即可删除这些数据。</string>
     <string name="settings_overview_appearance_summary">%1$s · %2$s</string>
     <string name="settings_overview_display_summary">屏幕常亮：%1$s · 自动调暗：%2$s</string>
     <plurals name="settings_overview_dock_summary">

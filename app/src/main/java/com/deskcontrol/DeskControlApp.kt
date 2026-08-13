@@ -9,6 +9,7 @@ class DeskControlApp : Application() {
         SettingsStore.init(this)
         DiagnosticsLog.init(this)
         DiagnosticsLog.add("Process: start ${DiagnosticsState.process()}")
+        DiagnosticsEnvironment.snapshot(this).forEach(DiagnosticsLog::add)
         SettingsStore.applyAppLanguage()
         AppCompatDelegate.setDefaultNightMode(SettingsStore.nightMode)
         DisplaySessionManager.init(this)

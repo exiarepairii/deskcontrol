@@ -1,6 +1,6 @@
 # DeskControl Privacy Policy
 
-Last updated: August 8, 2026
+Last updated: August 9, 2026
 
 DeskControl does not transmit app usage or accessibility data to the developer
 or third parties. The app has no analytics, advertising, crash-reporting,
@@ -17,7 +17,12 @@ features:
   user can choose and switch apps on a connected external display;
 - recent app launch counts and pinned app choices;
 - connected display properties such as display identifier, resolution,
-  density, rotation, name, and state;
+  density, rotation, name, state, mode, product information, and display-policy
+  flags;
+- device and OS build information, selected display/developer setting values,
+  versions and enabled state of a fixed set of relevant projection/system
+  components, and (in the outside-Play edition) the Shizuku service's running,
+  permission, and server-identity state;
 - motion sensor readings while Motion Mouse is active;
 - accessibility window metadata, active app identifiers, focusable UI
   structure, user-initiated gestures, Back actions, and calibration or screen-off
@@ -26,7 +31,8 @@ features:
 
 This information remains on the device. Diagnostic logs leave the app only
 when the user explicitly copies them to the clipboard and chooses to share
-them.
+them. Diagnostics deliberately exclude Android ID, device serial numbers,
+network identifiers, and a full inventory of installed apps or system settings.
 
 ## Accessibility Service
 

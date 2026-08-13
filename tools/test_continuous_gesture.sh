@@ -117,15 +117,8 @@ assert_activity_result() {
     echo "PASS: $assertion"
 }
 
-# Pause for 500 ms, then reverse slowly at 120 ms intervals without lifting.
-send_gesture_command com.deskcontrol.test.START --ef x 640 --ef y 468
-send_gesture_command com.deskcontrol.test.UPDATE --ef x 640 --ef y 288
-sleep 0.5
-for y in 308 328 348 368 388; do
-    send_gesture_command com.deskcontrol.test.UPDATE --ef x 640 --ef y "$y"
-    sleep 0.12
-done
-send_gesture_command com.deskcontrol.test.END
+# Run the timed sequence inside the app process so ADB broadcast latency cannot alter the pauses.
+send_gesture_command com.deskcontrol.test.RUN_PAUSED_REVERSAL
 assert_activity_result assert_paused_reversal paused_reversal
 
 "${ADB[@]}" shell am start --display "$DISPLAY_ID" \

@@ -26,6 +26,7 @@ import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
 import java.util.ArrayDeque
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -35,8 +36,9 @@ class ControlAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val WARMUP_MIN_INTERVAL_MS = 15_000L
-        private const val ATTACH_RETRY_DELAY_MS = 250L
-        private const val ATTACH_RETRY_MAX = 8
+        private const val ATTACH_RETRY_INITIAL_DELAY_MS = 250L
+        private const val ATTACH_RETRY_MAX_DELAY_MS = 1_500L
+        private const val ATTACH_MAX_ATTEMPTS = 9
         private const val SCROLL_SAFE_PAD_X_DP = 24f
         private const val SCROLL_SAFE_PAD_TOP_DP = 24f
         private const val SCROLL_SAFE_PAD_BOTTOM_DP = 32f
@@ -76,7 +78,6 @@ class ControlAccessibilityService : AccessibilityService() {
         private const val DIRECT_SCROLL_EDGE_EPSILON_PX = 2f
         private const val DIRECT_SCROLL_MIN_PATH_PX = 12f
         private const val DIRECT_SCROLL_MIN_PRIMARY_PX = 8f
-        private const val CONTINUOUS_GESTURE_KEEP_ALIVE_MS = 100L
         private const val FOCUS_NUDGE_DISTANCE_DP = 8f
         private const val FOCUS_NUDGE_DURATION_MS = 56L
         @Volatile
@@ -85,10 +86,12 @@ class ControlAccessibilityService : AccessibilityService() {
         private var pendingDisplayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
         @Volatile
         private var controlSurfaceKeyHandler: ((KeyEvent) -> Boolean)? = null
+        private val runtimeStateListeners = CopyOnWriteArraySet<() -> Unit>()
 
         fun current(): ControlAccessibilityService? = instance
 
-        fun isEnabled(context: Context): Boolean {
+        /** Whether the user has configured this service in Android accessibility settings. */
+        fun isConfigured(context: Context): Boolean {
             val enabled = Settings.Secure.getInt(
                 context.contentResolver,
                 Settings.Secure.ACCESSIBILITY_ENABLED,
@@ -100,8 +103,35 @@ class ControlAccessibilityService : AccessibilityService() {
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
             )
-            return enabledServices?.contains(component.flattenToString()) == true
+            return enabledServices
+                ?.split(':')
+                ?.any { ComponentName.unflattenFromString(it) == component } == true
         }
+
+        /** Whether Android has completed [onServiceConnected] in this app process. */
+        fun isConnected(): Boolean = instance != null
+
+        /** Whether controls can currently inject input into an attached external-display session. */
+        fun isReady(): Boolean = instance?.hasExternalDisplaySession() == true
+
+        fun addRuntimeStateListener(listener: () -> Unit) {
+            runtimeStateListeners.add(listener)
+        }
+
+        fun removeRuntimeStateListener(listener: () -> Unit) {
+            runtimeStateListeners.remove(listener)
+        }
+
+        private fun notifyRuntimeStateChanged() {
+            runtimeStateListeners.forEach { listener ->
+                runCatching(listener).onFailure {
+                    DiagnosticsLog.add("Accessibility: runtime listener failed")
+                }
+            }
+        }
+
+        @Deprecated("Use isConfigured() for settings state or isConnected()/isReady() at runtime")
+        fun isEnabled(context: Context): Boolean = isConfigured(context)
 
         fun requestAttachToDisplay(info: DisplaySessionManager.ExternalDisplayInfo?) {
             pendingDisplayInfo = info
@@ -109,7 +139,13 @@ class ControlAccessibilityService : AccessibilityService() {
         }
 
         fun requestDetachOverlay() {
+            pendingDisplayInfo = null
             instance?.detachOverlay()
+        }
+
+        fun requestSuspendOverlay() {
+            pendingDisplayInfo = null
+            instance?.suspendOverlay()
         }
 
         fun requestCursorAppearanceRefresh() {
@@ -136,6 +172,36 @@ class ControlAccessibilityService : AccessibilityService() {
             instance?.warmUpExternalFocus(reason)
         }
 
+        fun requestLaunchObservation(
+            attemptId: String,
+            targetPackage: String,
+            displayId: Int,
+            phase: String = "EXTERNAL"
+        ) {
+            val service = instance
+            if (service == null) {
+                DiagnosticsLog.add(
+                    "Launch[$attemptId]: event=OBSERVATION_UNAVAILABLE phase=$phase " +
+                        "accessibilityService=false targetPackage=$targetPackage displayId=$displayId"
+                )
+                return
+            }
+            LAUNCH_OBSERVATION_DELAYS_MS.forEach { delayMs ->
+                service.handler.postDelayed(
+                    {
+                        service.logLaunchObservation(
+                            attemptId,
+                            targetPackage,
+                            displayId,
+                            phase,
+                            delayMs
+                        )
+                    },
+                    delayMs
+                )
+            }
+        }
+
         fun requestControlTutorial(mode: ControlSurfaceMode): Boolean =
             instance?.showControlTutorial(mode) == true
 
@@ -154,6 +220,16 @@ class ControlAccessibilityService : AccessibilityService() {
         fun showExternalVolumeHud(level: Int, maxLevel: Int) {
             instance?.showVolumeHud(level, maxLevel)
         }
+
+        private val LAUNCH_OBSERVATION_DELAYS_MS = longArrayOf(
+            0L,
+            300L,
+            1_200L,
+            3_000L,
+            10_000L,
+            30_000L,
+            120_000L
+        )
 
         fun beginExternalHoldHud(
             action: ExternalControlHudView.HoldAction,
@@ -180,8 +256,10 @@ class ControlAccessibilityService : AccessibilityService() {
     private var windowManager: WindowManager? = null
     private var overlayWindowContext: Context? = null
     private var displayInfo: DisplaySessionManager.ExternalDisplayInfo? = null
-    private var attachRetryInfo: DisplaySessionManager.ExternalDisplayInfo? = null
-    private var attachRetryCount = 0
+    private val displaySessionLifecycle =
+        ExternalDisplaySessionLifecycle<DisplaySessionManager.ExternalDisplayInfo>(
+            ATTACH_MAX_ATTEMPTS
+        )
     private var attachRetryRunnable: Runnable? = null
     private var cursorX = 0f
     private var cursorY = 0f
@@ -203,7 +281,6 @@ class ControlAccessibilityService : AccessibilityService() {
     private var continuousGestureEndRequested = false
     private var continuousGestureGeneration = 0L
     private var continuousGestureCancellationCallback: ((PointF) -> Unit)? = null
-    private var continuousGestureKeepAliveRunnable: Runnable? = null
     private val continuousGestureIdleCallbacks = ContinuousGestureIdleCallbacks()
     private var pendingScrollEnd = false
     private var pendingScrollEndX = 0f
@@ -211,8 +288,9 @@ class ControlAccessibilityService : AccessibilityService() {
     private var lastScrollDiagMs = 0L
     private val dragStartDurationMs = 8L
     private val dragSegmentDurationMs = 16L
-    @Volatile
-    private var gesturesInFlight = 0
+    private val gestureDispatchTracker = DisplayGestureDispatchTracker()
+    private val gesturesInFlight: Int
+        get() = gestureDispatchTracker.inFlightCount
     private val handler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
     private var deferredBackRunnable: Runnable? = null
@@ -224,6 +302,7 @@ class ControlAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        notifyRuntimeStateChanged()
         val currentInfo = serviceInfo
         if (currentInfo != null) {
             currentInfo.flags = currentInfo.flags or
@@ -242,6 +321,7 @@ class ControlAccessibilityService : AccessibilityService() {
         deferredBackRunnable = null
         detachOverlay()
         instance = null
+        notifyRuntimeStateChanged()
         DiagnosticsLog.add("Accessibility: destroyed")
         super.onDestroy()
     }
@@ -530,6 +610,9 @@ class ControlAccessibilityService : AccessibilityService() {
         y: Float,
         onCancelled: ((PointF) -> Unit)? = null
     ): Boolean {
+        if (displaySessionLifecycle.state != ExternalDisplaySessionLifecycle.State.CONNECTED) {
+            return false
+        }
         val info = displayInfo ?: return false
         if (continuousGestureStroke != null || continuousGestureDispatchInFlight) return false
         val clamped = clampToDisplay(x, y, info)
@@ -546,7 +629,6 @@ class ControlAccessibilityService : AccessibilityService() {
         continuousGesturePendingPoint = null
         continuousGestureEndRequested = false
         continuousGestureCancellationCallback = onCancelled
-        cancelContinuousGestureKeepAlive()
         notifyCursorActivity()
         return dispatchContinuousGestureStrokeTracked(
             stroke,
@@ -572,7 +654,6 @@ class ControlAccessibilityService : AccessibilityService() {
         val info = displayInfo ?: return false
         if (continuousGestureStroke == null) return false
         if (!x.isFinite() || !y.isFinite()) return false
-        cancelContinuousGestureKeepAlive()
         val next = clampToDisplay(x, y, info)
         continuousGesturePendingPoint = next
         dispatchPendingContinuousGesture()
@@ -581,7 +662,6 @@ class ControlAccessibilityService : AccessibilityService() {
 
     fun endContinuousGesture() {
         if (continuousGestureStroke == null) return
-        cancelContinuousGestureKeepAlive()
         continuousGestureEndRequested = true
         dispatchPendingContinuousGesture()
     }
@@ -668,7 +748,6 @@ class ControlAccessibilityService : AccessibilityService() {
             continuousGestureConfirmedPointX,
             continuousGestureConfirmedPointY
         )
-        cancelContinuousGestureKeepAlive()
         continuousGestureGeneration += 1L
         continuousGestureStroke = null
         continuousGesturePendingPoint = null
@@ -679,64 +758,6 @@ class ControlAccessibilityService : AccessibilityService() {
             cancellationCallback?.invoke(lastPoint)
         }
         notifyContinuousGestureIdle()
-    }
-
-    private fun scheduleContinuousGestureKeepAlive(generation: Long) {
-        cancelContinuousGestureKeepAlive()
-        if (!shouldScheduleContinuousGestureKeepAlive(
-                callbackGeneration = generation,
-                currentGeneration = continuousGestureGeneration,
-                hasActiveStroke = continuousGestureStroke != null,
-                dispatchInFlight = continuousGestureDispatchInFlight,
-                endRequested = continuousGestureEndRequested,
-                hasPendingPoint = continuousGesturePendingPoint != null
-            )
-        ) {
-            return
-        }
-        continuousGestureKeepAliveRunnable = Runnable {
-            continuousGestureKeepAliveRunnable = null
-            dispatchContinuousGestureKeepAlive(generation)
-        }.also {
-            handler.postDelayed(it, CONTINUOUS_GESTURE_KEEP_ALIVE_MS)
-        }
-    }
-
-    private fun dispatchContinuousGestureKeepAlive(generation: Long) {
-        if (generation != continuousGestureGeneration ||
-            continuousGestureDispatchInFlight ||
-            continuousGestureEndRequested ||
-            continuousGesturePendingPoint != null
-        ) {
-            return
-        }
-        val info = displayInfo ?: run {
-            abandonContinuousGesture(generation, notifyCancellation = true)
-            return
-        }
-        val activeStroke = continuousGestureStroke ?: return
-        val mapped = CoordinateMapper.mapForRotation(
-            continuousGesturePointX,
-            continuousGesturePointY,
-            info
-        )
-        val path = Path().apply {
-            moveTo(mapped.x, mapped.y)
-            lineTo(mapped.x, mapped.y)
-        }
-        val stroke = activeStroke.continueStroke(path, 0, dragSegmentDurationMs, true)
-        continuousGestureStroke = stroke
-        dispatchContinuousGestureStrokeTracked(
-            stroke,
-            info.displayId,
-            generation,
-            PointF(continuousGesturePointX, continuousGesturePointY)
-        )
-    }
-
-    private fun cancelContinuousGestureKeepAlive() {
-        continuousGestureKeepAliveRunnable?.let { handler.removeCallbacks(it) }
-        continuousGestureKeepAliveRunnable = null
     }
 
     private fun notifyContinuousGestureIdle() {
@@ -1052,6 +1073,44 @@ class ControlAccessibilityService : AccessibilityService() {
         return windows?.toList().orEmpty()
     }
 
+    private fun logLaunchObservation(
+        attemptId: String,
+        targetPackage: String,
+        displayId: Int,
+        phase: String,
+        sampleDelayMs: Long
+    ) {
+        val displayWindows = snapshotWindows().filter { it.displayId == displayId }
+        if (displayWindows.isEmpty()) {
+            DiagnosticsLog.add(
+                "Launch[$attemptId]: event=WINDOW_SAMPLE phase=$phase sampleDelayMs=$sampleDelayMs " +
+                    "displayId=$displayId targetPackage=$targetPackage windows=none " +
+                    "targetVisible=false verification=NOT_VISIBLE_AT_SAMPLE"
+            )
+            return
+        }
+        val windowSummary = displayWindows.joinToString(separator = ";") { window ->
+            val packageName = window.root?.packageName?.toString() ?: "none"
+            val className = window.root?.className?.toString() ?: "none"
+            "pkg=$packageName,class=$className,type=${window.type},active=${window.isActive}," +
+                "focused=${window.isFocused}"
+        }
+        val targetVisible = displayWindows.any {
+            it.root?.packageName?.toString() == targetPackage
+        }
+        val verification = when {
+            targetVisible && phase == "POST_EXTERNAL_TARGET" -> "VERIFIED_SUCCESS"
+            targetVisible && phase == "POST_EXTERNAL_PHONE" -> "VISIBLE_ON_PHONE_AFTER_HANDOFF"
+            targetVisible -> "TARGET_VISIBLE"
+            else -> "NOT_VISIBLE_AT_SAMPLE"
+        }
+        DiagnosticsLog.add(
+            "Launch[$attemptId]: event=WINDOW_SAMPLE phase=$phase sampleDelayMs=$sampleDelayMs " +
+                "displayId=$displayId targetPackage=$targetPackage targetVisible=$targetVisible " +
+                "verification=$verification windows=[$windowSummary]"
+        )
+    }
+
     private fun resolveExternalWindowState(
         info: DisplaySessionManager.ExternalDisplayInfo,
         windows: List<AccessibilityWindowInfo>
@@ -1287,131 +1346,208 @@ class ControlAccessibilityService : AccessibilityService() {
         }
     }
 
-    fun hasExternalDisplaySession(): Boolean = displayInfo != null
+    fun hasExternalDisplaySession(): Boolean {
+        return displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.CONNECTED &&
+            displayInfo != null &&
+            overlayView != null
+    }
 
     private fun attachToDisplay(
-        info: DisplaySessionManager.ExternalDisplayInfo?,
-        allowRetry: Boolean = true
+        info: DisplaySessionManager.ExternalDisplayInfo?
     ) {
         if (info == null) {
             detachOverlay()
-            cancelAttachRetry()
             return
         }
-        if (displayInfo == info && overlayView != null) {
+        if (displaySessionLifecycle.target == info && hasExternalDisplaySession()) {
             return
         }
-        detachOverlay()
-        displayInfo = info
-        DiagnosticsLog.add("Accessibility: attach displayId=${info.displayId}")
-        cursorBaseSizePx = cursorBaseSizeForDisplay(info)
-        cursorSizePx = cursorMaxSizeForDisplay(cursorBaseSizePx)
-        cursorX = (info.width / 2f)
-        cursorY = (info.height / 2f)
+        cancelAttachRetryRunnable()
+        val continuingRetry = displaySessionLifecycle.target == info &&
+            (displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.CONNECTING ||
+                displaySessionLifecycle.state == ExternalDisplaySessionLifecycle.State.RETRYING)
+        if (!continuingRetry) {
+            displaySessionLifecycle.begin(info)
+        }
+        attemptDisplaySessionAttach()
+    }
 
-        val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
-        if (display == null) {
-            DiagnosticsLog.add("Accessibility: attach deferred (display missing) id=${info.displayId}")
-            if (allowRetry) {
-                scheduleAttachRetry(info)
-            }
-            return
-        }
-        val windowContext = if (Build.VERSION.SDK_INT >= 31) {
-            try {
-                createWindowContext(
-                    display,
-                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                    null
+    private fun attemptDisplaySessionAttach() {
+        val attempt = displaySessionLifecycle.beginAttempt() ?: return
+        if (tryAttachToDisplay(attempt)) {
+            if (!displaySessionLifecycle.markConnected(attempt)) {
+                DiagnosticsLog.add(
+                    "Accessibility: stale attach result discarded displayId=" +
+                        "${attempt.target.displayId} generation=${attempt.generation}"
                 )
-            } catch (e: NoSuchMethodError) {
-                createDisplayContext(display)
+                clearDisplaySessionResources()
+                return
             }
-        } else {
-            createDisplayContext(display)
+            cancelAttachRetryRunnable()
+            notifyRuntimeStateChanged()
+            DiagnosticsLog.add(
+                "Accessibility: session connected displayId=${attempt.target.displayId} " +
+                    "generation=${attempt.generation} attempt=${attempt.attemptNumber}"
+            )
+            return
         }
-        overlayWindowContext = windowContext
-        val wm = windowContext.getSystemService(WindowManager::class.java)
-        windowManager = wm
-
-        if (SettingsStore.switchBarEnabled) {
-            switchBarController = SwitchBarController(
-                this,
-                windowContext,
-                wm,
-                info
+        displaySessionLifecycle.markAttemptFailed(attempt)
+        if (displaySessionLifecycle.canRetry()) {
+            scheduleAttachRetry()
+        } else {
+            DiagnosticsLog.add(
+                "Accessibility: attach retry exhausted id=${attempt.target.displayId} " +
+                    "generation=${attempt.generation} " +
+                    "attempts=${displaySessionLifecycle.attemptCount}"
             )
         }
-
-        val view = CursorOverlayView(windowContext)
-        overlayView = view
-        cursorVisible = !forceCursorHidden
-        view.alpha = if (cursorVisible) SettingsStore.cursorAlpha else 0f
-        view.setBaseSizePx(cursorBaseSizePx)
-        view.setArrowColor(SettingsStore.cursorColor)
-
-        val params = WindowManager.LayoutParams(
-            cursorSizePx,
-            cursorSizePx,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        )
-        params.gravity = Gravity.TOP or Gravity.START
-        val tipOffset = cursorTipOffsetPx()
-        params.x = (cursorX - tipOffset.x).toInt()
-        params.y = (cursorY - tipOffset.y).toInt()
-        runCatching { wm.addView(view, params) }.onFailure {
-            detachOverlay()
-            if (allowRetry) {
-                DiagnosticsLog.add("Accessibility: attach failed, retrying id=${info.displayId}")
-                scheduleAttachRetry(info)
-            }
-        }
-        scheduleCursorHide()
-        cancelAttachRetry()
     }
 
-    private fun scheduleAttachRetry(info: DisplaySessionManager.ExternalDisplayInfo) {
-        if (attachRetryInfo?.displayId == info.displayId && attachRetryRunnable != null) return
-        attachRetryInfo = info
-        attachRetryCount = 0
-        attachRetryRunnable?.let { handler.removeCallbacks(it) }
-        val runnable = object : Runnable {
-            override fun run() {
-                val currentInfo = attachRetryInfo ?: return
-                attachRetryCount += 1
-                attachToDisplay(currentInfo, allowRetry = false)
-                if (overlayView == null && attachRetryCount < ATTACH_RETRY_MAX) {
-                    handler.postDelayed(this, ATTACH_RETRY_DELAY_MS)
-                } else {
-                    if (overlayView == null) {
-                        DiagnosticsLog.add(
-                            "Accessibility: attach retry exhausted id=${currentInfo.displayId}"
-                        )
-                    }
-                    cancelAttachRetry()
-                }
+    private fun tryAttachToDisplay(
+        attempt: ExternalDisplaySessionLifecycle.AttemptToken<
+            DisplaySessionManager.ExternalDisplayInfo
+        >
+    ): Boolean {
+        val info = attempt.target
+        clearDisplaySessionResources()
+        DiagnosticsLog.add(
+            "Accessibility: attach displayId=${info.displayId} " +
+                "generation=${attempt.generation} attempt=${attempt.attemptNumber}"
+        )
+        return try {
+            val display = getSystemService(DisplayManager::class.java).getDisplay(info.displayId)
+            if (display == null) {
+                DiagnosticsLog.add(
+                    "Accessibility: attach deferred (display missing) id=${info.displayId} " +
+                        "generation=${attempt.generation} attempt=${attempt.attemptNumber}"
+                )
+                return false
             }
+
+            val windowContext = if (Build.VERSION.SDK_INT >= 31) {
+                try {
+                    createWindowContext(
+                        display,
+                        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                        null
+                    )
+                } catch (e: NoSuchMethodError) {
+                    createDisplayContext(display)
+                }
+            } else {
+                createDisplayContext(display)
+            }
+            overlayWindowContext = windowContext
+            val wm = windowContext.getSystemService(WindowManager::class.java)
+            windowManager = wm
+
+            if (SettingsStore.switchBarEnabled) {
+                switchBarController = SwitchBarController(
+                    this,
+                    windowContext,
+                    wm,
+                    info
+                )
+            }
+
+            cursorBaseSizePx = cursorBaseSizeForDisplay(info)
+            cursorSizePx = cursorMaxSizeForDisplay(cursorBaseSizePx)
+            cursorX = info.width / 2f
+            cursorY = info.height / 2f
+            val view = CursorOverlayView(windowContext)
+            cursorVisible = !forceCursorHidden
+            view.alpha = if (cursorVisible) SettingsStore.cursorAlpha else 0f
+            view.setBaseSizePx(cursorBaseSizePx)
+            view.setArrowColor(SettingsStore.cursorColor)
+
+            val params = WindowManager.LayoutParams(
+                cursorSizePx,
+                cursorSizePx,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            )
+            params.gravity = Gravity.TOP or Gravity.START
+            val tipOffset = cursorTipOffsetPx()
+            params.x = (cursorX - tipOffset.x).toInt()
+            params.y = (cursorY - tipOffset.y).toInt()
+            wm.addView(view, params)
+            overlayView = view
+            displayInfo = info
+            scheduleCursorHide()
+            true
+        } catch (error: Exception) {
+            DiagnosticsLog.add(
+                "Accessibility: attach failed id=${info.displayId} " +
+                    "generation=${attempt.generation} attempt=${attempt.attemptNumber} " +
+                    "error=${error.javaClass.simpleName}"
+            )
+            clearDisplaySessionResources()
+            false
+        }
+    }
+
+    private fun scheduleAttachRetry() {
+        cancelAttachRetryRunnable()
+        if (!displaySessionLifecycle.canRetry()) return
+        val expectedGeneration = displaySessionLifecycle.generation
+        val delayMs = (
+            ATTACH_RETRY_INITIAL_DELAY_MS * displaySessionLifecycle.attemptCount
+            ).coerceAtMost(ATTACH_RETRY_MAX_DELAY_MS)
+        val runnable = Runnable {
+            attachRetryRunnable = null
+            if (displaySessionLifecycle.generation != expectedGeneration) {
+                DiagnosticsLog.add(
+                    "Accessibility: stale attach retry ignored expectedGeneration=" +
+                        "$expectedGeneration currentGeneration=${displaySessionLifecycle.generation}"
+                )
+                return@Runnable
+            }
+            attemptDisplaySessionAttach()
         }
         attachRetryRunnable = runnable
-        handler.postDelayed(runnable, ATTACH_RETRY_DELAY_MS)
+        handler.postDelayed(runnable, delayMs)
     }
 
-    private fun cancelAttachRetry() {
+    private fun cancelAttachRetryRunnable() {
         attachRetryRunnable?.let { handler.removeCallbacks(it) }
         attachRetryRunnable = null
-        attachRetryInfo = null
-        attachRetryCount = 0
     }
 
     private fun detachOverlay() {
+        cancelAttachRetryRunnable()
+        displaySessionLifecycle.disconnect()
+        clearDisplaySessionResources()
+    }
+
+    private fun suspendOverlay() {
+        cancelAttachRetryRunnable()
+        val shouldTearDown = displaySessionLifecycle.suspend()
+        if (shouldTearDown || hasDisplaySessionResources()) {
+            clearDisplaySessionResources()
+        }
+        DiagnosticsLog.add(
+            "Accessibility: session suspended generation=${displaySessionLifecycle.generation}"
+        )
+    }
+
+    private fun hasDisplaySessionResources(): Boolean =
+        displayInfo != null || overlayView != null || windowManager != null ||
+            overlayWindowContext != null || switchBarController != null
+
+    private fun clearDisplaySessionResources() {
         deferredBackRunnable?.let { handler.removeCallbacks(it) }
         deferredBackRunnable = null
-        cancelAttachRetry()
+        // Invalidate the input target before cancellation callbacks run. Continuous-gesture idle
+        // callbacks are synchronous and must not be able to dispatch against the old display.
+        displayInfo = null
+        gestureDispatchTracker.invalidate()
+        cancelScrollGesture()
+        cancelDrag()
+        abandonContinuousGesture()
         switchBarController?.teardown()
         switchBarController = null
         controlTutorialView?.let { view ->
@@ -1429,10 +1565,8 @@ class ControlAccessibilityService : AccessibilityService() {
         overlayView = null
         windowManager = null
         overlayWindowContext = null
-        displayInfo = null
-        cancelDrag()
-        abandonContinuousGesture()
         cancelCursorHide()
+        notifyRuntimeStateChanged()
         DiagnosticsLog.add("Accessibility: overlay detached")
     }
 
@@ -1790,8 +1924,6 @@ class ControlAccessibilityService : AccessibilityService() {
                         continuousGestureCancellationCallback = null
                         continuousGestureGeneration += 1L
                         notifyContinuousGestureIdle()
-                    } else {
-                        scheduleContinuousGestureKeepAlive(generation)
                     }
                 }
 
@@ -1815,47 +1947,50 @@ class ControlAccessibilityService : AccessibilityService() {
         description: GestureDescription,
         callback: GestureResultCallback
     ): Boolean {
-        gesturesInFlight += 1
+        val sessionToken = gestureDispatchTracker.begin()
         val accepted = dispatchGesture(
             description,
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
-                    gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
-                    if (gesturesInFlight == 0 && pendingScrollEnd) {
-                        val info = displayInfo
-                        val stroke = scrollStroke
-                        if (info != null && stroke != null) {
-                            pendingScrollEnd = false
-                            endScrollGestureInternal(info, stroke, pendingScrollEndX, pendingScrollEndY)
-                        } else {
-                            pendingScrollEnd = false
-                        }
-                    }
+                    if (!finishTrackedGesture(sessionToken)) return
                     callback.onCompleted(gestureDescription)
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
-                    gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
-                    if (gesturesInFlight == 0 && pendingScrollEnd) {
-                        val info = displayInfo
-                        val stroke = scrollStroke
-                        if (info != null && stroke != null) {
-                            pendingScrollEnd = false
-                            endScrollGestureInternal(info, stroke, pendingScrollEndX, pendingScrollEndY)
-                        } else {
-                            pendingScrollEnd = false
-                        }
-                    }
+                    if (!finishTrackedGesture(sessionToken)) return
                     callback.onCancelled(gestureDescription)
                 }
             },
             null
         )
         if (!accepted) {
-            gesturesInFlight = (gesturesInFlight - 1).coerceAtLeast(0)
-            callback.onCancelled(null)
+            if (finishTrackedGesture(sessionToken)) {
+                callback.onCancelled(null)
+            }
         }
         return accepted
+    }
+
+    private fun finishTrackedGesture(
+        sessionToken: DisplayGestureDispatchTracker.Token
+    ): Boolean {
+        if (!gestureDispatchTracker.finish(sessionToken)) {
+            DiagnosticsLog.add(
+                "Accessibility: stale gesture callback ignored generation=" +
+                    "${sessionToken.generation} dispatch=${sessionToken.dispatchId} " +
+                    "currentGeneration=${gestureDispatchTracker.generation}"
+            )
+            return false
+        }
+        if (gesturesInFlight == 0 && pendingScrollEnd) {
+            val info = displayInfo
+            val stroke = scrollStroke
+            pendingScrollEnd = false
+            if (info != null && stroke != null) {
+                endScrollGestureInternal(info, stroke, pendingScrollEndX, pendingScrollEndY)
+            }
+        }
+        return true
     }
 
     private fun dispatchScrollGesture(
@@ -2101,19 +2236,4 @@ class ControlAccessibilityService : AccessibilityService() {
             // Not supported on this API level.
         }
     }
-}
-
-internal fun shouldScheduleContinuousGestureKeepAlive(
-    callbackGeneration: Long,
-    currentGeneration: Long,
-    hasActiveStroke: Boolean,
-    dispatchInFlight: Boolean,
-    endRequested: Boolean,
-    hasPendingPoint: Boolean
-): Boolean {
-    return callbackGeneration == currentGeneration &&
-        hasActiveStroke &&
-        !dispatchInFlight &&
-        !endRequested &&
-        !hasPendingPoint
 }

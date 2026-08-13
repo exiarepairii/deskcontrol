@@ -8,12 +8,16 @@
 
     <string name="external_display_label">External display</string>
     <string name="external_display_connected">Connected</string>
+    <string name="external_display_suspended">Asleep</string>
     <string name="external_display_not_connected">Not connected</string>
     <string name="accessibility_label">Accessibility</string>
     <string name="accessibility_enabled">Enabled</string>
     <string name="accessibility_required">Required</string>
     <string name="choose_app_for_display">Choose app for external display</string>
     <string name="choose_app_connect_display_first">Connect an external display before choosing an app.</string>
+    <string name="choose_app_wake_display_first">Wake the selected external display before choosing an app.</string>
+    <string name="display_excluded_unavailable">Ignored an unavailable display and kept using an available display.</string>
+    <string name="display_detected_unavailable">Detected an external display, but none is currently available.</string>
     <string name="open_touchpad">Open touchpad</string>
     <string name="settings">Settings</string>
 
@@ -28,7 +32,7 @@
     <string name="app_icon_content_description">App icon</string>
     <string name="app_placeholder_name">App name</string>
     <string name="app_placeholder_package" translatable="false">com.example</string>
-    <string name="app_launched_toast">Launched %1$s</string>
+    <string name="app_launch_requested_toast">Sent the request to open %1$s on the external display</string>
     <string name="app_launch_failed_generic">Launch failed</string>
     <string name="app_launch_failed_with_detail">%1$s: %2$s</string>
     <string name="app_launch_failed_reason_only">%1$s</string>
@@ -45,17 +49,28 @@
 
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_details_label">Details</string>
+    <string name="diagnostics_app_info">App: %1$s (%2$d)</string>
+    <string name="diagnostics_device_info">Device: %1$s %2$s, Android API %3$d</string>
     <string name="diagnostics_external_display_not_connected">External display: not connected</string>
+    <string name="diagnostics_external_display_suspended">External display: id=%1$d, asleep</string>
     <string name="diagnostics_external_display_info">External display: id=%1$d, size=%2$dx%3$d, dpi=%4$d, rotation=%5$d</string>
+    <string name="diagnostics_accessibility_state">Accessibility: configured=%1$b, connected=%2$b, ready=%3$b</string>
     <string name="diagnostics_accessibility_enabled">Accessibility: enabled</string>
     <string name="diagnostics_accessibility_disabled">Accessibility: disabled</string>
     <string name="diagnostics_last_launch_failure">Last launch failure: %1$s</string>
     <string name="diagnostics_last_injection_result">Last injection result: %1$s</string>
+    <string name="diagnostics_environment_snapshot_label">Current environment:</string>
+    <string name="diagnostics_display_snapshot_label">Current display snapshot:</string>
+    <string name="diagnostics_last_seen_display_snapshot_label">Last connected external display snapshot:</string>
     <string name="diagnostics_logs_label">Logs:</string>
     <string name="diagnostics_logs_empty">No logs yet</string>
     <string name="diagnostics_none">None</string>
     <string name="diagnostics_copy_logs">Copy</string>
     <string name="diagnostics_copy_logs_done">Logs copied</string>
+    <string name="diagnostics_save_logs">Save</string>
+    <string name="diagnostics_save_logs_done">Logs saved</string>
+    <string name="diagnostics_save_logs_failed">Couldn’t save logs</string>
+    <string name="diagnostics_save_logs_picker_unavailable">No system file manager is available</string>
 
     <string name="host_title">External Display Host</string>
     <string name="host_no_external_display">No external display detected</string>
@@ -83,6 +98,7 @@
     <string name="touchpad_enable_accessibility_advanced">Advanced enablement</string>
     <string name="touchpad_open_accessibility_settings">Open accessibility settings</string>
     <string name="touchpad_accessibility_required_toast">Enable accessibility service first</string>
+    <string name="control_service_not_ready_toast">External display controls are still connecting. Wake the display and try again.</string>
     <string name="control_surface_choose_app_title">Choose an app for the external display</string>
     <string name="control_surface_choose_app_message">Accessibility is ready. Choose an app to show on the external display, or skip this step and keep using the controller.</string>
     <string name="control_surface_choose_app_action">Choose app</string>
@@ -246,7 +262,7 @@
     <string name="settings_overview_support">Support</string>
     <string name="privacy_policy_title">Privacy policy</string>
     <string name="privacy_policy_summary">How DeskControl processes data on this device</string>
-    <string name="privacy_policy_body">Last updated: August 8, 2026\n\nDeskControl does not transmit app usage or accessibility data to the developer or third parties. It has no analytics, advertising, crash-reporting, account, or developer-operated remote-server SDK. The Google Play edition communicates with Google Play only to display, process, restore, and acknowledge the optional Supporter Icon Pack purchase.\n\nData processed on this device\n\nDeskControl locally processes the list and identifiers of launchable apps, app launch history and pinned choices, external-display properties, Motion Mouse sensor readings, app preferences, and a persistent on-device diagnostic log of recent events. Accessibility access is used to identify and focus the active window on the external display and to send only the gestures, Back actions, and calibration or screen-off key input initiated by you.\n\nActive app identifiers may appear in diagnostics. Logs leave the app only if you explicitly copy them to the clipboard and choose to share them.\n\nAccessibility Service\n\nDeskControl does not use accessibility access to make autonomous decisions, read passwords, bypass security controls, or transmit screen or accessibility data.\n\nPurchases\n\nThe Google Play edition offers an optional one-time Supporter Icon Pack processed by Google Play. The outside-Play edition contains no purchase functionality.\n\nStorage and deletion\n\nLocal data is excluded from cloud backup and device transfer. Clear DeskControl storage or uninstall the app to delete it.</string>
+    <string name="privacy_policy_body">Last updated: August 9, 2026\n\nDeskControl does not transmit app usage or accessibility data to the developer or third parties. It has no analytics, advertising, crash-reporting, account, or developer-operated remote-server SDK. The Google Play edition communicates with Google Play only to display, process, restore, and acknowledge the optional Supporter Icon Pack purchase.\n\nData processed on this device\n\nDeskControl locally processes the list and identifiers of launchable apps, app launch history and pinned choices, external-display properties and modes, device and OS build information, selected display/developer settings, versions and status of a fixed set of relevant projection/system components, optional Shizuku service state in the outside-Play edition, Motion Mouse sensor readings, app preferences, and a persistent on-device diagnostic log of recent events. Accessibility access is used to identify and focus the active window on the external display and to send only the gestures, Back actions, and calibration or screen-off key input initiated by you.\n\nActive app identifiers may appear in diagnostics. Logs leave the app only if you explicitly copy them to the clipboard and choose to share them. Diagnostics exclude Android ID, device serial numbers, network identifiers, and a full installed-app or system-settings inventory.\n\nAccessibility Service\n\nDeskControl does not use accessibility access to make autonomous decisions, read passwords, bypass security controls, or transmit screen or accessibility data.\n\nPurchases\n\nThe Google Play edition offers an optional one-time Supporter Icon Pack processed by Google Play. The outside-Play edition contains no purchase functionality.\n\nStorage and deletion\n\nLocal data is excluded from cloud backup and device transfer. Clear DeskControl storage or uninstall the app to delete it.</string>
     <string name="settings_overview_appearance_summary">%1$s · %2$s</string>
     <string name="settings_overview_display_summary">Keep screen on: %1$s · Auto-dim: %2$s</string>
     <plurals name="settings_overview_dock_summary">

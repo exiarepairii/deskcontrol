@@ -16,6 +16,8 @@
 - The Play application ID is `com.suspace.deskcontrol`; the direct application ID remains `com.deskcontrol`. These are intentionally separate installed apps and must keep independent signing/update histories.
 - Accessibility access must always be preceded by `AccessibilityDisclosure`; keep the disclosure accurate when the service observes or injects additional data/actions.
 - Accessibility disclosure consent is stored locally by disclosure version. Do not show the same accepted disclosure before every settings visit; increment `CURRENT_VERSION` in `AccessibilityDisclosure` only when its described access, use, or sharing changes materially.
+- External-display resources use one bounded session lifecycle: only `STATE_ON` is active; valid `OFF`/`DOZE`/`DOZE_SUSPEND` displays are suspended without losing selection; removal disconnects; every active generation is connected only after the cursor overlay attaches. Do not add device-specific hot-plug paths.
+- Debug builds must keep `ControlAccessibilityService`, control Activities, and `GestureTestCommandReceiver` in the same process because their test/control bridge uses the in-process service singleton. Keep the exported device-test receiver protected by `android.permission.DUMP` so only ADB/shell or privileged callers can drive gestures.
 - Touchpad and Motion Mouse share `ControlSurfaceWindowPolicy` for keep-screen-on and per-window auto-dim; external-display input focus must not cancel dimming while the phone control page remains resumed. Brightness restores on control deactivation, `onPause`, and `onStop`.
 - Touchpad and Motion Mouse share `ScreenBlackoutController` for the full-black swipe-to-unlock screen; Motion Mouse must suppress cursor movement while blacked out, including movement reactivation from calibration.
 - Touchpad and Motion Mouse share `ControlSurfaceGestureController` for taps, drags/swipes, cancellation, and pointer-transition suppression. Two-finger scrolling belongs only to Touchpad; Motion Mouse must reject multi-pointer input and use one-finger native swipes from the cursor for scrolling.
@@ -28,7 +30,9 @@
 
 ## Current UX conventions
 - Main screen hierarchy: status row + contextual display selector, primary action, secondary actions.
-- When Choose app is tapped without an external display, keep the user on Home, gently nudge the disconnected-display status section, and show a short connect-first message.
+- App launches use the exact launcher component and the direct external-display path. Compatibility experiments must not add persistent launch modes or test controls to Home.
+- When Choose app is tapped without an active external display, keep the user on Home, gently nudge the status section, and distinguish connect-first from wake-the-selected-display feedback.
+- Display selection must not reject `OFF` alone: retain trusted or policy-approved HDMI while it sleeps, but exclude a non-ON, untrusted display only when both standard and allow-embedded policy probes explicitly deny it.
 - Display selector uses 1-based labels (Display 1/2/3) and shows resolution as the secondary line.
 - Touchpad and Motion Mouse place the left-aligned activation/Back-forwarding instruction above the control area with an 8dp top inset. The centered in-area copy starts with the current mode, leaves one blank line, then puts each mode-specific gesture instruction on its own line; use an English colon followed by a space in these labels, and when active, only the in-area hint dims.
 - Accessibility gating for touchpad happens inside Touchpad screen, not on the home screen.
@@ -42,7 +46,7 @@
 - Touchpad interaction settings shared with Settings and all Motion Mouse tuning controls use `SettingsStore` as their source of truth; control pages refresh them in `onResume` so both entry points stay synchronized.
 - The home screen exposes a single Touchpad entry with no separate Motion Mouse action. That entry and successful app selection open the last-used control surface, defaulting to Touchpad when no history exists; entering Touchpad or Motion Mouse persists the mode selected through the toolbar switch.
 - Automatic external-display focus recovery defaults to enabled; preserve an existing stored user choice when loading settings.
-- Control-surface activation depends on configured accessibility plus an external display, not the transient accessibility-service singleton; Motion Mouse direct touch must not wait for a rotation-sensor sample.
+- Accessibility settings state and runtime control readiness are distinct: settings/disclosure UI may use configured state, but touch activation, injection, and Motion Mouse calibration require the service to be connected with an attached external-display session. Runtime state changes must refresh visible control surfaces; Motion Mouse direct touch must not wait for a rotation-sensor sample once that session is ready.
 - Motion Mouse auto-calibration does not activate control mode; direct touch, manual calibration, and Volume Down calibration activate it only while the blackout is hidden, while entering blackout explicitly deactivates it.
 - Motion Mouse haptic feedback is enabled by default, persisted, and applies to calibration, clicks, and drag start.
 - Touchpad and Motion Mouse share `ControlSurfaceVolumeKeyController` while the page is resumed; the accessibility service forwards Volume Up/Down so the shortcuts still work when the external app owns input focus, and the shared handler must be cleared in `onPause`.
@@ -102,6 +106,13 @@
 - Audit merged manifests and packaged DEX/resources so Play contains no Shizuku symbols and direct contains no Billing/supporter-icon symbols.
 - For Play releases, update the public privacy-policy URL, reviewer instructions/video, AccessibilityService declaration, and `supporter_icon_pack` Billing product as needed.
 
+## Diagnostics conventions
+- Treat `Display.getFlags()` as an unsigned 32-bit value in reports. Decode stable framework bits numerically (especially `TRUSTED=0x80`) and retain an `unknownMask`; do not reflect hidden display owner/type/group fields.
+- Generate environment and display snapshots again when the user copies or saves a report. Also retain the last connected external-display snapshot so a disconnect immediately before export does not erase the useful state.
+- Deduplicate display inventory logs. Built-in display brightness callbacks are frequent and must not evict launch evidence from the 1,000-line persistent ring buffer.
+- Direct-only Shizuku diagnostics may read binder/permission/server identity through the public Shizuku API, but must never request permission, execute shell commands, or leak Shizuku symbols into the Play source set.
+- Diagnostic reports may include OS build, selected developer/display settings, fixed related-system-package versions, display product/mode data, and target package identifiers. Never collect Android ID, device serial, network identifiers, or a full installed-app/settings inventory; keep the in-app and public privacy policies synchronized.
+
 ## Updating devnotes.md tips
 - Start with a short “Handover essentials” summary; keep it accurate and current.
 - Add only decisions and constraints that affect future work (avoid transient logs).
@@ -124,7 +135,7 @@
 - Any slider-backed setting must be clamped/snap-aligned in both `SettingsActivity` (UI snap) and `SettingsStore` (persist clamp) to prevent `Slider` crashes on reopen.
 - Continued control-surface gesture strokes must be dispatched serially; coalesce pending touch points while a gesture segment is in flight and always send a terminal continuation on cancel.
 - Motion Mouse touch slop applies only until a direct gesture first starts moving; once active, every move must be forwarded so reversing through the original down point cannot create a dead zone.
-- Continued direct gestures must send stationary keep-alive strokes while the phone finger remains down. If Android still cancels a stroke, notify the controller with its touch generation and recover on the next MOVE from the last injected point; never leave the controller in `DIRECT_GESTURE` after the service has abandoned its stroke.
+- Continued direct gestures must remain idle between real touch moves; do not inject stationary keep-alive continuations because Android 17 cancels them. If Android cancels a real stroke, notify the controller with its touch generation and recover on the next MOVE from the last injected point; never leave the controller in `DIRECT_GESTURE` after the service has abandoned its stroke.
 - Do not restore external accessibility focus on every control-area `ACTION_DOWN`; focus recovery can scroll a focused list item back into view and must stay scoped to Back warm-up/recovery.
 - Keep Settings wording mode-specific and explicit (“default two-finger” vs “gesture mapping experimental”), disable irrelevant controls when the other mode is active, and keep the gesture-mapping switch as the final row in the Scrolling group.
 - `settings_preferences.xml` is not part of runtime settings flow; current settings are code-driven in `SettingsActivity` + `activity_settings.xml`.

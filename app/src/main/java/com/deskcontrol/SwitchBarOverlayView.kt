@@ -30,6 +30,7 @@ class SwitchBarOverlayView @JvmOverloads constructor(
     data class Item(
         val label: String,
         val packageName: String?,
+        val className: String? = null,
         val icon: Drawable?,
         val isAllApps: Boolean = false,
         val isDivider: Boolean = false

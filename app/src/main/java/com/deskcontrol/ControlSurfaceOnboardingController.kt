@@ -16,7 +16,7 @@ class ControlSurfaceOnboardingController(
     fun onStateChanged() {
         if (promptedThisEntry || dialog != null || !canPrompt()) return
         if (activity.isFinishing || activity.isDestroyed) return
-        if (!ControlAccessibilityService.isEnabled(activity)) return
+        if (!ControlAccessibilityService.isReady()) return
         if (DisplaySessionManager.getExternalDisplayInfo() == null) return
         if (SessionStore.lastLaunchedPackage != null) return
 
