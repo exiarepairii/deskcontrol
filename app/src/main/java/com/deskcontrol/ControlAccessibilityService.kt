@@ -1550,11 +1550,7 @@ class ControlAccessibilityService : AccessibilityService() {
         abandonContinuousGesture()
         switchBarController?.teardown()
         switchBarController = null
-        controlTutorialView?.let { view ->
-            runCatching { windowManager?.removeView(view) }
-        }
-        controlTutorialView = null
-        tutorialPreviousCursorForceVisible = null
+        removeControlTutorial()
         controlHudView?.let { view ->
             runCatching { windowManager?.removeView(view) }
         }
@@ -1613,11 +1609,14 @@ class ControlAccessibilityService : AccessibilityService() {
     }
 
     private fun removeControlTutorial() {
-        val view = controlTutorialView ?: return
-        runCatching { windowManager?.removeView(view) }
+        val view = controlTutorialView
+        val previousCursorForceVisible = tutorialPreviousCursorForceVisible
+        // Clear the ownership markers before removing the view. View detachment and tutorial
+        // completion can invoke callbacks synchronously, so cleanup must remain idempotent.
         controlTutorialView = null
-        tutorialPreviousCursorForceVisible?.let(::setCursorForceVisible)
         tutorialPreviousCursorForceVisible = null
+        view?.let { runCatching { windowManager?.removeView(it) } }
+        previousCursorForceVisible?.let(::setCursorForceVisible)
     }
 
     private fun showControlTutorial(mode: ControlSurfaceMode): Boolean {
@@ -1650,6 +1649,7 @@ class ControlAccessibilityService : AccessibilityService() {
             DiagnosticsLog.add("Control tutorial: external overlay shown mode=$mode")
             true
         }.getOrElse {
+            removeControlTutorial()
             DiagnosticsLog.add("Control tutorial: external overlay unavailable mode=$mode")
             false
         }

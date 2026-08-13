@@ -54,11 +54,23 @@
 - Shared hardware-key feedback is drawn on the selected external display: short Volume Up/Down presses adjust media volume once on release and show the white right-edge volume HUD; circular hold feedback waits 120ms so quick taps do not flash a ring; a 660ms Volume Down hold calibrates Motion Mouse or centers the Touchpad cursor, and a 660ms Volume Up hold toggles phone blackout. Require the full app-defined duration instead of accepting Android's earlier `isLongPress` flag so normal volume adjustments remain conservative.
 - External-display control tutorials are blocking, interactive practice layers with one shared step flow: both modes must complete a real Volume Down hold (Touch centers the cursor; Motion calibrates and centers), move the real cursor into a target, click and long-press real buttons, scroll a practice page, then complete real Volume Up holds to lock and unlock blackout. Touch mode scrolls with two fingers and also drags a card, while Motion mode scrolls with a one-finger swipe from the cursor and omits drag. There is no welcome page or timeout; the darker accessibility overlay intercepts practice gestures so the projected app is unaffected, and only the current task can advance.
 - External-display HUD and cursor overlays must stay above the tutorial scrim; when showing the tutorial, re-add any existing HUD after the tutorial window so hardware-key progress is not hidden.
+- External-display tutorial teardown must restore the cursor force-visible state that existed before the tutorial. Route normal dismissal, display suspend, disconnect, failed attach, and service destruction through the same idempotent cleanup path.
 - The first-run phone coachmarks teach mode switching, then spotlight Screen off, then teach control-surface activation; keep the Screen off step in both modes.
 - Motion Mouse tuning lives in the toolbar overflow menu because it is an infrequent control; keep calibration and blackout directly accessible.
 - Touchpad and Motion Mouse share `ControlSurfaceBackController` and the flavor-specific `AccessibilityGateController`; keep page behavior shared, but preserve the Play/manual and direct/Shizuku source-set boundary.
 - Touchpad and Motion Mouse share the post-accessibility app-selection prompt through `ControlSurfaceOnboardingController`; it runs only after the intro is dismissed, remains cancelable, and must not re-prompt during the same page entry.
 - Dock reveal uses a small bottom-edge band because Motion Mouse smoothing converges on the display edge and cannot reliably overshoot it.
+
+## Deferred TODOs
+
+### Restore the last projected app after display wake
+- TODO: optionally restore the last successfully projected app when the same selected display transitions from `SUSPENDED` back to `ACTIVE`. Do not trigger this for `NONE → ACTIVE`, physical unplug/replug, a changed selection, or an unknown display.
+- Arm restoration only after accessibility-window observation verifies that the exact launcher `ComponentName` is visible on the intended external display. `SessionStore.lastLaunchedPackage` is not sufficient because it records an API-accepted but unverified request.
+- Wait for the new display-session generation to connect and for `ControlAccessibilityService.isReady()` before making a restore decision. First observe whether Android restored the target window naturally; if it is already visible, do not launch it again.
+- Bind each restore decision to one display-session generation and allow at most one dispatch. Cancel when the generation, selected display, foreground app choice, component availability, or launch policy changes; never create an automatic retry loop.
+- Offer `Off`, `Ask` (default), and `Auto while DeskControl is foreground` modes. When the phone is locked, DeskControl is backgrounded, or exact-target display preflight is not explicitly allowed, defer or ask after returning to the foreground instead of launching silently.
+- Automatic restoration must not increment app-recents history or replace the last app explicitly selected by the user. Log the candidate, lifecycle transition, generation, readiness, existing-window check, policy result, dispatch/cancellation reason, and verified outcome.
+- Regression coverage must include duplicate display callbacks, unchanged-ID `ON → OFF/DOZE → ON`, natural task restoration, stale-generation callbacks, component removal, policy denial, background/locked state, and a manual launch superseding a pending restore.
 
 ## Visual system and theming
 - Colors are defined in `app/src/main/res/values/colors.xml` and `app/src/main/res/values-night/colors.xml`.

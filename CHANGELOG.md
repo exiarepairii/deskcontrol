@@ -6,6 +6,7 @@
 - App launch: use the exact launcher component and the production direct-display path only; remove the A/B/C phone-prewarm compatibility test from Home and from persisted launch behavior.
 - Diagnostics: record display trust, policy probes, Xiaomi projection components, target-app capabilities, and automatic selection decisions, and allow the complete report to be saved through the system file picker.
 - Accessibility: distinguish configured, connected, and ready states so controls only run after the service and current display session are both available.
+- Tutorial lifecycle: restore the cursor's previous auto-hide behavior when an external display sleeps or disconnects during the interactive tutorial.
 
 ## 1.3.19-launch-test
 - Display lifecycle: treat a present non-ON display as suspended, tear down its display-scoped controls once, and recreate a fresh generation when it returns to ON even if its display ID is unchanged.
