@@ -46,7 +46,8 @@ android {
     buildTypes {
         release {
             minifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            def releaseConfig = signingConfigs.getByName("release")
+            signingConfig = releaseConfig.storeFile != null ? releaseConfig : signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

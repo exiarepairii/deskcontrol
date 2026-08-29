@@ -15,6 +15,7 @@ object SettingsStore {
     private const val LANGUAGE_SYSTEM = "system"
     private const val LANGUAGE_ENGLISH = "en"
     private const val LANGUAGE_CHINESE = "zh-CN"
+    private const val LANGUAGE_RUSSIAN = "ru"
     private const val BASE_SCROLL_SPEED = 0.4f
 
     var nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
@@ -56,6 +57,8 @@ object SettingsStore {
     var touchpadDirectScrollStepDp = 32.0f
         private set
     var touchpadAutoFocusEnabled = true
+        private set
+    var touchpadHideUiEnabled = false
         private set
     var rayHapticFeedbackEnabled = true
         private set
@@ -130,6 +133,10 @@ object SettingsStore {
         touchpadAutoFocusEnabled = prefs.getBoolean(
             "tp_auto_focus",
             touchpadAutoFocusEnabled
+        )
+        touchpadHideUiEnabled = prefs.getBoolean(
+            "tp_hide_ui",
+            touchpadHideUiEnabled
         )
         rayHapticFeedbackEnabled = prefs.getBoolean(
             "ray_haptic_feedback",
@@ -328,6 +335,11 @@ object SettingsStore {
         persist(context) { putBoolean("tp_auto_focus", enabled) }
     }
 
+    fun setTouchpadHideUiEnabled(context: Context, enabled: Boolean) {
+        touchpadHideUiEnabled = enabled
+        persist(context) { putBoolean("tp_hide_ui", enabled) }
+    }
+
     fun setRayHapticFeedbackEnabled(context: Context, enabled: Boolean) {
         rayHapticFeedbackEnabled = enabled
         persist(context) { putBoolean("ray_haptic_feedback", enabled) }
@@ -399,6 +411,7 @@ object SettingsStore {
     fun isLanguageSystem(): Boolean = appLanguageTag == LANGUAGE_SYSTEM
     fun isLanguageEnglish(): Boolean = appLanguageTag == LANGUAGE_ENGLISH
     fun isLanguageChinese(): Boolean = appLanguageTag == LANGUAGE_CHINESE
+    fun isLanguageRussian(): Boolean = appLanguageTag == LANGUAGE_RUSSIAN
 
     fun setPointerSpeed(context: Context, value: Float) {
         val snapped = SettingsSliderRanges.CURSOR_SPEED.snap(value)

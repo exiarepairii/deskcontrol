@@ -1,0 +1,10 @@
+<resources>
+    <string name="touchpad_enable_accessibility_advanced">Включить через Shizuku</string>
+    <string name="touchpad_shizuku_permission_denied">Разрешение Shizuku отклонено</string>
+    <string name="touchpad_shizuku_permission_rationale">Предоставьте разрешение Shizuku для включения специальных возможностей.</string>
+    <string name="touchpad_shizuku_enable_success">Спец. возможности включены</string>
+    <string name="touchpad_shizuku_enable_failed">Не удалось включить спец. возможности через Shizuku</string>
+    <string name="touchpad_shizuku_intro_title">Что такое Shizuku?</string>
+    <string name="touchpad_shizuku_intro_message">Shizuku позволяет опытным пользователям предоставлять системный доступ с помощью разовой авторизации.\n\nЕсли Shizuku запущен, DeskControl может автоматически включать спец. возможности, избавляя вас от необходимости делать это вручную каждый раз.</string>
+    <string name="touchpad_shizuku_intro_ok">Понятно</string>
+</resources>

@@ -42,18 +42,21 @@ internal class AppearanceSettingsFragment :
         val languageSystemId = View.generateViewId()
         val languageEnglishId = View.generateViewId()
         val languageChineseId = View.generateViewId()
+        val languageRussianId = View.generateViewId()
         val (languageRow, languageGroup) = context.segmentedSetting(
             R.string.settings_language,
             listOf(
                 languageSystemId to R.string.language_system,
                 languageEnglishId to R.string.language_english,
-                languageChineseId to R.string.language_chinese
+                languageChineseId to R.string.language_chinese,
+                languageRussianId to R.string.language_russian
             )
         )
         languageGroup.check(
             when {
                 SettingsStore.isLanguageEnglish() -> languageEnglishId
                 SettingsStore.isLanguageChinese() -> languageChineseId
+                SettingsStore.isLanguageRussian() -> languageRussianId
                 else -> languageSystemId
             }
         )
@@ -63,6 +66,7 @@ internal class AppearanceSettingsFragment :
             when (checkedId) {
                 languageEnglishId -> SettingsStore.setAppLanguage(context, "en")
                 languageChineseId -> SettingsStore.setAppLanguage(context, "zh-CN")
+                languageRussianId -> SettingsStore.setAppLanguage(context, "ru")
                 else -> SettingsStore.setAppLanguage(context, "system")
             }
             if (oldLanguage != SettingsStore.appLanguageTag) {

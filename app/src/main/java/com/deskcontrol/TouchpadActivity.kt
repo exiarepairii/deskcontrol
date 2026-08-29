@@ -1,5 +1,6 @@
 package com.deskcontrol
 
+import android.graphics.Color
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
@@ -41,7 +42,9 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             activity = this,
             logName = "Touchpad",
             onDimmedChanged = { dimmed ->
-                binding.touchpadHint.isInvisible = dimmed
+                if (!SettingsStore.touchpadHideUiEnabled) {
+                    binding.touchpadHint.isInvisible = dimmed
+                }
             }
         )
         DiagnosticsLog.add(
@@ -159,6 +162,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             introDialogVisible = true
             binding.touchpadRoot.post(modeIntroController::showSwitchCoachmark)
         }
+        applyTouchpadUiVisibility()
         setTouchpadActive(false)
     }
 
@@ -175,6 +179,7 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
 
     override fun onResume() {
         super.onResume()
+        applyTouchpadUiVisibility()
         accessibilityGateController.refresh()
         ControlAccessibilityService.setControlSurfaceKeyHandler(volumeKeyController::handle)
         refreshTuningControls()
@@ -314,13 +319,15 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             !blackoutController.isVisible
         val wasActive = touchpadActive
         touchpadActive = resolvedActive
-        binding.touchpadArea.isActivated = resolvedActive
-        val hintColorRes = if (resolvedActive) {
-            R.color.touchpadHintActive
-        } else {
-            R.color.touchpadHintInactive
+        if (!SettingsStore.touchpadHideUiEnabled) {
+            binding.touchpadArea.isActivated = resolvedActive
+            val hintColorRes = if (resolvedActive) {
+                R.color.touchpadHintActive
+            } else {
+                R.color.touchpadHintInactive
+            }
+            binding.touchpadHint.setTextColor(ContextCompat.getColor(this, hintColorRes))
         }
-        binding.touchpadHint.setTextColor(ContextCompat.getColor(this, hintColorRes))
         if (wasActive != resolvedActive) {
             DiagnosticsLog.add("Touchpad: active=$resolvedActive")
         }
@@ -506,6 +513,38 @@ class TouchpadActivity : AppCompatActivity(), DisplaySessionManager.Listener {
             getString(R.string.touchpad_accessibility_required_toast),
             Toast.LENGTH_SHORT
         ).show()
+    }
+
+    private fun applyTouchpadUiVisibility() {
+        val hideUi = SettingsStore.touchpadHideUiEnabled
+        val alpha = if (hideUi) 0f else 1f
+        val bgColor = if (hideUi) {
+            Color.BLACK
+        } else {
+            ContextCompat.getColor(this, R.color.touchpadBackground)
+        }
+
+        binding.touchpadToolbar.setBackgroundColor(bgColor)
+        binding.touchpadContent.setBackgroundColor(bgColor)
+        binding.touchpadRoot.setBackgroundColor(bgColor)
+        window.statusBarColor = bgColor
+        window.navigationBarColor = bgColor
+
+        binding.touchpadBack.alpha = alpha
+        binding.touchpadTitle.alpha = alpha
+        binding.touchpadSwitchToRay.alpha = alpha
+        binding.touchpadBlackout.alpha = alpha
+        binding.touchpadMore.alpha = alpha
+        binding.touchpadActivationHint.alpha = alpha
+        binding.touchpadHint.alpha = alpha
+
+        if (hideUi) {
+            binding.touchpadArea.background = null
+            binding.touchpadArea.setBackgroundColor(Color.BLACK)
+        } else {
+            binding.touchpadArea.setBackgroundResource(R.drawable.touchpad_area_bg)
+            binding.touchpadArea.isActivated = touchpadActive
+        }
     }
 
 }
