@@ -93,6 +93,13 @@ adb install -r app/build/outputs/apk/direct/debug/app-direct-debug.apk
 - Requires device support for secondary-display activities.
 - Some apps do not allow launch on a secondary display.
 
-## License
+## License & Attribution
 
-See `LICENSE` (GPLv3).
+This project is a fork of the original [DeskControl](https://github.com/exiarepairii/deskcontrol) repository.
+
+- **Original Project:** Copyright (C) 2024–2026 [exiarepairii](https://github.com/exiarepairii/deskcontrol)
+- **Modifications & Additions:** Copyright (C) 2026 [byMr712](https://github.com/byMr712/deskcontrol) (added complete Russian localization, touchpad UI hiding mode, build system adjustments, and documentation).
+
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See the [`LICENSE`](LICENSE) file for the full license text.
+
+> This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.

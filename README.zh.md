@@ -93,6 +93,13 @@ adb install -r app/build/outputs/apk/direct/debug/app-direct-debug.apk
 - 需要设备固件支持副屏 Activity 启动。
 - 部分应用可能限制在副屏上启动。
 
-## 许可证
+## 许可证与版权说明
 
-详见 `LICENSE` 文件（GPLv3）。
+本项目基于原项目 [DeskControl](https://github.com/exiarepairii/deskcontrol) 开发。
+
+- **原项目版权：** Copyright (C) 2024–2026 [exiarepairii](https://github.com/exiarepairii/deskcontrol)
+- **修改与新增功能：** Copyright (C) 2026 [byMr712](https://github.com/byMr712/deskcontrol)（添加完整俄语本地化支持、触控板界面全黑隐藏模式、构建脚本与多语言文档适配）。
+
+本项目遵循 **GNU General Public License v3.0 (GPLv3)** 开源协议。完整协议内容请参阅 [`LICENSE`](LICENSE) 文件。
+
+> 本程序是在希望其有用的前提下发布的，但没有任何担保；甚至没有适销性或特定用途适用性的暗示担保。详情请参阅 GNU 通用公共许可证。
