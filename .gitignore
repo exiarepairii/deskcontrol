@@ -33,10 +33,13 @@ build/
 
 # Android
 local.properties
+keystore.properties
+signing.properties
 *.iml
 *.apk
 *.ap_
 *.jks
+*.keystore
 *.dex
 *.class
 captures/

@@ -7,3 +7,10 @@ Material Symbols. Copyright Google LLC. Licensed under the Apache License, Versi
 
 - Source: https://github.com/google/material-design-icons
 - License: https://www.apache.org/licenses/LICENSE-2.0
+
+## Shizuku API
+
+Copyright RikkaApps. Licensed under the Apache License, Version 2.0.
+
+- Source: https://github.com/RikkaApps/Shizuku-API
+- License: https://www.apache.org/licenses/LICENSE-2.0

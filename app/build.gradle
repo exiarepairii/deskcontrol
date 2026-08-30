@@ -9,18 +9,30 @@ android {
 
     flavorDimensions += "distribution"
 
-    def keystorePath = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH")
-    def keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD")
-    def keyAliasValue = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS")
-    def keyPasswordValue = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD")
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
+    def defaultKeystoreFile = rootProject.file("release.jks")
+    def appKeystoreFile = file("release.jks")
+    def customKeystorePath = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH") ?: keystoreProperties.getProperty("storeFile")
+    def resolvedKeystoreFile = customKeystorePath ? file(customKeystorePath) : (defaultKeystoreFile.exists() ? defaultKeystoreFile : (appKeystoreFile.exists() ? appKeystoreFile : null))
+
+    def keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD") ?: keystoreProperties.getProperty("storePassword") ?: "deskcontrol2026"
+    def keyAliasValue = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") ?: keystoreProperties.getProperty("keyAlias") ?: "deskcontrol"
+    def keyPasswordValue = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") ?: keystoreProperties.getProperty("keyPassword") ?: "deskcontrol2026"
 
     signingConfigs {
         create("release") {
-            if (keystorePath && keystorePassword && keyAliasValue && keyPasswordValue) {
-                storeFile = file(keystorePath)
+            if (resolvedKeystoreFile != null && resolvedKeystoreFile.exists()) {
+                storeFile = resolvedKeystoreFile
                 storePassword = keystorePassword
                 keyAlias = keyAliasValue
                 keyPassword = keyPasswordValue
+                v1SigningEnabled = true
+                v2SigningEnabled = true
             }
         }
     }
@@ -46,7 +58,8 @@ android {
     buildTypes {
         release {
             minifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            def releaseConfig = signingConfigs.getByName("release")
+            signingConfig = (releaseConfig.storeFile != null && releaseConfig.storeFile.exists()) ? releaseConfig : signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -185,6 +185,8 @@
     <string name="settings_touchpad_back_section">返回转发</string>
     <string name="settings_touchpad_auto_focus">返回前自动恢复焦点</string>
     <string name="settings_touchpad_auto_focus_summary">外接应用未聚焦时，先尝试恢复焦点，再发送返回操作。</string>
+    <string name="settings_touchpad_hide_ui">隐藏触控板界面</string>
+    <string name="settings_touchpad_hide_ui_summary">将触控板屏幕完全变黑，仅适合熟练用户。</string>
     <string name="settings_touchpad_dim_level">自动调暗亮度</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_scroll_speed">单步滚动位移</string>
@@ -211,6 +213,7 @@
     <string name="language_system">跟随系统</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>
+    <string name="language_russian">Русский</string>
     <string name="settings_cursor_section">光标</string>
     <string name="settings_cursor_size">光标大小</string>
     <string name="settings_cursor_color">光标颜色</string>

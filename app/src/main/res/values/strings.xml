@@ -187,6 +187,8 @@
     <string name="settings_touchpad_back_section">Back forwarding</string>
     <string name="settings_touchpad_auto_focus">Restore focus before Back</string>
     <string name="settings_touchpad_auto_focus_summary">If the external app isn’t focused, try to restore focus before sending Back.</string>
+    <string name="settings_touchpad_hide_ui">Hide touchpad UI</string>
+    <string name="settings_touchpad_hide_ui_summary">Makes the touchpad screen completely black, for experienced users only.</string>
     <string name="settings_touchpad_dim_level">Auto-dim brightness</string>
     <string name="settings_touchpad_dim_level_value">%1$d%%</string>
     <string name="settings_touchpad_scroll_speed">Scroll movement per step</string>
@@ -213,6 +215,7 @@
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_chinese">简体中文</string>
+    <string name="language_russian">Русский</string>
     <string name="settings_cursor_section">Cursor</string>
     <string name="settings_cursor_size">Cursor size</string>
     <string name="settings_cursor_color">Cursor color</string>

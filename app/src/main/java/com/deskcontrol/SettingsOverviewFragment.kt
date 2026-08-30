@@ -109,6 +109,7 @@ class SettingsOverviewFragment : Fragment() {
         val language = when {
             SettingsStore.isLanguageEnglish() -> getString(R.string.language_english)
             SettingsStore.isLanguageChinese() -> getString(R.string.language_chinese)
+            SettingsStore.isLanguageRussian() -> getString(R.string.language_russian)
             else -> getString(R.string.language_system)
         }
         return getString(R.string.settings_overview_appearance_summary, theme, language)

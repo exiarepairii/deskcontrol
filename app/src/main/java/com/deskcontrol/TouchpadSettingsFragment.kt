@@ -16,9 +16,20 @@ internal class TouchpadSettingsFragment :
         autoFocus.switch.setOnCheckedChangeListener { _, checked ->
             SettingsStore.setTouchpadAutoFocusEnabled(context, checked)
         }
+
+        val hideUi = context.switchSetting(
+            R.string.settings_touchpad_hide_ui,
+            R.string.settings_touchpad_hide_ui_summary
+        )
+        hideUi.switch.isChecked = SettingsStore.touchpadHideUiEnabled
+        hideUi.switch.setOnCheckedChangeListener { _, checked ->
+            SettingsStore.setTouchpadHideUiEnabled(context, checked)
+        }
+
         pageLayout.addGroup(
             R.string.settings_touchpad_back_section,
-            autoFocus.row
+            autoFocus.row,
+            hideUi.row
         )
 
         val directMode = context.switchSetting(
